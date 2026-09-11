@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交易日誌</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a78d6">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== LOGIN GATE ===== -->
+<div class="login-gate" id="login-gate">
+  <div class="login-card">
+    <div class="brand" style="justify-content:center;margin-bottom:8px;">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">交易日誌</span>
+    </div>
+    <p class="login-sub">登入後即可在任何裝置同步你的交易紀錄</p>
+    <button class="btn primary" id="btn-google-signin">使用 Google 帳號登入</button>
+    <p class="login-status" id="login-status"></p>
+  </div>
+</div>
+
+<div class="app" id="app-root" hidden>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">交易日誌</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="trades" role="tab" aria-selected="true">交易紀錄</button>
+      <button class="tab" data-tab="stats" role="tab" aria-selected="false">統計分析</button>
+    </nav>
+    <div class="topbar-actions">
+      <span class="sync-status" id="sync-status">已同步</span>
+      <span class="user-chip" id="user-chip"></span>
+      <button class="btn ghost" id="btn-export">匯出</button>
+      <button class="btn ghost" id="btn-import">匯入</button>
+      <button class="btn ghost" id="btn-signout">登出</button>
+      <input type="file" id="file-import" accept="application/json" hidden>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ===== TRADES TAB ===== -->
+    <section class="panel active" id="panel-trades">
+      <div class="panel-head">
+        <h1>交易紀錄</h1>
+        <button class="btn primary" id="btn-add-trade">＋ 新增交易</button>
+      </div>
+
+      <div class="filter-row">
+        <select id="filter-action">
+          <option value="all">全部操作</option>
+          <option value="買進">買進</option>
+          <option value="加碼">加碼</option>
+          <option value="減碼">減碼</option>
+          <option value="賣出">賣出</option>
+          <option value="當沖">當沖</option>
+        </select>
+        <select id="filter-strategy">
+          <option value="all">全部策略</option>
+          <option value="盤整突破">盤整突破</option>
+          <option value="沿線上行">沿線上行</option>
+          <option value="族群效應">族群效應</option>
+          <option value="回調築底">回調築底</option>
+          <option value="處置操作">處置操作</option>
+          <option value="其他">其他</option>
+        </select>
+        <input type="search" id="filter-search" placeholder="搜尋股票代號 / 名稱 / 族群">
+      </div>
+
+      <div class="table-wrap">
+        <table class="trade-table">
+          <thead>
+            <tr>
+              <th class="mark-col"></th>
+              <th>日期</th>
+              <th>股票</th>
+              <th>操作</th>
+              <th>策略</th>
+              <th>族群</th>
+              <th>資金佔比</th>
+              <th>報酬率</th>
+              <th>評級</th>
+              <th>理由</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="trade-tbody"></tbody>
+        </table>
+        <p class="empty-state" id="trades-empty">還沒有任何交易紀錄，點選「新增交易」開始記錄。</p>
+      </div>
+    </section>
+
+    <!-- ===== STATS TAB ===== -->
+    <section class="panel" id="panel-stats">
+      <div class="panel-head">
+        <h1>統計分析</h1>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-label">資金加權累計報酬</span>
+          <span class="stat-value" id="stat-total-pnl">0%</span>
+          <span class="stat-sub">Σ（報酬率 × 資金佔比）</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">勝率</span>
+          <span class="stat-value" id="stat-winrate">0%</span>
+          <div class="winloss-bar" id="stat-winloss-bar"></div>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">已實現次數</span>
+          <span class="stat-value" id="stat-count">0</span>
+          <span class="stat-sub" id="stat-count-sub">0 勝 / 0 敗</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">平均獲利 / 平均虧損</span>
+          <span class="stat-value" id="stat-avg">0% / 0%</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">獲利因子</span>
+          <span class="stat-value" id="stat-pf">–</span>
+          <span class="stat-sub">總獲利% ÷ 總虧損%</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">最大單筆獲利 / 虧損</span>
+          <span class="stat-value" id="stat-maxminmax">0% / 0%</span>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h2>月度統計明細</h2>
+        </div>
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead>
+              <tr>
+                <th>月份</th>
+                <th>資金加權報酬</th>
+                <th>勝率</th>
+                <th>已實現次數</th>
+                <th>平均獲利 / 虧損</th>
+                <th>獲利因子</th>
+                <th>最大獲利 / 虧損</th>
+              </tr>
+            </thead>
+            <tbody id="monthly-stats-tbody"></tbody>
+          </table>
+          <p class="empty-state" id="monthly-stats-empty">尚無已實現紀錄。</p>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h2>資金加權累計報酬曲線</h2>
+        </div>
+        <div id="equity-chart" class="chart-body"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h2>各月份資金加權報酬</h2>
+        </div>
+        <div id="monthly-chart" class="chart-body"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h2>策略別平均資金加權貢獻</h2>
+          <div class="legend" id="strategy-legend"></div>
+        </div>
+        <div id="strategy-chart" class="chart-body"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h2>族群別總報酬</h2>
+        </div>
+        <div id="sector-chart" class="chart-body"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== TRADE MODAL ===== -->
+<div class="modal-overlay" id="trade-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="trade-modal-title">新增交易</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </div>
+    <form id="trade-form">
+      <input type="hidden" id="trade-id">
+      <div class="form-row">
+        <label class="checkbox-label"><input type="checkbox" id="f-marked"> 標記</label>
+      </div>
+      <div class="form-row">
+        <label>日期 <input type="date" id="f-date" required></label>
+        <label>股票代號 <input type="text" id="f-symbol" placeholder="2330" list="symbol-datalist" required></label>
+        <datalist id="symbol-datalist"></datalist>
+      </div>
+      <div class="form-row">
+        <label>股票名稱 <input type="text" id="f-name" placeholder="台積電"></label>
+        <label>族群 <input type="text" id="f-sector" placeholder="被動元件"></label>
+      </div>
+      <div class="form-row">
+        <label>操作
+          <select id="f-action">
+            <option value="買進">買進</option>
+            <option value="加碼">加碼</option>
+            <option value="減碼">減碼</option>
+            <option value="賣出">賣出</option>
+            <option value="當沖">當沖</option>
+          </select>
+        </label>
+        <label>策略
+          <select id="f-strategy">
+            <option value="盤整突破">盤整突破</option>
+            <option value="沿線上行">沿線上行</option>
+            <option value="族群效應">族群效應</option>
+            <option value="回調築底">回調築底</option>
+            <option value="處置操作">處置操作</option>
+            <option value="其他">其他</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row calc-hint-row">
+        <label>交易價格 <input type="number" step="0.01" id="f-calc-price" placeholder="用來自動算資金佔比，可留空"></label>
+        <label>股數 <input type="number" step="1" id="f-calc-shares" placeholder="用來自動算資金佔比，可留空"></label>
+      </div>
+      <div class="form-row">
+        <label>資金佔比 (%) <input type="number" step="0.1" id="f-position-pct" placeholder="10"></label>
+        <label>報酬率 (%) <input type="number" step="0.01" id="f-return-pct" placeholder="留空表示尚未實現"></label>
+      </div>
+      <div class="form-row calc-hint-row">
+        <label>資金加權貢獻 (%) <input type="number" step="0.01" id="f-contrib"></label>
+      </div>
+      <div class="form-row">
+        <label>評級
+          <select id="f-rating">
+            <option value="">–</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="F">F</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row single">
+        <label>理由 <textarea id="f-reason" rows="2" placeholder="進出場理由..."></textarea></label>
+      </div>
+      <div class="form-row single">
+        <label>檢討 <textarea id="f-review" rows="2" placeholder="事後檢討、心得..."></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-delete-trade" hidden>刪除</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn ghost" data-close>取消</button>
+        <button type="submit" class="btn primary">儲存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
