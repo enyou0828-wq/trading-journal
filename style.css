@@ -256,6 +256,43 @@ body {
 .chart-pager .pager-btn:disabled { opacity: 0.35; cursor: default; }
 .chart-pager .pager-label { font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+/* ---------- Industry Map ---------- */
+.industry-map { display: flex; flex-direction: column; align-items: center; padding: 32px 16px 8px; }
+.map-root {
+  background: var(--text-primary); color: var(--surface-1);
+  font-weight: 700; font-size: 18px; letter-spacing: .02em;
+  padding: 12px 32px; border-radius: var(--radius-lg);
+}
+.map-trunk { width: 2px; height: 28px; background: var(--gridline); }
+.map-branches {
+  width: 100%; max-width: 1080px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;
+  position: relative; padding-top: 20px; border-top: 2px solid var(--gridline);
+}
+.map-node {
+  position: relative; flex: 1 1 180px; max-width: 220px;
+  background: var(--surface-1); border: 1px solid var(--border); border-top: 3px solid var(--node-color);
+  border-radius: var(--radius-md); padding: 14px 16px 16px;
+  display: flex; flex-direction: column; gap: 10px; align-items: center;
+}
+.map-node::before {
+  content: ""; position: absolute; top: -20px; left: 50%; width: 2px; height: 20px;
+  background: var(--gridline);
+}
+.map-node-title { font-weight: 700; font-size: 15px; color: var(--text-primary); text-align: center; }
+.map-children { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.map-leaf {
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--node-color) 16%, transparent);
+  color: var(--node-color);
+}
+
+@media (max-width: 640px) {
+  .map-branches { border-top: none; padding-top: 0; gap: 16px; }
+  .map-node::before { display: none; }
+  .map-trunk { height: 16px; }
+}
+
 /* ---------- Diary ---------- */
 .diary-list { display: flex; flex-direction: column; gap: 10px; }
 .diary-card {
