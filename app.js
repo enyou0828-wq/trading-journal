@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
+import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -23,27 +24,15 @@ const db = getFirestore(fbApp);
 
   // ---- 供應鏈資料模型 ----
   // 節點是扁平陣列，用 parentIds（可多個上層）表達階層，不用巢狀樹狀結構，
-  // 這樣同一個子產業（例如 PCB）未來若同時屬於多條供應鏈，只要在 parentIds 多加一個 id 即可，不需要複製節點。
+  // 這樣同一個子產業（例如 CPO）可以同時屬於多條供應鏈／多個上層分類，只要在 parentIds 多加一個 id 即可，不需要複製節點。
   // 公司與節點是多對多關聯（companyLinks），一家公司可以同時掛在多個供應鏈節點上。
-  const STAGE_LABEL = { upstream: '上游', midstream: '中游', downstream: '下游' };
-  const DEFAULT_SUPPLY_CHAIN_NODES = [
-    { id: 'ai', name: 'AI', parentIds: [], stage: null },
-    { id: 'gpu', name: 'GPU', parentIds: ['ai'], stage: 'midstream' },
-    { id: 'asic', name: 'ASIC', parentIds: ['ai'], stage: 'midstream' },
-    { id: 'foundry', name: '晶圓代工', parentIds: ['ai'], stage: 'upstream' },
-    { id: 'adv_packaging', name: '先進封裝', parentIds: ['ai'], stage: 'midstream' },
-    { id: 'cowos', name: 'CoWoS', parentIds: ['adv_packaging'], stage: 'midstream' },
-    { id: 'hbm', name: 'HBM', parentIds: ['adv_packaging'], stage: 'midstream' },
-    { id: 'ai_server', name: 'AI Server', parentIds: ['ai'], stage: 'midstream' },
-    { id: 'odm', name: 'ODM', parentIds: ['ai_server'], stage: 'midstream' },
-    { id: 'pcb', name: 'PCB', parentIds: ['ai_server'], stage: 'upstream' },
-    { id: 'ccl', name: 'CCL', parentIds: ['ai_server'], stage: 'upstream' },
-    { id: 'power', name: '電源', parentIds: ['ai_server'], stage: 'upstream' },
-    { id: 'cooling', name: '散熱', parentIds: ['ai_server'], stage: 'upstream' },
-    { id: 'networking', name: 'Networking', parentIds: ['ai'], stage: 'midstream' },
-    { id: 'switch', name: 'Switch', parentIds: ['networking'], stage: 'midstream' },
-    { id: 'optical', name: 'Optical / CPO', parentIds: ['networking'], stage: 'midstream' },
-  ];
+  // 種子資料（SUPPLY_CHAIN_NODES / COMPANY_LINKS）抽離在 supplyChainData.js，跟這裡的 App 邏輯完全分離，
+  // 之後要調整供應鏈分類/公司清單只需要改那個檔案，不用動這裡任何一行程式碼。
+  const STAGE_LABEL = {
+    theme: '題材', industry: '產業', upstream: '上游', midstream: '中游', downstream: '下游',
+    manufacturing: '製造', equipment: '設備', material: '材料', component: '元件',
+    system: '系統', technology: '技術', ip: 'IP',
+  };
 
   // 台灣櫃買指數（TPEx OTC Index）每日收盤，作為資金加權報酬曲線的對照基準。
   // 全部由使用者逐日核對提供，並與證交所 TPEx OpenAPI 官方數字（8/3–8/12）交叉比對完全吻合（誤差在0.03內）。
@@ -129,6 +118,10 @@ const db = getFirestore(fbApp);
       };
     });
     if (!Array.isArray(data.diary)) data.diary = [];
+    // 匯入舊版（不含供應鏈資料）的檔案時，補上空陣列，避免供應鏈分頁因欄位不存在而壞掉。
+    // 若匯入的檔案本身就有供應鏈資料，這裡不會動它，原樣保留（含使用者後續編輯過的內容）。
+    if (!Array.isArray(data.supplyChainNodes)) data.supplyChainNodes = [];
+    if (!Array.isArray(data.companyLinks)) data.companyLinks = [];
     return data;
   }
 
@@ -168,11 +161,13 @@ const db = getFirestore(fbApp);
         await save();
       }
 
-      // 一次性建立：供應鏈資料模型（節點 + 公司關聯），種子資料建立後完全開放編輯，不會再被覆蓋。
-      if (!state.supplyChainSeeded) {
-        state.supplyChainNodes = DEFAULT_SUPPLY_CHAIN_NODES.map(n => ({ ...n, parentIds: [...n.parentIds] }));
-        state.companyLinks = [];
+      // 一次性建立/升級：供應鏈資料模型（節點 + 公司關聯），改用完整版種子資料（supplyChainData.js）。
+      // 種子資料建立後完全開放編輯，不會再被自動覆蓋；只在第一次（或從舊版簡化種子升級）時執行一次。
+      if (!state.supplyChainSeedV2) {
+        state.supplyChainNodes = SUPPLY_CHAIN_NODES.map(n => ({ ...n, parentIds: [...n.parentIds] }));
+        state.companyLinks = COMPANY_LINKS.map(l => ({ ...l }));
         state.supplyChainSeeded = true;
+        state.supplyChainSeedV2 = true;
         await save();
       }
       if (!Array.isArray(state.supplyChainNodes)) state.supplyChainNodes = [];
@@ -1097,7 +1092,7 @@ const db = getFirestore(fbApp);
       const realized = trades.filter(t => t.returnPct != null);
       const s = computeStats(realized);
       const nodeLinks = scNodesForSymbol(symbol);
-      const name = trades[0]?.name || '';
+      const name = trades[0]?.name || nodeLinks.find(l => l.name)?.name || '';
       const sector = (trades.find(t => t.sector)?.sector) || '–';
       el.innerHTML = `
         <div class="chain-detail-head">
@@ -1106,7 +1101,7 @@ const db = getFirestore(fbApp);
         </div>
         <div class="chain-detail-meta">
           <div><span class="chain-meta-label">所屬族群</span>${escapeHtml(sector)}</div>
-          <div><span class="chain-meta-label">所屬供應鏈</span>${nodeLinks.length ? nodeLinks.map(l => `${escapeHtml(l.node.name)}${l.role ? `（${escapeHtml(l.role)}）` : ''}`).join('、') : '–'}</div>
+          <div><span class="chain-meta-label">所屬供應鏈</span>${nodeLinks.length ? nodeLinks.map(l => `${escapeHtml(l.node.name)}${l.role ? `（${escapeHtml(l.role)}）` : ''}`).join('、') : '尚未建立供應鏈資料'}</div>
         </div>
         ${chainStatTiles(s)}
         <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
@@ -1151,8 +1146,8 @@ const db = getFirestore(fbApp);
       <div class="chain-company-list">
         ${symbols.length ? symbols.map(sym => {
           const link = links.find(l => l.symbol === sym);
-          const tr = state.trades.find(t => t.symbol === sym);
-          return `<div class="chain-company-row" data-symbol="${escapeHtml(sym)}"><strong>${escapeHtml(sym)}</strong> ${escapeHtml(tr ? tr.name : '')} ${link.role ? `<span class="chain-role-tag">${escapeHtml(link.role)}</span>` : ''}</div>`;
+          const name = link.name || state.trades.find(t => t.symbol === sym)?.name || '';
+          return `<div class="chain-company-row" data-symbol="${escapeHtml(sym)}"><strong>${escapeHtml(sym)}</strong> ${escapeHtml(name)} ${link.role ? `<span class="chain-role-tag">${escapeHtml(link.role)}</span>` : ''}</div>`;
         }).join('') : '<p class="empty-state">此節點（含子節點）尚未關聯任何公司，可到「編輯供應鏈」新增。</p>'}
       </div>
     `;
@@ -1236,7 +1231,16 @@ const db = getFirestore(fbApp);
     const nodeId = document.getElementById('cl-node').value;
     const role = document.getElementById('cl-role').value.trim();
     if (!symbol || !nodeId) return;
-    state.companyLinks.push({ symbol, nodeId, role });
+    // 以 symbol + nodeId 當唯一鍵：已存在同樣的公司+節點關聯就更新角色，不會產生重複項目。
+    const existing = state.companyLinks.find(l => l.symbol === symbol && l.nodeId === nodeId);
+    if (existing) {
+      existing.role = role;
+    } else {
+      const name = symbolLookup().get(symbol)?.name
+        || state.companyLinks.find(l => l.symbol === symbol)?.name
+        || '';
+      state.companyLinks.push({ symbol, name, nodeId, role });
+    }
     save();
     e.target.reset();
     renderChainEdit(); renderChainTree(); renderChainDetail();
