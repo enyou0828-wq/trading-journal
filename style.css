@@ -142,6 +142,9 @@ body {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 .btn.primary { background: var(--series-1); color: #fff; }
 .btn.primary:hover { filter: brightness(1.08); }
@@ -157,6 +160,7 @@ body {
 
 .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .panel-head h1 { font-size: 20px; margin: 0; }
+.panel-head-actions { display: flex; align-items: center; gap: 8px; }
 
 /* ---------- Filters ---------- */
 .filter-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
