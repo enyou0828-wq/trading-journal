@@ -21,6 +21,30 @@ const db = getFirestore(fbApp);
   // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
 
+  // ---- 供應鏈資料模型 ----
+  // 節點是扁平陣列，用 parentIds（可多個上層）表達階層，不用巢狀樹狀結構，
+  // 這樣同一個子產業（例如 PCB）未來若同時屬於多條供應鏈，只要在 parentIds 多加一個 id 即可，不需要複製節點。
+  // 公司與節點是多對多關聯（companyLinks），一家公司可以同時掛在多個供應鏈節點上。
+  const STAGE_LABEL = { upstream: '上游', midstream: '中游', downstream: '下游' };
+  const DEFAULT_SUPPLY_CHAIN_NODES = [
+    { id: 'ai', name: 'AI', parentIds: [], stage: null },
+    { id: 'gpu', name: 'GPU', parentIds: ['ai'], stage: 'midstream' },
+    { id: 'asic', name: 'ASIC', parentIds: ['ai'], stage: 'midstream' },
+    { id: 'foundry', name: '晶圓代工', parentIds: ['ai'], stage: 'upstream' },
+    { id: 'adv_packaging', name: '先進封裝', parentIds: ['ai'], stage: 'midstream' },
+    { id: 'cowos', name: 'CoWoS', parentIds: ['adv_packaging'], stage: 'midstream' },
+    { id: 'hbm', name: 'HBM', parentIds: ['adv_packaging'], stage: 'midstream' },
+    { id: 'ai_server', name: 'AI Server', parentIds: ['ai'], stage: 'midstream' },
+    { id: 'odm', name: 'ODM', parentIds: ['ai_server'], stage: 'midstream' },
+    { id: 'pcb', name: 'PCB', parentIds: ['ai_server'], stage: 'upstream' },
+    { id: 'ccl', name: 'CCL', parentIds: ['ai_server'], stage: 'upstream' },
+    { id: 'power', name: '電源', parentIds: ['ai_server'], stage: 'upstream' },
+    { id: 'cooling', name: '散熱', parentIds: ['ai_server'], stage: 'upstream' },
+    { id: 'networking', name: 'Networking', parentIds: ['ai'], stage: 'midstream' },
+    { id: 'switch', name: 'Switch', parentIds: ['networking'], stage: 'midstream' },
+    { id: 'optical', name: 'Optical / CPO', parentIds: ['networking'], stage: 'midstream' },
+  ];
+
   // 台灣櫃買指數（TPEx OTC Index）每日收盤，作為資金加權報酬曲線的對照基準。
   // 全部由使用者逐日核對提供，並與證交所 TPEx OpenAPI 官方數字（8/3–8/12）交叉比對完全吻合（誤差在0.03內）。
   // 6/19（端午節）、7/10 為休市日，已從交易日序列中排除。
@@ -44,7 +68,7 @@ const db = getFirestore(fbApp);
     '2026-08-25': 389.41, '2026-08-26': 395.66, '2026-08-27': 400.38, '2026-08-28': 402.83,
     '2026-08-31': 401.70, '2026-09-01': 410.77, '2026-09-02': 406.96, '2026-09-03': 395.25,
     '2026-09-04': 402.48, '2026-09-07': 409.33, '2026-09-08': 407.19, '2026-09-09': 408.09,
-    '2026-09-10': 405.24,    '2026-09-11': 395.52,
+    '2026-09-10': 405.24,
   };
   // 各月 OTC 報酬率：該月最後一個交易日收盤 相對 前一月最後一個交易日收盤（第一個月則相對該月第一筆資料）
   function computeOtcMonthlyReturns() {
@@ -143,6 +167,16 @@ const db = getFirestore(fbApp);
         state.capitalBase70kAug = true;
         await save();
       }
+
+      // 一次性建立：供應鏈資料模型（節點 + 公司關聯），種子資料建立後完全開放編輯，不會再被覆蓋。
+      if (!state.supplyChainSeeded) {
+        state.supplyChainNodes = DEFAULT_SUPPLY_CHAIN_NODES.map(n => ({ ...n, parentIds: [...n.parentIds] }));
+        state.companyLinks = [];
+        state.supplyChainSeeded = true;
+        await save();
+      }
+      if (!Array.isArray(state.supplyChainNodes)) state.supplyChainNodes = [];
+      if (!Array.isArray(state.companyLinks)) state.companyLinks = [];
     } catch (e) {
       console.error('loadFromCloud failed', e);
       setSyncStatus('讀取失敗');
@@ -189,6 +223,7 @@ const db = getFirestore(fbApp);
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById('panel-' + target).classList.add('active');
       if (target === 'stats') renderStats();
+      if (target === 'chain') { renderChainTree(); renderChainDetail(); }
     });
   });
 
@@ -957,6 +992,255 @@ const db = getFirestore(fbApp);
       Z
     `;
   }
+
+  // ================= SUPPLY CHAIN =================
+  // 節點/公司關聯查詢輔助函式：一律從 state.supplyChainNodes / state.companyLinks 現查，不快取，
+  // 因為編輯區隨時可能新增/刪除節點，快取容易跟畫面不同步。
+  function scNode(id) { return state.supplyChainNodes.find(n => n.id === id); }
+  function scChildren(id) { return state.supplyChainNodes.filter(n => (n.parentIds || []).includes(id)); }
+  function scRoots() { return state.supplyChainNodes.filter(n => !n.parentIds || n.parentIds.length === 0); }
+  function scDepth(id) {
+    let depth = 0, node = scNode(id), guard = 0;
+    while (node && node.parentIds && node.parentIds[0] && guard++ < 20) { depth++; node = scNode(node.parentIds[0]); }
+    return depth;
+  }
+  // 含自己在內的所有下層節點 id（沿 parentIds 反向展開，支援多重上層/DAG）
+  function scDescendantIds(id) {
+    const result = new Set([id]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      state.supplyChainNodes.forEach(n => {
+        if (!result.has(n.id) && (n.parentIds || []).some(p => result.has(p))) { result.add(n.id); changed = true; }
+      });
+    }
+    return result;
+  }
+  function scLinksForNode(nodeId) {
+    const ids = scDescendantIds(nodeId);
+    return state.companyLinks.filter(l => ids.has(l.nodeId));
+  }
+  function scNodesForSymbol(symbol) {
+    return state.companyLinks
+      .filter(l => l.symbol === symbol)
+      .map(l => ({ ...l, node: scNode(l.nodeId) }))
+      .filter(l => l.node);
+  }
+  function scTradesForSymbols(symbols) {
+    const set = new Set(symbols);
+    return sortedTrades().filter(t => set.has(t.symbol));
+  }
+
+  let chainExpanded = new Set();
+  let chainSelectedNodeId = null;
+  let chainSelectedSymbol = null;
+
+  function renderChainTree() {
+    const el = document.getElementById('chain-tree');
+    if (!el) return;
+    el.innerHTML = '';
+    const roots = scRoots();
+    if (!roots.length) {
+      el.innerHTML = '<p class="empty-state">尚無供應鏈節點，點右上角「編輯供應鏈」新增。</p>';
+      return;
+    }
+    const renderNode = (node, depth) => {
+      const children = scChildren(node.id);
+      const hasChildren = children.length > 0;
+      const isExpanded = chainExpanded.has(node.id);
+      const linkCount = scLinksForNode(node.id).length;
+      const row = document.createElement('div');
+      row.className = 'chain-row' + (chainSelectedNodeId === node.id && !chainSelectedSymbol ? ' active' : '');
+      row.style.paddingLeft = (depth * 18 + 10) + 'px';
+      row.innerHTML = `
+        <span class="chain-toggle">${hasChildren ? (isExpanded ? '▾' : '▸') : ''}</span>
+        <span class="chain-row-name">${escapeHtml(node.name)}</span>
+        ${linkCount ? `<span class="chain-row-count">${linkCount}</span>` : ''}
+      `;
+      if (hasChildren) {
+        row.querySelector('.chain-toggle').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (isExpanded) chainExpanded.delete(node.id); else chainExpanded.add(node.id);
+          renderChainTree();
+        });
+      }
+      row.addEventListener('click', () => {
+        chainSelectedNodeId = node.id;
+        chainSelectedSymbol = null;
+        renderChainTree();
+        renderChainDetail();
+      });
+      el.appendChild(row);
+      if (hasChildren && isExpanded) children.forEach(c => renderNode(c, depth + 1));
+    };
+    roots.forEach(r => renderNode(r, 0));
+  }
+
+  function chainStatTiles(s) {
+    return `
+      <div class="stat-grid" style="margin:16px 0;">
+        <div class="stat-tile"><span class="stat-label">已實現次數</span><span class="stat-value">${s.realized.length}</span></div>
+        <div class="stat-tile"><span class="stat-label">勝率</span><span class="stat-value">${s.realized.length ? s.winRate.toFixed(1) + '%' : '–'}</span></div>
+        <div class="stat-tile"><span class="stat-label">平均獲利 / 虧損</span><span class="stat-value">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</span></div>
+        <div class="stat-tile"><span class="stat-label">資金加權貢獻</span><span class="stat-value">${fmtPct(s.totalWeighted, 2)}</span></div>
+      </div>
+    `;
+  }
+
+  function renderChainDetail() {
+    const el = document.getElementById('chain-detail');
+    if (!el) return;
+
+    if (chainSelectedSymbol) {
+      const symbol = chainSelectedSymbol;
+      const trades = sortedTrades().filter(t => t.symbol === symbol);
+      const realized = trades.filter(t => t.returnPct != null);
+      const s = computeStats(realized);
+      const nodeLinks = scNodesForSymbol(symbol);
+      const name = trades[0]?.name || '';
+      const sector = (trades.find(t => t.sector)?.sector) || '–';
+      el.innerHTML = `
+        <div class="chain-detail-head">
+          <button type="button" class="btn ghost" id="chain-back-btn">‹ 返回節點</button>
+          <h2>${escapeHtml(symbol)} ${escapeHtml(name)}</h2>
+        </div>
+        <div class="chain-detail-meta">
+          <div><span class="chain-meta-label">所屬族群</span>${escapeHtml(sector)}</div>
+          <div><span class="chain-meta-label">所屬供應鏈</span>${nodeLinks.length ? nodeLinks.map(l => `${escapeHtml(l.node.name)}${l.role ? `（${escapeHtml(l.role)}）` : ''}`).join('、') : '–'}</div>
+        </div>
+        ${chainStatTiles(s)}
+        <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>資金佔比</th><th>報酬率</th></tr></thead>
+            <tbody>${trades.map(t => `
+              <tr>
+                <td class="num">${t.date}</td>
+                <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
+                <td>${escapeHtml(t.strategy)}</td>
+                <td class="num">${t.positionPct == null ? '–' : t.positionPct.toFixed(1) + '%'}</td>
+                <td class="num ${t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero'}">${fmtPct(t.returnPct, 2)}</td>
+              </tr>
+            `).join('')}</tbody>
+          </table>
+        </div>
+      `;
+      document.getElementById('chain-back-btn').addEventListener('click', () => {
+        chainSelectedSymbol = null;
+        renderChainTree();
+        renderChainDetail();
+      });
+      return;
+    }
+
+    if (!chainSelectedNodeId || !scNode(chainSelectedNodeId)) {
+      el.innerHTML = '<p class="empty-state">點選左側的供應鏈節點查看詳細資料。</p>';
+      return;
+    }
+    const node = scNode(chainSelectedNodeId);
+    const links = scLinksForNode(node.id);
+    const symbols = [...new Set(links.map(l => l.symbol))];
+    const trades = scTradesForSymbols(symbols);
+    const realized = trades.filter(t => t.returnPct != null);
+    const s = computeStats(realized);
+
+    el.innerHTML = `
+      <div class="chain-detail-head"><h2>${escapeHtml(node.name)}</h2></div>
+      ${chainStatTiles(s)}
+      <h3 class="chain-companies-title">相關公司（${symbols.length}）</h3>
+      <div class="chain-company-list">
+        ${symbols.length ? symbols.map(sym => {
+          const link = links.find(l => l.symbol === sym);
+          const tr = state.trades.find(t => t.symbol === sym);
+          return `<div class="chain-company-row" data-symbol="${escapeHtml(sym)}"><strong>${escapeHtml(sym)}</strong> ${escapeHtml(tr ? tr.name : '')} ${link.role ? `<span class="chain-role-tag">${escapeHtml(link.role)}</span>` : ''}</div>`;
+        }).join('') : '<p class="empty-state">此節點（含子節點）尚未關聯任何公司，可到「編輯供應鏈」新增。</p>'}
+      </div>
+    `;
+    el.querySelectorAll('.chain-company-row').forEach(row => {
+      row.addEventListener('click', () => {
+        chainSelectedSymbol = row.dataset.symbol;
+        renderChainDetail();
+      });
+    });
+  }
+
+  // ---- 編輯供應鏈 ----
+  const btnChainEditToggle = document.getElementById('btn-chain-edit-toggle');
+  const chainEditPanel = document.getElementById('chain-edit');
+  btnChainEditToggle.addEventListener('click', () => {
+    const willOpen = chainEditPanel.hidden;
+    chainEditPanel.hidden = !willOpen;
+    btnChainEditToggle.textContent = willOpen ? '完成編輯' : '編輯供應鏈';
+    if (willOpen) renderChainEdit();
+  });
+
+  function populateNodeSelect(selectEl, { includeEmpty } = {}) {
+    const options = state.supplyChainNodes.map(n => `<option value="${n.id}">${'　'.repeat(scDepth(n.id))}${escapeHtml(n.name)}</option>`).join('');
+    selectEl.innerHTML = (includeEmpty ? '<option value="">（無，作為根節點）</option>' : '') + options;
+  }
+
+  function renderChainEdit() {
+    populateNodeSelect(document.getElementById('cn-parent'), { includeEmpty: true });
+    populateNodeSelect(document.getElementById('cl-node'), {});
+
+    const nodeListEl = document.getElementById('chain-node-list');
+    nodeListEl.innerHTML = state.supplyChainNodes.length ? state.supplyChainNodes.map(n => `
+      <div class="chain-manage-row">
+        <span>${'　'.repeat(scDepth(n.id))}${escapeHtml(n.name)}</span>
+        <span class="chain-manage-meta">${n.stage ? STAGE_LABEL[n.stage] : ''}</span>
+        <button type="button" class="row-del" data-del-node="${n.id}" title="刪除">✕</button>
+      </div>
+    `).join('') : '<p class="empty-state">尚無節點。</p>';
+    nodeListEl.querySelectorAll('[data-del-node]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.delNode;
+        if (!confirm('刪除此節點？（子節點不會一併刪除，會變成暫時沒有上層，建議先處理子節點）')) return;
+        state.supplyChainNodes = state.supplyChainNodes.filter(n => n.id !== id);
+        state.supplyChainNodes.forEach(n => { n.parentIds = (n.parentIds || []).filter(p => p !== id); });
+        state.companyLinks = state.companyLinks.filter(l => l.nodeId !== id);
+        if (chainSelectedNodeId === id) { chainSelectedNodeId = null; chainSelectedSymbol = null; }
+        save(); renderChainEdit(); renderChainTree(); renderChainDetail();
+      });
+    });
+
+    const linkListEl = document.getElementById('chain-link-list');
+    linkListEl.innerHTML = state.companyLinks.length ? state.companyLinks.map((l, i) => `
+      <div class="chain-manage-row">
+        <span><strong>${escapeHtml(l.symbol)}</strong> → ${escapeHtml(scNode(l.nodeId)?.name || '（節點已刪除）')}${l.role ? `（${escapeHtml(l.role)}）` : ''}</span>
+        <button type="button" class="row-del" data-del-link="${i}" title="刪除">✕</button>
+      </div>
+    `).join('') : '<p class="empty-state">尚無公司關聯。</p>';
+    linkListEl.querySelectorAll('[data-del-link]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.companyLinks.splice(+btn.dataset.delLink, 1);
+        save(); renderChainEdit(); renderChainTree(); renderChainDetail();
+      });
+    });
+  }
+
+  document.getElementById('chain-node-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('cn-name').value.trim();
+    if (!name) return;
+    const parentId = document.getElementById('cn-parent').value;
+    const stage = document.getElementById('cn-stage').value;
+    state.supplyChainNodes.push({ id: 'n_' + uid(), name, parentIds: parentId ? [parentId] : [], stage: stage || null });
+    save();
+    e.target.reset();
+    renderChainEdit(); renderChainTree();
+  });
+
+  document.getElementById('chain-link-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const symbol = document.getElementById('cl-symbol').value.trim();
+    const nodeId = document.getElementById('cl-node').value;
+    const role = document.getElementById('cl-role').value.trim();
+    if (!symbol || !nodeId) return;
+    state.companyLinks.push({ symbol, nodeId, role });
+    save();
+    e.target.reset();
+    renderChainEdit(); renderChainTree(); renderChainDetail();
+  });
 
   // ================= MODALS shared =================
   function closeModals() {
