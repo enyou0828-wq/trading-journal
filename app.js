@@ -172,6 +172,18 @@ const db = getFirestore(fbApp);
       }
       if (!Array.isArray(state.supplyChainNodes)) state.supplyChainNodes = [];
       if (!Array.isArray(state.companyLinks)) state.companyLinks = [];
+
+      // 一次性移除：車用電子分類（automotive 及其專屬子節點）與公司 4927（泰鼎-KY）。
+      // automotive_pcb 因為同時掛在 pcb 底下（多重上層），保留節點本身，只拿掉跟 automotive 的關聯。
+      if (!state.supplyChainRemoveAutomotive) {
+        const removeIds = new Set(['automotive', 'automotive_semiconductor', 'adas', 'ev', 'automotive_power', 'automotive_sensor']);
+        state.supplyChainNodes = state.supplyChainNodes
+          .filter(n => !removeIds.has(n.id))
+          .map(n => removeIds.has(n.id) ? n : { ...n, parentIds: (n.parentIds || []).filter(p => !removeIds.has(p)) });
+        state.companyLinks = state.companyLinks.filter(l => !removeIds.has(l.nodeId) && l.symbol !== '4927');
+        state.supplyChainRemoveAutomotive = true;
+        await save();
+      }
     } catch (e) {
       console.error('loadFromCloud failed', e);
       setSyncStatus('讀取失敗');
