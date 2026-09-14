@@ -35,7 +35,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="trades" role="tab" aria-selected="true">交易紀錄</button>
       <button class="tab" data-tab="stats" role="tab" aria-selected="false">統計分析</button>
-      <button class="tab" data-tab="map" role="tab" aria-selected="false">產業地圖</button>
+      <button class="tab" data-tab="chain" role="tab" aria-selected="false">供應鏈</button>
     </nav>
     <div class="topbar-actions">
       <span class="sync-status" id="sync-status">已同步</span>
@@ -190,46 +190,50 @@
       </div>
     </section>
 
-    <!-- ===== INDUSTRY MAP TAB ===== -->
-    <section class="panel" id="panel-map">
+    <!-- ===== SUPPLY CHAIN TAB ===== -->
+    <section class="panel" id="panel-chain">
       <div class="panel-head">
-        <h1>產業地圖</h1>
+        <h1>供應鏈</h1>
+        <button class="btn ghost" id="btn-chain-edit-toggle">編輯供應鏈</button>
       </div>
-      <div class="industry-map">
-        <div class="map-root">AI</div>
-        <div class="map-trunk"></div>
-        <div class="map-branches">
-          <div class="map-node" style="--node-color:var(--series-1)">
-            <div class="map-node-title">GPU</div>
-          </div>
-          <div class="map-node" style="--node-color:var(--series-2)">
-            <div class="map-node-title">ASIC</div>
-          </div>
-          <div class="map-node" style="--node-color:var(--series-3)">
-            <div class="map-node-title">Server</div>
-            <div class="map-children">
-              <span class="map-leaf">ODM</span>
-              <span class="map-leaf">PCB</span>
-              <span class="map-leaf">CCL</span>
-              <span class="map-leaf">Power</span>
-              <span class="map-leaf">Cooling</span>
-            </div>
-          </div>
-          <div class="map-node" style="--node-color:var(--series-4)">
-            <div class="map-node-title">Networking</div>
-            <div class="map-children">
-              <span class="map-leaf">Switch</span>
-              <span class="map-leaf">Optical</span>
-            </div>
-          </div>
-          <div class="map-node" style="--node-color:var(--series-1)">
-            <div class="map-node-title">Advanced Packaging</div>
-            <div class="map-children">
-              <span class="map-leaf">CoWoS</span>
-              <span class="map-leaf">ABF</span>
-              <span class="map-leaf">HBM</span>
-            </div>
-          </div>
+
+      <div class="chain-layout">
+        <div class="chain-tree-panel">
+          <div id="chain-tree" class="chain-tree"></div>
+        </div>
+        <div class="chain-detail-panel" id="chain-detail">
+          <p class="empty-state">點選左側的供應鏈節點查看詳細資料。</p>
+        </div>
+      </div>
+
+      <div class="chain-edit" id="chain-edit" hidden>
+        <div class="chart-card">
+          <h2 style="margin:0 0 12px;font-size:15px;">新增節點</h2>
+          <form id="chain-node-form" class="form-row">
+            <label>名稱 <input type="text" id="cn-name" required></label>
+            <label>上層節點 <select id="cn-parent"></select></label>
+            <label>上中下游
+              <select id="cn-stage">
+                <option value="">未分類</option>
+                <option value="upstream">上游</option>
+                <option value="midstream">中游</option>
+                <option value="downstream">下游</option>
+              </select>
+            </label>
+            <button type="submit" class="btn primary">新增</button>
+          </form>
+          <div id="chain-node-list" class="chain-manage-list"></div>
+        </div>
+
+        <div class="chart-card">
+          <h2 style="margin:0 0 12px;font-size:15px;">新增公司關聯</h2>
+          <form id="chain-link-form" class="form-row">
+            <label>股票代號 <input type="text" id="cl-symbol" list="symbol-datalist" required></label>
+            <label>供應鏈節點 <select id="cl-node" required></select></label>
+            <label>角色 <input type="text" id="cl-role" placeholder="例：封裝代工"></label>
+            <button type="submit" class="btn primary">新增</button>
+          </form>
+          <div id="chain-link-list" class="chain-manage-list"></div>
         </div>
       </div>
     </section>
