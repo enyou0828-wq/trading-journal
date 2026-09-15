@@ -1,7 +1,8 @@
 {
   "name": "交易日誌",
   "short_name": "交易日誌",
-  "start_url": "/",
+  "start_url": "/trading-journal/",
+  "scope": "/trading-journal/",
   "display": "standalone",
   "background_color": "#f9f9f7",
   "theme_color": "#2a78d6",
