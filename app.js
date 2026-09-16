@@ -16,9 +16,6 @@ const db = getFirestore(fbApp);
   const ENTRY_ACTIONS = new Set(['買進', '加碼']);
   const EXIT_ACTIONS = new Set(['減碼', '賣出', '加碼轉賣出']);
 
-  // 資金加權累計報酬曲線／各月份資金加權報酬：只看 7/1 起的資料，6 月不計入、7/1 為新的 0% 基準點
-  const CHART_START_DATE = '2026-07-01';
-
   // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
 
@@ -527,7 +524,6 @@ const db = getFirestore(fbApp);
   function renderEquityCurve(weighted) {
     const el = document.getElementById('equity-chart');
     el.innerHTML = '';
-    weighted = weighted.filter(t => t.date >= CHART_START_DATE);
     if (!weighted.length) {
       el.innerHTML = '<p class="empty-state">尚無帶有資金佔比與報酬率的已實現紀錄，無法繪製曲線。</p>';
       return;
@@ -550,7 +546,7 @@ const db = getFirestore(fbApp);
     // 這樣個人曲線跟櫃買指數線只要落在同一個桶，x 座標就會完全一致、對得齊。
     const points = [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
 
-    const otcSeries = computeOtcSeries(binStart, BIN_DAYS, CHART_START_DATE);
+    const otcSeries = computeOtcSeries(binStart, BIN_DAYS);
     const otcBinsByIdx = new Map(otcSeries.map(p => [Math.round((p.binTs - binStart) / binMs), p]));
 
     const W = 900, H = 280, PAD = { top: 16, right: 16, bottom: 36, left: 56 };
@@ -616,7 +612,7 @@ const db = getFirestore(fbApp);
     const legend = otcSeries.length ? `
       <div class="legend" style="margin-bottom:6px;">
         <div class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>個人資金加權報酬</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>櫃買指數（7/1 起，基準 0%，資料經核對）</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>櫃買指數（${otcSeries.length ? otcSeries[0].date : ''} 起，基準 0%，資料經核對）</div>
       </div>
     ` : '';
 
@@ -674,7 +670,6 @@ const db = getFirestore(fbApp);
   function renderMonthlyChart(weighted) {
     const el = document.getElementById('monthly-chart');
     el.innerHTML = '';
-    weighted = weighted.filter(t => t.date >= CHART_START_DATE);
     if (!weighted.length) {
       el.innerHTML = '<p class="empty-state">尚無帶有資金佔比與報酬率的已實現紀錄，無法繪製月度統計。</p>';
       return;
