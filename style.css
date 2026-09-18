@@ -212,6 +212,7 @@ body {
   background: transparent; cursor: pointer; padding: 0; display: inline-block;
 }
 .mark-swatch:hover { filter: brightness(0.92); }
+.mark-swatch.mark-none { border-color: transparent; }
 .mark-swatch.mark-yellow { background: #f5d90a; border-color: #d4b900; }
 .mark-swatch.mark-red { background: #d64545; border-color: #b93636; }
 
