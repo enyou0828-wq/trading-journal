@@ -294,7 +294,13 @@
     <form id="trade-form">
       <input type="hidden" id="trade-id">
       <div class="form-row">
-        <label class="checkbox-label"><input type="checkbox" id="f-marked"> 標記</label>
+        <label>標記
+          <select id="f-marked-color">
+            <option value="">不標記</option>
+            <option value="yellow">黃色標記</option>
+            <option value="red">紅色標記</option>
+          </select>
+        </label>
       </div>
       <div class="form-row">
         <label>日期 <input type="date" id="f-date" required></label>

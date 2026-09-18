@@ -207,15 +207,29 @@ body {
 .row-del:hover { color: var(--critical); }
 
 .mark-col { width: 30px; padding-right: 0 !important; }
-.mark-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #eab308; }
+.mark-swatch {
+  width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border);
+  background: transparent; cursor: pointer; padding: 0; display: inline-block;
+}
+.mark-swatch:hover { filter: brightness(0.92); }
+.mark-swatch.mark-yellow { background: #f5d90a; border-color: #d4b900; }
+.mark-swatch.mark-red { background: #d64545; border-color: #b93636; }
 
-.trade-table tbody tr.marked-row { background: #f5d90a; }
-.trade-table tbody tr.marked-row:hover { background: #e6cc00; }
-.trade-table tbody tr.marked-row td,
-.trade-table tbody tr.marked-row td strong,
-.trade-table tbody tr.marked-row td span { color: #0b0b0b !important; }
-.trade-table tbody tr.marked-row .rating-badge,
-.trade-table tbody tr.marked-row .badge { background: rgba(11,11,11,0.14) !important; }
+.trade-table tbody tr.marked-row-yellow { background: #f5d90a; }
+.trade-table tbody tr.marked-row-yellow:hover { background: #e6cc00; }
+.trade-table tbody tr.marked-row-yellow td,
+.trade-table tbody tr.marked-row-yellow td strong,
+.trade-table tbody tr.marked-row-yellow td span { color: #0b0b0b !important; }
+.trade-table tbody tr.marked-row-yellow .rating-badge,
+.trade-table tbody tr.marked-row-yellow .badge { background: rgba(11,11,11,0.14) !important; }
+
+.trade-table tbody tr.marked-row-red { background: #d64545; }
+.trade-table tbody tr.marked-row-red:hover { background: #c53c3c; }
+.trade-table tbody tr.marked-row-red td,
+.trade-table tbody tr.marked-row-red td strong,
+.trade-table tbody tr.marked-row-red td span { color: #ffffff !important; }
+.trade-table tbody tr.marked-row-red .rating-badge,
+.trade-table tbody tr.marked-row-red .badge { background: rgba(255,255,255,0.22) !important; }
 
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
 

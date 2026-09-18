@@ -182,6 +182,14 @@ const db = getFirestore(fbApp);
         state.supplyChainRemoveAutomotive = true;
         await save();
       }
+
+      // 一次性升級：標記從單一黃色（布林值 marked）改成雙色（markColor: '' / 'yellow' / 'red'）。
+      // 舊資料的 marked === true 一律視為黃色標記，維持原本的意義不變。
+      if (!state.markColorMigrated) {
+        state.trades = state.trades.map(t => t.marked && !t.markColor ? { ...t, markColor: 'yellow' } : t);
+        state.markColorMigrated = true;
+        await save();
+      }
     } catch (e) {
       console.error('loadFromCloud failed', e);
       setSyncStatus('讀取失敗');
@@ -257,11 +265,11 @@ const db = getFirestore(fbApp);
     for (const t of list) {
       const tr = document.createElement('tr');
       tr.dataset.id = t.id;
-      if (t.marked) tr.classList.add('marked-row');
+      if (t.markColor) tr.classList.add('marked-row-' + t.markColor);
       const pnlClass = t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero';
       const ratingHtml = t.rating ? `<span class="rating-badge rating-${t.rating}">${t.rating}</span>` : '–';
       tr.innerHTML = `
-        <td class="mark-col"><input type="checkbox" class="mark-checkbox" data-mark="${t.id}" ${t.marked ? 'checked' : ''}></td>
+        <td class="mark-col"><button type="button" class="mark-swatch mark-${t.markColor || 'none'}" data-mark="${t.id}" title="點擊切換標記顏色（無 → 黃 → 紅）"></button></td>
         <td class="num">${t.date}</td>
         <td><strong>${escapeHtml(t.symbol)}</strong> ${t.name ? `<span style="color:var(--text-muted)">${escapeHtml(t.name)}</span>` : ''}</td>
         <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
@@ -287,8 +295,11 @@ const db = getFirestore(fbApp);
       });
       tr.querySelector('[data-mark]').addEventListener('click', (e) => {
         e.stopPropagation();
-        t.marked = e.target.checked;
-        tr.classList.toggle('marked-row', t.marked);
+        const order = ['', 'yellow', 'red'];
+        t.markColor = order[(order.indexOf(t.markColor || '') + 1) % order.length];
+        e.target.className = 'mark-swatch mark-' + (t.markColor || 'none');
+        tr.classList.remove('marked-row-yellow', 'marked-row-red');
+        if (t.markColor) tr.classList.add('marked-row-' + t.markColor);
         save();
       });
     }
@@ -382,7 +393,7 @@ const db = getFirestore(fbApp);
   function openTradeModal(t) {
     document.getElementById('trade-modal-title').textContent = t ? '編輯交易' : '新增交易';
     document.getElementById('trade-id').value = t ? t.id : '';
-    document.getElementById('f-marked').checked = t ? !!t.marked : false;
+    document.getElementById('f-marked-color').value = t ? (t.markColor || '') : '';
     document.getElementById('f-date').value = t ? t.date : new Date().toISOString().slice(0, 10);
     document.getElementById('f-symbol').value = t ? t.symbol : '';
     document.getElementById('f-name').value = t ? (t.name || '') : '';
@@ -410,7 +421,7 @@ const db = getFirestore(fbApp);
     const priceVal = document.getElementById('f-calc-price').value;
     const rec = {
       id,
-      marked: document.getElementById('f-marked').checked,
+      markColor: document.getElementById('f-marked-color').value,
       date: document.getElementById('f-date').value,
       symbol: document.getElementById('f-symbol').value.trim(),
       name: document.getElementById('f-name').value.trim(),
