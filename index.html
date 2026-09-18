@@ -35,6 +35,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="trades" role="tab" aria-selected="true">交易紀錄</button>
       <button class="tab" data-tab="stats" role="tab" aria-selected="false">統計分析</button>
+      <button class="tab" data-tab="review" role="tab" aria-selected="false">月度回顧</button>
       <button class="tab" data-tab="chain" role="tab" aria-selected="false">供應鏈</button>
     </nav>
     <div class="topbar-actions">
@@ -190,6 +191,45 @@
       </div>
     </section>
 
+    <!-- ===== MONTHLY REVIEW TAB ===== -->
+    <section class="panel" id="panel-review">
+      <div class="panel-head">
+        <h1>月度回顧</h1>
+        <button class="btn primary" id="btn-add-review-month">＋ 新增／匯入月份</button>
+      </div>
+
+      <div class="review-month-tabs" id="review-month-tabs"></div>
+
+      <p class="empty-state" id="review-empty">還沒有任何月度回顧，點選「＋ 新增／匯入月份」開始記錄。</p>
+
+      <div id="review-content" hidden>
+        <div class="review-content-head">
+          <h2 id="review-month-title"></h2>
+          <button class="btn ghost" id="btn-del-review-month">刪除此月份</button>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <h2>一、單筆交易</h2>
+            <button type="button" class="btn ghost" id="btn-add-review-entry">＋ 新增單筆</button>
+          </div>
+          <div class="review-entry-list" id="review-entry-list"></div>
+          <p class="empty-state" id="review-entry-empty">尚無單筆紀錄。</p>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <h2>二、反思</h2>
+          </div>
+          <div class="review-reflection-list" id="review-reflection-list"></div>
+          <form id="review-reflection-form" class="review-reflection-add">
+            <textarea id="f-new-reflection" rows="2" placeholder="新增一條反思心得…"></textarea>
+            <button type="submit" class="btn primary">新增</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== SUPPLY CHAIN TAB ===== -->
     <section class="panel" id="panel-chain">
       <div class="panel-head">
@@ -319,6 +359,76 @@
         <div class="spacer"></div>
         <button type="button" class="btn ghost" data-close>取消</button>
         <button type="submit" class="btn primary">儲存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== REVIEW ENTRY MODAL ===== -->
+<div class="modal-overlay" id="review-entry-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="review-entry-modal-title">新增單筆</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </div>
+    <form id="review-entry-form">
+      <input type="hidden" id="re-id">
+      <div class="form-row">
+        <label>公司名稱 <input type="text" id="re-name" placeholder="華新科"></label>
+        <label>股票代號 <input type="text" id="re-symbol" placeholder="2492" list="symbol-datalist"></label>
+      </div>
+      <div class="form-row">
+        <label>消息來源 <input type="text" id="re-source" placeholder="股癌 Podcast"></label>
+      </div>
+      <div class="form-row">
+        <label>進場點位 <input type="text" id="re-entry-point" placeholder="區間盤整，長紅K帶量突破"></label>
+      </div>
+      <div class="form-row">
+        <label>指標 <input type="text" id="re-indicator" placeholder="族群集體發動 / 無指標"></label>
+      </div>
+      <div class="form-row">
+        <label class="checkbox-label"><input type="checkbox" id="re-entered" checked> 有進場</label>
+      </div>
+      <div class="form-row single">
+        <label id="re-strategy-label">策略 <textarea id="re-strategy" rows="2" placeholder="順勢多頭十日線"></textarea></label>
+      </div>
+      <div class="form-row single">
+        <label>結果 <textarea id="re-result" rows="2" placeholder="獲利約46萬，創造史上最高獲利"></textarea></label>
+      </div>
+      <div class="form-row single">
+        <label>意義 <textarea id="re-meaning" rows="2" placeholder="成功的交易模式"></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-delete-review-entry" hidden>刪除</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn ghost" data-close>取消</button>
+        <button type="submit" class="btn primary">儲存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== REVIEW PASTE-IMPORT MODAL ===== -->
+<div class="modal-overlay" id="review-import-modal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head">
+      <h2>新增／匯入月度回顧</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </div>
+    <form id="review-import-form">
+      <div class="form-row">
+        <label>月份 <input type="month" id="ri-month"></label>
+      </div>
+      <div class="form-row single">
+        <label>貼上內容（可選，依照「一、單筆：」「二、反思：」的格式，留空則只建立空白月份）
+          <textarea id="ri-text" rows="14" placeholder="貼上像範例一樣的月度回顧文字…"></textarea>
+        </label>
+      </div>
+      <p class="review-import-hint">若該月份已存在，貼上的內容會附加進去，不會覆蓋原有紀錄。</p>
+      <div class="modal-actions">
+        <div class="spacer"></div>
+        <button type="button" class="btn ghost" data-close>取消</button>
+        <button type="submit" class="btn primary">解析並匯入</button>
       </div>
     </form>
   </div>

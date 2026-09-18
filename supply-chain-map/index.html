@@ -1,20 +1,905 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/trading-journal/supply-chain-map/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>台灣科技產業供應鏈地圖</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <script type="module" crossorigin src="/trading-journal/supply-chain-map/assets/index-Bwhk4vtQ.js"></script>
-    <link rel="stylesheet" crossorigin href="/trading-journal/supply-chain-map/assets/index-DlUfoRwl.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>台股供應鏈樹狀地圖</title>
+<style>
+  :root{
+    --up-color:#0072B2; --mid-color:#009E73; --down-color:#D55E00;
+    --line:#94a3b8; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280;
+  }
+  html,body{margin:0;padding:0;height:100%;background:#ffffff;color:var(--ink);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:13px;}
+  #toolbar{
+    position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:10px;
+    padding:8px 14px;background:#ffffff;border-bottom:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.05);
+    flex-wrap:wrap;
+  }
+  #toolbar input[type=text]{font-size:13px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;width:200px;}
+  #toolbar button{font-size:12.5px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;
+    cursor:pointer;color:var(--ink);}
+  #toolbar button:hover{background:#eef2f7;}
+  #toolbar button.active{background:#1f2937;color:#fff;border-color:#1f2937;}
+  #toolbar .sep{width:1px;height:22px;background:#e2e8f0;margin:0 2px;}
+  #toolbar label.chk{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted);cursor:pointer;}
+  #stage{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden;}
+  svg{width:100%;height:100%;display:block;background:#ffffff;}
+  #flowWrap{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:auto;display:none;background:#fff;}
+  #legend{
+    position:fixed;left:14px;bottom:14px;z-index:15;background:rgba(255,255,255,.96);
+    border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--ink);
+    max-width:300px;box-shadow:0 2px 8px rgba(0,0,0,.08);
+  }
+  #legend h4{margin:0 0 6px;font-size:12px;}
+  #legend .row{display:flex;align-items:center;gap:6px;margin:2px 0;}
+  #legend .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
+  #legend .indgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;margin-bottom:6px;}
+  #tooltip{
+    position:fixed;z-index:30;pointer-events:none;background:#1f2937;color:#f8fafc;
+    padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.55;max-width:280px;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;transition:opacity .1s;
+  }
+  #tooltip b{color:#fff;}
+  #tooltip .lbl{color:#93c5fd;}
+  .node-label{font-size:12px;fill:var(--ink);pointer-events:none;user-select:none;}
+  .node-count{font-size:11px;fill:#f8fafc;pointer-events:none;user-select:none;}
+  .link-hier{fill:none;stroke:var(--line);stroke-width:1.4;}
+  .link-flow{fill:none;stroke-dasharray:4,3;}
+  .flow-arrow-defs path{fill:#94a3b8;}
+  #creditline{position:fixed;right:12px;bottom:6px;font-size:10.5px;color:#9ca3af;z-index:5;}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <input id="searchBox" type="text" placeholder="搜尋公司名稱或代號…">
+  <button id="btnSearchClear">清除搜尋</button>
+  <div class="sep"></div>
+  <button id="btnExpandAll">全部展開</button>
+  <button id="btnCollapseAll">全部摺疊</button>
+  <div class="sep"></div>
+  <button id="btnViewTree" class="active">樹狀視圖</button>
+  <button id="btnViewFlow">流向視圖</button>
+  <label class="chk"><input type="checkbox" id="chkFlows" checked> 顯示上下游流向箭頭</label>
+  <div class="sep"></div>
+  <button id="btnExportSVG">匯出 SVG</button>
+  <button id="btnExportPNG">匯出 PNG</button>
+  <span id="statusMsg" style="color:var(--muted);margin-left:6px;"></span>
+</div>
+
+<div id="stage">
+  <svg id="treeSvg">
+    <defs>
+      <marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"></path>
+      </marker>
+    </defs>
+    <g id="viewport"></g>
+  </svg>
+</div>
+
+<div id="flowWrap">
+  <svg id="flowSvg">
+    <defs>
+      <marker id="arrow-flow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"></path>
+      </marker>
+    </defs>
+    <g id="flowViewport"></g>
+  </svg>
+</div>
+
+<div id="legend"></div>
+<div id="tooltip"></div>
+<div id="creditline">資料來源：data/companies.csv, data/flows.csv（需以本機伺服器開啟，見 README）</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+(async function(){
+
+// ---------------------------------------------------------------------
+// 0. 常數與樣式設定
+// ---------------------------------------------------------------------
+const POSITION_STYLE = {
+  '上游': {color:'#0072B2', shape:'triangle'},
+  '中游': {color:'#009E73', shape:'circle'},
+  '下游': {color:'#D55E00', shape:'square'},
+};
+// 13 色色盲友善分類色盤 (Okabe-Ito + Paul Tol muted 延伸)。
+// 原規格建議 ≤12 色，但使用者後續將「顯示面板」獨立為第 13 個產業，故多加 1 色因應。
+const PALETTE = ['#E69F00','#56B4E9','#009E73','#F0C808','#0072B2','#D55E00',
+                  '#CC79A7','#999999','#44AA99','#882255','#AA4499','#117733','#332288'];
+const EXTERNAL_NODES = ['資料中心','消費電子','石化中下游加工業','終端品牌／雲端服務商'];
+
+let statusEl = document.getElementById('statusMsg');
+function setStatus(msg){ statusEl.textContent = msg || ''; }
+
+// ---------------------------------------------------------------------
+// 1. 讀取資料
+// ---------------------------------------------------------------------
+let rawCompanies, rawFlows;
+try{
+  [rawCompanies, rawFlows] = await Promise.all([
+    d3.csv('data/companies.csv'),
+    d3.csv('data/flows.csv'),
+  ]);
+}catch(e){
+  document.body.innerHTML = '<div style="padding:40px;font-size:15px;color:#b91c1c;">'+
+    '無法讀取 data/companies.csv 或 data/flows.csv。<br>'+
+    '這個頁面用 fetch 載入 CSV，瀏覽器基於安全限制不允許直接用 file:// 開啟。<br>'+
+    '請在專案資料夾下執行：<code>python3 -m http.server 8000</code>，然後打開 '+
+    '<code>http://localhost:8000/</code>。<br><br>錯誤訊息：'+e+'</div>';
+  throw e;
+}
+
+// 過濾掉資料不完整（待查/待確認）的公司列
+const VALID_POS = new Set(['上游','中游','下游']);
+const skipped = [];
+const companies = rawCompanies.filter(r=>{
+  const ok = VALID_POS.has((r['供應鏈位置']||'').trim()) && (r['代號']||'').trim().length>0;
+  if(!ok) skipped.push(r['公司']);
+  return ok;
+});
+if(skipped.length) console.warn('已排除資料不完整的公司列（不納入視覺化）：', skipped);
+
+// ---------------------------------------------------------------------
+// 2. 建立階層資料 (產業 -> 族群 -> 公司)，並解析「亦屬」影子節點
+// ---------------------------------------------------------------------
+const groupSet = new Set(companies.map(c=>c['族群']));
+const subToGroup = new Map(); // 子族群 -> 族群（供 flows.csv 舊粒度對照用）
+companies.forEach(c=>{
+  const sg = (c['子族群']||'').trim();
+  if(sg) subToGroup.set(sg, c['族群']);
+});
+
+function parseAlsoGroups(note){
+  const m = /亦屬[：:]\s*([^。]*)/.exec(note||'');
+  if(!m) return [];
+  const seg = m[1].split(/[。]/)[0]; // 只取到第一個句號前
+  return seg.split(/[；;、,]/)
+    .map(s=>s.trim().split('/')[0].trim()) // 去掉 "族群/子族群" 附註的後半段
+    .filter(name => name && groupSet.has(name) && name !== undefined);
+}
+
+const industries = [];
+const industryIndex = new Map();
+const groupIndex = new Map(); // key: industry+'||'+group
+function getIndustryNode(name){
+  if(industryIndex.has(name)) return industryIndex.get(name);
+  const node = {uid:'ind:'+name, name, type:'industry', children:[]};
+  industryIndex.set(name, node);
+  industries.push(node);
+  return node;
+}
+function getGroupNode(industryName, groupName){
+  const key = industryName+'||'+groupName;
+  if(groupIndex.has(key)) return groupIndex.get(key);
+  const ind = getIndustryNode(industryName);
+  const node = {uid:'grp:'+key, name:groupName, type:'group', industry:industryName, children:[]};
+  groupIndex.set(key, node);
+  ind.children.push(node);
+  return node;
+}
+
+// 先建立主節點
+companies.forEach(c=>{
+  const g = getGroupNode(c['產業'], c['族群']);
+  const co = {
+    uid:'co:'+c['代號'],
+    name:c['公司'], ticker:c['代號'], type:'company', isShadow:false,
+    industry:c['產業'], group:c['族群'], subGroup:c['子族群'],
+    position:c['供應鏈位置'], mainBiz:c['主要業務'],
+    supplyTargets:(c['供應對象']||'').split(';').map(s=>s.trim()).filter(Boolean),
+    note:c['備註']||'',
+  };
+  g.children.push(co);
+  c.__node = co;
+});
+
+// 影子節點（亦屬）
+companies.forEach(c=>{
+  const also = parseAlsoGroups(c['備註']);
+  also.forEach(gName=>{
+    if(gName === c['族群']) return;
+    // 找出該族群所屬產業（可能跨產業，用第一個符合的）
+    let targetIndustry = null;
+    for(const cc of companies){ if(cc['族群']===gName){ targetIndustry = cc['產業']; break; } }
+    if(!targetIndustry) return;
+    const g = getGroupNode(targetIndustry, gName);
+    const shadow = Object.assign({}, c.__node, {
+      uid:'co:'+c['代號']+'::shadow::'+gName,
+      isShadow:true, shadowOf:c.__node.uid,
+    });
+    g.children.push(shadow);
+  });
+});
+
+const root = {uid:'root', name:'root', type:'root', children:industries};
+
+// 產業配色
+const industryColor = d3.scaleOrdinal().domain(industries.map(d=>d.name)).range(PALETTE);
+
+// ---------------------------------------------------------------------
+// 3. flows.csv 解析：族群名 / 子族群名 / 外部終端節點 三種解析
+// ---------------------------------------------------------------------
+function resolveFlowEndpoint(name){
+  if(groupSet.has(name)) return {kind:'group', name};
+  if(subToGroup.has(name)) return {kind:'group', name:subToGroup.get(name)}; // 舊粒度→上收至族群
+  return {kind:'external', name}; // 外部節點（消費電子、資料中心…）或無法解析
+}
+const flows = rawFlows.map(f=>({
+  from: resolveFlowEndpoint(f['from_group']),
+  to: resolveFlowEndpoint(f['to_group']),
+  item: f['item'],
+})).filter(f=>{
+  const bad = f.from.kind==='external' && !EXTERNAL_NODES.includes(f.from.name) && !groupSet.has(f.from.name)
+           || f.to.kind==='external' && !EXTERNAL_NODES.includes(f.to.name) && !groupSet.has(f.to.name);
+  // 保留：合法族群 <-> 合法族群，或合法族群 <-> 已知外部終端節點
+  return true;
+});
+
+// ---------------------------------------------------------------------
+// 4. 樹狀視圖 (d3.hierarchy + d3.tree, 可摺疊)
+// ---------------------------------------------------------------------
+const svg = d3.select('#treeSvg');
+const viewport = d3.select('#viewport');
+const zoomBehavior = d3.zoom().scaleExtent([0.15, 3]).on('zoom', (ev)=>{
+  viewport.attr('transform', ev.transform);
+});
+svg.call(zoomBehavior);
+{
+  const box = document.getElementById('treeSvg').getBoundingClientRect();
+  svg.attr('viewBox', [0, 0, Math.max(box.width,600), Math.max(box.height,400)].join(' '));
+}
+function fitToContent(nodes, animate){
+  const box = document.getElementById('treeSvg').getBoundingClientRect();
+  const W = Math.max(box.width,600), H = Math.max(box.height,400);
+  const minX = d3.min(nodes, d=>d.x)-40, maxX = d3.max(nodes, d=>d.x)+40;
+  const minY = 0, maxY = d3.max(nodes, d=>d.y)+260;
+  const contentW = maxY-minY, contentH = maxX-minX;
+  const scale = Math.max(0.15, Math.min(1.4, Math.min(W/contentW, H/contentH)));
+  const tx = -minY*scale + 24;
+  const ty = H/2 - ((minX+maxX)/2)*scale;
+  const t = d3.zoomIdentity.translate(tx,ty).scale(scale);
+  (animate ? svg.transition().duration(400) : svg).call(zoomBehavior.transform, t);
+}
+
+const DY = 230; // 每層深度間距
+let uidCounter = 0;
+
+// 預設：展開到族群層（收合公司層）
+industries.forEach(ind=>{
+  ind.children.forEach(grp=>{
+    grp._children = grp.children;
+    grp.children = null;
+  });
+});
+
+function layoutTree(){
+  const h = d3.hierarchy(root, d=>d.children);
+  // 計算目前可見節點數，動態決定節點間距
+  const visibleCount = h.descendants().length;
+  const dx = Math.max(16, Math.min(34, 900/Math.max(visibleCount,1)*1.6));
+  const treeLayout = d3.tree().nodeSize([dx, DY]);
+  treeLayout(h);
+  return h;
+}
+
+function shapePath(shape, size){
+  if(shape==='circle') return d3.symbol().type(d3.symbolCircle).size(size)();
+  if(shape==='square') return d3.symbol().type(d3.symbolSquare).size(size)();
+  return d3.symbol().type(d3.symbolTriangle).size(size)();
+}
+
+let currentHierarchy = layoutTree();
+let selectedGroupUid = null;
+
+function nodeVisibleAncestor(uidToNodeMap, uid){
+  // 沿 shadowOf / 族群鏈往上找目前渲染中可見的節點（族群層一定可見，除非整個產業被摺疊）
+  let n = uidToNodeMap.get(uid);
+  while(n && !n.__rendered && n.parent) n = n.parent;
+  return n;
+}
+
+function render(source){
+  const nodes = currentHierarchy.descendants().filter(d=>d.data.type!=='root');
+  const links = currentHierarchy.links().filter(d=>d.source.data.type!=='root');
+
+  // x/y 转换：水平树，root 在左
+  nodes.forEach(d=>{ d.__rendered = true; });
+
+  const uidToNode = new Map();
+  currentHierarchy.each(d=>uidToNode.set(d.data.uid, d));
+
+  // ---- 階層連線 ----
+  const link = viewport.selectAll('path.link-hier').data(links, d=>d.target.data.uid);
+  link.join(
+    enter=>enter.append('path').attr('class','link-hier')
+      .attr('d', d=>{
+        const o = {x:(source&&source.x0)||d.source.x, y:(source&&source.y0)||d.source.y};
+        return d3.linkHorizontal().x(p=>p.y).y(p=>p.x)({source:o, target:o});
+      }),
+    update=>update,
+    exit=>exit.transition().duration(300)
+      .attr('d', d=>{
+        const o = {x:source?source.x:0, y:source?source.y:0};
+        return d3.linkHorizontal().x(p=>p.y).y(p=>p.x)({source:o, target:o});
+      }).remove()
+  ).transition().duration(300)
+    .attr('d', d3.linkHorizontal().x(d=>d.y).y(d=>d.x));
+
+  // ---- 節點 ----
+  const node = viewport.selectAll('g.node').data(nodes, d=>d.data.uid);
+  const nodeEnter = node.enter().append('g').attr('class','node')
+    .attr('transform', d=>{
+      const px = source ? source.x0 : d.x;
+      const py = source ? source.y0 : d.y;
+      return `translate(${py},${px})`;
+    })
+    .style('cursor','pointer')
+    .on('click', (ev,d)=>{ ev.stopPropagation(); onNodeClick(d); })
+    .on('mouseover', (ev,d)=> showTooltip(ev,d))
+    .on('mousemove', moveTooltip)
+    .on('mouseout', hideTooltip);
+
+  nodeEnter.each(function(d){
+    const g = d3.select(this);
+    const t = d.data.type;
+    if(t==='industry'){
+      const w = 118, hgt = 30;
+      g.append('rect').attr('x',-w/2).attr('y',-hgt/2).attr('width',w).attr('height',hgt)
+        .attr('rx',6).attr('fill', industryColor(d.data.name)).attr('stroke','#00000022');
+      g.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
+        .attr('fill','#fff').style('font-weight','600').text(d.data.name);
+    } else if(t==='group'){
+      const cnt = countCompanies(d.data);
+      const label = `${d.data.name} (${cnt})`;
+      const w = Math.max(64, label.length*9.5+18), hgt=26;
+      g.append('rect').attr('x',-w/2).attr('y',-hgt/2).attr('width',w).attr('height',hgt)
+        .attr('rx',6).attr('fill','#ffffff')
+        .attr('stroke', industryColor(d.data.industry)).attr('stroke-width',2);
+      g.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
+        .text(label);
+    } else { // company
+      const isShadow = d.data.isShadow;
+      const label = d.data.name;
+      const w = Math.max(56, label.length*11+30), hgt=22;
+      g.append('rect').attr('x',-w/2).attr('y',-hgt/2).attr('width',w).attr('height',hgt)
+        .attr('rx',11)
+        .attr('fill', isShadow? '#f1f5f9':'#eef2ff')
+        .attr('stroke', isShadow? '#cbd5e1':'#c7d2fe')
+        .attr('stroke-dasharray', isShadow? '3,2':null)
+        .attr('opacity', isShadow? 0.55:1);
+      g.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
+        .attr('x', -6)
+        .attr('opacity', isShadow? 0.75:1)
+        .text(label);
+      const st = POSITION_STYLE[d.data.position] || POSITION_STYLE['中游'];
+      const badge = g.append('g').attr('transform', `translate(${w/2-6},0)`);
+      badge.append('path').attr('d', shapePath(st.shape, 40)).attr('fill', st.color)
+        .attr('opacity', isShadow?0.6:1);
+    }
+    if(t==='group'){
+      g.append('circle').attr('class','collapse-indicator').attr('r',3.2)
+        .attr('cx', 0).attr('cy', 17).attr('fill', d.data._children? '#334155':'transparent')
+        .attr('stroke','#334155').attr('stroke-width', d.data._children?0:1);
+    }
+  });
+
+  node.merge(nodeEnter).transition().duration(300)
+    .attr('transform', d=> `translate(${d.y},${d.x})`)
+    .style('opacity', 1);
+
+  node.exit().transition().duration(300)
+    .attr('transform', d=>{
+      const py = source? source.y : 0, px = source? source.x : 0;
+      return `translate(${py},${px})`;
+    }).style('opacity',0).remove();
+
+  nodes.forEach(d=>{ d.x0 = d.x; d.y0 = d.y; });
+
+  drawFlowArrows(uidToNode);
+}
+
+function countCompanies(groupData){
+  const kids = groupData.children || groupData._children || [];
+  return kids.filter(k=>!k.isShadow).length;
+}
+
+function onNodeClick(d){
+  if(d.data.type==='company'){
+    if(d.data.isShadow){
+      searchAndFocus(d.data.shadowOf, true);
+    }
+    return;
+  }
+  if(d.data.type==='group'){
+    if(selectedGroupUid === d.data.uid){ selectedGroupUid = null; }
+    else { selectedGroupUid = d.data.uid; }
+    toggle(d);
+  } else {
+    toggle(d);
+  }
+}
+function toggle(d){
+  if(d.data.children){ d.data._children = d.data.children; d.data.children = null; }
+  else { d.data.children = d.data._children; d.data._children = null; }
+  currentHierarchy = layoutTree();
+  currentHierarchy.each(n=>{ if(n.data.uid===d.data.uid){ n.x0=d.x; n.y0=d.y; } });
+  render(d);
+  updateFlowDim();
+}
+
+// 展開全部 / 摺疊全部
+function expandAll(){
+  function walk(n){
+    if(n._children){ n.children = n._children; n._children = null; }
+    (n.children||[]).forEach(walk);
+  }
+  industries.forEach(walk);
+  currentHierarchy = layoutTree();
+  render(null);
+  fitToContent(currentHierarchy.descendants().filter(d=>d.data.type!=='root'), true);
+}
+function collapseAll(){
+  industries.forEach(ind=>{
+    const groups = ind.children || ind._children || [];
+    groups.forEach(grp=>{
+      grp._children = grp.children || grp._children;
+      grp.children = null;
+    });
+    ind._children = groups;
+    ind.children = null;
+  });
+  currentHierarchy = layoutTree();
+  render(null);
+  fitToContent(currentHierarchy.descendants().filter(d=>d.data.type!=='root'), true);
+}
+
+// ---------------------------------------------------------------------
+// 5. 上下游流向箭頭（族群層級，摺疊時自動重導向到可見祖先）
+// ---------------------------------------------------------------------
+function findVisibleHierNodeByGroupName(uidToNode, groupName){
+  // 找到該族群節點；若其祖先（產業）被摺疊，重導向到該產業節點
+  let target = null;
+  uidToNode.forEach((v,k)=>{ if(v.data.type==='group' && v.data.name===groupName) target = v; });
+  if(!target) return null;
+  let n = target;
+  while(n.parent && !isNodeCurrentlyRendered(n)) n = n.parent;
+  return isNodeCurrentlyRendered(n) ? n : (isNodeCurrentlyRendered(n.parent)? n.parent : null);
+}
+function isNodeCurrentlyRendered(n){
+  // 一個 hierarchy node 若能從 root 沿著 children（非 _children）走到，代表目前可見
+  let cur = n;
+  while(cur.parent){
+    const p = cur.parent;
+    const kids = p.data.children;
+    if(!kids || !kids.includes(cur.data)) return false;
+    cur = p;
+  }
+  return true;
+}
+
+let externalNodePos = new Map();
+function drawFlowArrows(uidToNode){
+  const show = document.getElementById('chkFlows').checked;
+  const layer = viewport.selectAll('g.flow-layer').data([0]);
+  const layerEnter = layer.enter().append('g').attr('class','flow-layer');
+  const flowLayer = layerEnter.merge(layer);
+  if(!show){ flowLayer.selectAll('*').remove(); return; }
+
+  // 收集所有可見的族群 hierarchy node 位置
+  const groupPositions = new Map(); // groupName -> {x,y} (可能是自己或摺疊後的祖先)
+  uidToNode.forEach(n=>{
+    if(n.data.type==='group' && isNodeCurrentlyRendered(n)) groupPositions.set(n.data.name, n);
+  });
+
+  const arrowData = [];
+  externalNodePos = new Map();
+  flows.forEach(f=>{
+    let srcNode=null, dstNode=null;
+    if(f.from.kind==='group') srcNode = groupPositions.get(f.from.name) || findAncestorPos(uidToNode, f.from.name);
+    if(f.to.kind==='group') dstNode = groupPositions.get(f.to.name) || findAncestorPos(uidToNode, f.to.name);
+    if(f.from.kind==='external' || !srcNode){ /* 外部起點目前無案例，略 */ }
+    if(f.to.kind==='external' && dstNode===null){
+      if(srcNode){ arrowData.push({src:srcNode, extName:f.to.name, item:f.item, fromGroup:f.from.name, toGroup:f.to.name}); }
+      return;
+    }
+    if(srcNode && dstNode && srcNode!==dstNode){
+      arrowData.push({src:srcNode, dst:dstNode, item:f.item, fromGroup:f.from.name, toGroup:f.to.name});
+    }
+  });
+
+  // 外部節點位置：依來源節點平均 y 值計算，x 放在整棵樹最右側
+  const maxY = d3.max(currentHierarchy.descendants(), d=>d.y) || 0;
+  const byExt = d3.group(arrowData.filter(a=>a.extName), a=>a.extName);
+  byExt.forEach((arr, name)=>{
+    const avgX = d3.mean(arr, a=>a.src.x);
+    externalNodePos.set(name, {x:avgX, y:maxY+260, name});
+  });
+
+  const link = flowLayer.selectAll('path.link-flow').data(arrowData, (d,i)=>d.fromGroup+'>>'+d.toGroup+'>>'+i);
+  link.join(
+    enter=>enter.append('path').attr('class','link-flow')
+      .attr('marker-end','url(#arrow-flow)')
+      .attr('stroke','#94a3b8').attr('opacity',0),
+    update=>update,
+    exit=>exit.remove()
+  )
+  .attr('d', d=>{
+    const s = {x:d.src.x, y:d.src.y+ (d.src.data.type==='industry'?59:0)};
+    const t = d.dst ? {x:d.dst.x, y:d.dst.y} : externalNodePos.get(d.extName);
+    if(!t) return null;
+    return d3.linkHorizontal().x(p=>p.y).y(p=>p.x)({source:{x:s.x,y:s.y+70}, target:{x:t.x,y:t.y-8}});
+  })
+  .attr('stroke', d=>{
+    const dim = selectedGroupUid && !isRelated(d);
+    return dim? '#e2e8f0' : '#94a3b8';
+  })
+  .transition().duration(200).attr('opacity', d=> (selectedGroupUid && !isRelated(d)) ? 0.15 : 0.85);
+
+  // 外部終端節點方框
+  const extG = flowLayer.selectAll('g.ext-node').data(Array.from(externalNodePos.values()), d=>d.name);
+  const extEnter = extG.enter().append('g').attr('class','ext-node');
+  extEnter.append('rect').attr('x',-70).attr('y',-16).attr('width',140).attr('height',32)
+    .attr('rx',6).attr('fill','#f8fafc').attr('stroke','#cbd5e1').attr('stroke-dasharray','3,2');
+  extEnter.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
+    .attr('fill','#64748b').text(d=>d.name+'（外部）');
+  extG.merge(extEnter).transition().duration(200)
+    .attr('transform', d=>`translate(${d.y},${d.x})`);
+  extG.exit().remove();
+}
+function findAncestorPos(uidToNode, groupName){
+  let target=null;
+  uidToNode.forEach(n=>{ if(n.data.type==='group' && n.data.name===groupName) target=n; });
+  if(!target) return null;
+  let n = target;
+  while(n.parent && !isNodeCurrentlyRendered(n)) n = n.parent;
+  return isNodeCurrentlyRendered(n)? n : null;
+}
+function isRelated(d){
+  if(!selectedGroupUid) return true;
+  return d.src.data.uid===selectedGroupUid || (d.dst && d.dst.data.uid===selectedGroupUid);
+}
+function updateFlowDim(){
+  viewport.selectAll('g.node').transition().duration(200).style('opacity', d=>{
+    if(!selectedGroupUid) return 1;
+    if(d.data.uid===selectedGroupUid) return 1;
+    const rel = flows.some(f=>{
+      const a = groupHierName(f.from), b = groupHierName(f.to);
+      return (a===selectedGroupName() && matchesGroupOrDesc(d,b)) || (b===selectedGroupName() && matchesGroupOrDesc(d,a));
+    });
+    return rel || d.data.type==='industry' ? 1 : 0.2;
+  });
+  const uidToNode = new Map(); currentHierarchy.each(d=>uidToNode.set(d.data.uid,d));
+  drawFlowArrows(uidToNode);
+}
+function selectedGroupName(){
+  let name=null; currentHierarchy.each(d=>{ if(d.data.uid===selectedGroupUid) name=d.data.name; });
+  return name;
+}
+function groupHierName(endpoint){ return endpoint.name; }
+function matchesGroupOrDesc(d, groupName){
+  if(!groupName) return false;
+  if(d.data.type==='group') return d.data.name===groupName;
+  if(d.data.type==='company') return d.data.group===groupName;
+  return false;
+}
+
+// ---------------------------------------------------------------------
+// 6. Tooltip
+// ---------------------------------------------------------------------
+const tooltip = document.getElementById('tooltip');
+function showTooltip(ev,d){
+  if(d.data.type!=='company') return;
+  const c = d.data;
+  tooltip.innerHTML = `<b>${c.name}</b>（${c.ticker}）<br>`+
+    `<span class="lbl">主要業務：</span>${c.mainBiz||'—'}<br>`+
+    `<span class="lbl">供應對象：</span>${c.supplyTargets.join('、')||'—'}<br>`+
+    (c.note? `<span class="lbl">備註：</span>${c.note}`:'');
+  tooltip.style.opacity = 1;
+  moveTooltip(ev);
+}
+function moveTooltip(ev){
+  tooltip.style.left = (ev.clientX+16)+'px';
+  tooltip.style.top = (ev.clientY+12)+'px';
+}
+function hideTooltip(){ tooltip.style.opacity = 0; }
+
+// ---------------------------------------------------------------------
+// 7. 搜尋
+// ---------------------------------------------------------------------
+function searchAndFocus(uid, isShadowTarget){
+  let target=null;
+  function findRaw(n){
+    if(n.uid===uid) return n;
+    for(const c of (n.children||n._children||[])){ const r=findRaw(c); if(r) return r; }
+    return null;
+  }
+  for(const ind of industries){ const r=findRaw(ind); if(r){ target=r; break; } }
+  if(!target) return;
+  // 展開路徑
+  function expandPathTo(uidTarget){
+    function walk(n, path){
+      if(n.uid===uidTarget) return path.concat([n]);
+      const kids = n.children || n._children || [];
+      for(const c of kids){
+        const r = walk(c, path.concat([n]));
+        if(r) return r;
+      }
+      return null;
+    }
+    let found=null;
+    for(const ind of industries){ const r=walk(ind, []); if(r){ found=r; break; } }
+    return found;
+  }
+  const path = expandPathTo(uid);
+  if(path){
+    path.forEach(n=>{
+      if(n._children){ n.children = n._children; n._children = null; }
+    });
+  }
+  currentHierarchy = layoutTree();
+  render(null);
+  // 高亮（若同時有前一次搜尋排程中的動作，先取消，避免多次輸入的動畫互相打斷）
+  if(searchFocusTimer) clearTimeout(searchFocusTimer);
+  searchFocusTimer = setTimeout(()=>{
+    viewport.selectAll('g.node').classed('search-hit', false);
+    let hitNode=null;
+    currentHierarchy.each(d=>{ if(d.data.uid===uid) hitNode=d; });
+    if(hitNode){
+      viewport.selectAll('g.node').filter(d=>d.data.uid===uid)
+        .select('rect').transition().duration(200)
+        .attr('stroke','#dc2626').attr('stroke-width',3);
+      const svgRect = document.getElementById('treeSvg').getBoundingClientRect();
+      const t = d3.zoomIdentity.translate(svgRect.width/2-hitNode.y*1, svgRect.height/2-hitNode.x*1).scale(1);
+      svg.transition().duration(400).call(zoomBehavior.transform, t);
+    }
+  }, 320);
+}
+let searchFocusTimer = null;
+let searchInputDebounce = null;
+document.getElementById('searchBox').addEventListener('input', (e)=>{
+  const q = e.target.value.trim();
+  if(searchInputDebounce) clearTimeout(searchInputDebounce);
+  if(!q){ setStatus(''); return; }
+  searchInputDebounce = setTimeout(()=>{
+    const hit = companies.find(c=> c['公司'].includes(q) || (c['代號']||'').includes(q));
+    if(hit){ setStatus('找到：'+hit['公司']+'（'+hit['代號']+'）'); searchAndFocus('co:'+hit['代號']); }
+    else setStatus('查無符合的公司');
+  }, 200);
+});
+document.getElementById('btnSearchClear').onclick = ()=>{
+  document.getElementById('searchBox').value=''; setStatus('');
+};
+
+// ---------------------------------------------------------------------
+// 8. 工具列事件
+// ---------------------------------------------------------------------
+document.getElementById('btnExpandAll').onclick = ()=>{ selectedGroupUid=null; expandAll(); };
+document.getElementById('btnCollapseAll').onclick = ()=>{ selectedGroupUid=null; collapseAll(); };
+document.getElementById('chkFlows').addEventListener('change', ()=>{
+  const uidToNode = new Map(); currentHierarchy.each(d=>uidToNode.set(d.data.uid,d));
+  drawFlowArrows(uidToNode);
+});
+svg.on('click', ()=>{ selectedGroupUid=null; updateFlowDim(); });
+
+document.getElementById('btnViewTree').onclick = ()=> switchView('tree');
+document.getElementById('btnViewFlow').onclick = ()=> switchView('flow');
+function switchView(v){
+  document.getElementById('btnViewTree').classList.toggle('active', v==='tree');
+  document.getElementById('btnViewFlow').classList.toggle('active', v==='flow');
+  document.getElementById('stage').style.display = v==='tree' ? 'block':'none';
+  document.getElementById('flowWrap').style.display = v==='flow' ? 'block':'none';
+  if(v==='flow') renderFlowView();
+}
+
+// ---------------------------------------------------------------------
+// 9. 流向視圖（上／中／下游 三欄卡片）
+// ---------------------------------------------------------------------
+function renderFlowView(){
+  const flowSvg = d3.select('#flowSvg');
+  const fv = d3.select('#flowViewport');
+  fv.selectAll('*').remove();
+
+  const groupsByKey = Array.from(groupIndex.values());
+  const posOf = g=>{
+    const kids = (g.children||g._children||[]).filter(k=>!k.isShadow);
+    const counts = d3.rollup(kids, v=>v.length, k=>k.position);
+    let best='中游', bestN=-1;
+    counts.forEach((n,p)=>{ if(n>bestN){ bestN=n; best=p; } });
+    return best;
+  };
+  const columns = {'上游':[], '中游':[], '下游':[]};
+  groupsByKey.forEach(g=> columns[posOf(g)].push(g));
+
+  const colW = 340, cardGapY = 14, padTop=30, padX=60;
+  const positions = new Map(); // group.uid -> {x,y,w,h}
+  const colOrder = ['上游','中游','下游'];
+  let maxColHeight = 0;
+  colOrder.forEach((colName, ci)=>{
+    let y = padTop;
+    columns[colName].forEach(g=>{
+      const kids = (g.children||g._children||[]).filter(k=>!k.isShadow);
+      const h = 46 + kids.length*17;
+      positions.set(g.uid, {x: padX+ci*colW, y, w: colW-60, h, group:g});
+      y += h + cardGapY;
+    });
+    maxColHeight = Math.max(maxColHeight, y);
+  });
+  // 外部節點放第 4 欄
+  const extCol = padX + 3*colW;
+  let extY = padTop;
+  const extPositions = new Map();
+  EXTERNAL_NODES.forEach(name=>{
+    const used = flows.some(f=> resolveFlowEndpoint(f.to_group||'')); // no-op guard
+  });
+  const usedExternal = new Set(flows.filter(f=>f.to.kind==='external').map(f=>f.to.name));
+  usedExternal.forEach(name=>{
+    extPositions.set(name, {x:extCol, y:extY, w:colW-60, h:46});
+    extY += 46+cardGapY;
+  });
+  maxColHeight = Math.max(maxColHeight, extY);
+
+  flowSvg.attr('viewBox', [0,0, extCol+colW, maxColHeight+40].join(' '));
+
+  // 欄位標題
+  colOrder.forEach((colName,ci)=>{
+    fv.append('text').attr('x', padX+ci*colW+ (colW-60)/2).attr('y',18)
+      .attr('text-anchor','middle').style('font-weight','700').style('font-size','14px')
+      .text(colName);
+  });
+  fv.append('text').attr('x', extCol+(colW-60)/2).attr('y',18)
+    .attr('text-anchor','middle').style('font-weight','700').style('font-size','14px').style('fill','#64748b')
+    .text('外部／終端');
+
+  // 卡片
+  positions.forEach(p=>{
+    const g = fv.append('g').attr('transform',`translate(${p.x},${p.y})`)
+      .style('cursor','pointer')
+      .on('click', ()=>{
+        selectedGroupUid = (selectedGroupUid===p.group.uid)? null : p.group.uid;
+        renderFlowView();
+      });
+    g.append('rect').attr('width',p.w).attr('height',p.h).attr('rx',8)
+      .attr('fill','#ffffff')
+      .attr('stroke', industryColor(p.group.industry)).attr('stroke-width', selectedGroupUid===p.group.uid?3:2)
+      .attr('opacity', (selectedGroupUid && !flowRelated(p.group)) ? 0.25:1);
+    g.append('rect').attr('width',p.w).attr('height',20).attr('rx',8)
+      .attr('fill', industryColor(p.group.industry));
+    g.append('rect').attr('y',10).attr('width',p.w).attr('height',10).attr('fill',industryColor(p.group.industry));
+    const kids = (p.group.children||p.group._children||[]).filter(k=>!k.isShadow);
+    g.append('text').attr('x',8).attr('y',14).attr('fill','#fff').style('font-weight','600').style('font-size','12px')
+      .text(`${p.group.name} (${kids.length})`);
+    kids.forEach((k,i)=>{
+      const badge = POSITION_STYLE[k.position]||POSITION_STYLE['中游'];
+      const row = g.append('g').attr('transform',`translate(10,${34+i*17})`);
+      row.append('path').attr('d', shapePath(badge.shape,26)).attr('fill',badge.color)
+        .attr('transform','translate(4,-4)');
+      row.append('text').attr('x',16).attr('y',0).style('font-size','11.5px').text(k.name);
+    });
+  });
+
+  extPositions.forEach((p,name)=>{
+    const g = fv.append('g').attr('transform',`translate(${p.x},${p.y})`);
+    g.append('rect').attr('width',p.w).attr('height',p.h).attr('rx',8)
+      .attr('fill','#f8fafc').attr('stroke','#cbd5e1').attr('stroke-dasharray','3,2');
+    g.append('text').attr('x',p.w/2).attr('y',p.h/2+4).attr('text-anchor','middle')
+      .style('font-size','12px').attr('fill','#64748b').text(name);
+  });
+
+  // 箭頭
+  const arrowLayer = fv.append('g');
+  flows.forEach(f=>{
+    let s=null, t=null;
+    if(f.from.kind==='group'){ const pp=findGroupPosByName(positions,f.from.name); s=pp; }
+    if(f.to.kind==='group'){ const pp=findGroupPosByName(positions,f.to.name); t=pp; }
+    else if(f.to.kind==='external'){ t = extPositions.get(f.to.name); }
+    if(s && t){
+      const rel = !selectedGroupUid || (s.group && s.group.uid===selectedGroupUid) || (t.group && t.group.uid===selectedGroupUid);
+      arrowLayer.append('path')
+        .attr('d', d3.linkHorizontal().x(p=>p.x).y(p=>p.y)({
+          source:{x:s.x+s.w, y:s.y+s.h/2}, target:{x:t.x, y:t.y+t.h/2}
+        }))
+        .attr('fill','none').attr('stroke', rel? '#94a3b8':'#eef2f7')
+        .attr('stroke-width',1.4).attr('stroke-dasharray','4,3')
+        .attr('marker-end','url(#arrow-flow2)')
+        .attr('opacity', rel?0.85:0.4);
+    }
+  });
+}
+function findGroupPosByName(positions, name){
+  let found=null;
+  positions.forEach(p=>{ if(p.group.name===name) found=p; });
+  return found;
+}
+function flowRelated(group){
+  if(!selectedGroupUid) return true;
+  if(group.uid===selectedGroupUid) return true;
+  return flows.some(f=> (f.from.name===group.name || f.to.name===group.name));
+}
+
+// ---------------------------------------------------------------------
+// 10. 匯出 SVG / PNG（依目前視圖）
+// ---------------------------------------------------------------------
+function currentSvgEl(){
+  return document.getElementById('flowWrap').style.display==='block'
+    ? document.getElementById('flowSvg') : document.getElementById('treeSvg');
+}
+function serializeSvg(svgEl){
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  clone.style.background = '#ffffff';
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  const vb = clone.getAttribute('viewBox');
+  if(vb){
+    const [x,y,w,h] = vb.split(' ').map(Number);
+    rect.setAttribute('x',x); rect.setAttribute('y',y); rect.setAttribute('width',w); rect.setAttribute('height',h);
+  } else { rect.setAttribute('x',0); rect.setAttribute('y',0); rect.setAttribute('width','100%'); rect.setAttribute('height','100%'); }
+  rect.setAttribute('fill','#ffffff');
+  clone.insertBefore(rect, clone.firstChild);
+  return new XMLSerializer().serializeToString(clone);
+}
+document.getElementById('btnExportSVG').onclick = ()=>{
+  const svgEl = currentSvgEl();
+  const str = serializeSvg(svgEl);
+  const blob = new Blob([str], {type:'image/svg+xml;charset=utf-8'});
+  downloadBlob(blob, 'supply-chain-map.svg');
+};
+document.getElementById('btnExportPNG').onclick = ()=>{
+  const svgEl = currentSvgEl();
+  const str = serializeSvg(svgEl);
+  const vb = svgEl.getAttribute('viewBox');
+  let w=1600,h=1000;
+  if(vb){ const p=vb.split(' ').map(Number); w=p[2]; h=p[3]; }
+  const img = new Image();
+  const svgBlob = new Blob([str], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(svgBlob);
+  img.onload = ()=>{
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = w*scale; canvas.height = h*scale;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.scale(scale,scale);
+    ctx.drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob=> downloadBlob(blob,'supply-chain-map.png'));
+  };
+  img.src = url;
+};
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ---------------------------------------------------------------------
+// 11. 圖例
+// ---------------------------------------------------------------------
+function buildLegend(){
+  const el = document.getElementById('legend');
+  let html = '<h4>產業配色</h4><div class="indgrid">';
+  industries.forEach(ind=>{
+    html += `<div class="row"><span class="sw" style="background:${industryColor(ind.name)}"></span>${ind.name}</div>`;
+  });
+  html += '</div><h4>供應鏈位置</h4>';
+  Object.entries(POSITION_STYLE).forEach(([k,v])=>{
+    html += `<div class="row"><span class="sw" style="background:${v.color};border-radius:${v.shape==='circle'?'50%':v.shape==='square'?'2px':'0'};clip-path:${v.shape==='triangle'?'polygon(50% 0,0 100%,100% 100%)':'none'}"></span>${k}</div>`;
+  });
+  html += '<div class="row" style="margin-top:6px;color:#6b7280;">實線＝分類階層　┄　虛線＝供應流向</div>';
+  el.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------
+// 12. 啟動
+// ---------------------------------------------------------------------
+buildLegend();
+render(null);
+fitToContent(currentHierarchy.descendants().filter(d=>d.data.type!=='root'), false);
+switchView('tree');
+
+})();
+</script>
+</body>
 </html>

@@ -96,7 +96,7 @@ const db = getFirestore(fbApp);
   }
 
   // ---------- state ----------
-  let state = { trades: [], diary: [] };
+  let state = { trades: [], diary: [], monthlyReviews: [] };
   let currentUser = null;
 
   const syncStatusEl = document.getElementById('sync-status');
@@ -119,6 +119,7 @@ const db = getFirestore(fbApp);
     // 若匯入的檔案本身就有供應鏈資料，這裡不會動它，原樣保留（含使用者後續編輯過的內容）。
     if (!Array.isArray(data.supplyChainNodes)) data.supplyChainNodes = [];
     if (!Array.isArray(data.companyLinks)) data.companyLinks = [];
+    if (!Array.isArray(data.monthlyReviews)) data.monthlyReviews = [];
     return data;
   }
 
@@ -227,6 +228,7 @@ const db = getFirestore(fbApp);
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById('panel-' + target).classList.add('active');
       if (target === 'stats') renderStats();
+      if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainTree(); renderChainDetail(); }
     });
   });
@@ -994,6 +996,293 @@ const db = getFirestore(fbApp);
       Z
     `;
   }
+
+  // ================= MONTHLY REVIEW =================
+  let reviewSelectedMonth = null; // 'YYYY-MM'
+
+  function sortedReviews() { return [...state.monthlyReviews].sort((a, b) => b.month.localeCompare(a.month)); }
+  function findReview(month) { return state.monthlyReviews.find(r => r.month === month); }
+  function monthLabel(m) {
+    const [y, mo] = m.split('-');
+    return `${y}年${parseInt(mo, 10)}月`;
+  }
+
+  function renderMonthlyReview() {
+    const tabsEl = document.getElementById('review-month-tabs');
+    const reviews = sortedReviews();
+    if (reviewSelectedMonth && !findReview(reviewSelectedMonth)) reviewSelectedMonth = null;
+    if (!reviewSelectedMonth && reviews.length) reviewSelectedMonth = reviews[0].month;
+
+    tabsEl.innerHTML = reviews.map(r => `
+      <button type="button" class="review-month-chip${r.month === reviewSelectedMonth ? ' active' : ''}" data-month="${r.month}">${monthLabel(r.month)}</button>
+    `).join('');
+    tabsEl.querySelectorAll('.review-month-chip').forEach(chip => {
+      chip.addEventListener('click', () => { reviewSelectedMonth = chip.dataset.month; renderMonthlyReview(); });
+    });
+
+    const emptyEl = document.getElementById('review-empty');
+    const contentEl = document.getElementById('review-content');
+    if (!reviews.length) {
+      emptyEl.style.display = 'block';
+      contentEl.hidden = true;
+      return;
+    }
+    emptyEl.style.display = 'none';
+    contentEl.hidden = false;
+
+    const review = findReview(reviewSelectedMonth);
+    document.getElementById('review-month-title').textContent = `${monthLabel(review.month)}月度回顧`;
+    renderReviewEntries(review);
+    renderReviewReflections(review);
+  }
+
+  function renderReviewEntries(review) {
+    const listEl = document.getElementById('review-entry-list');
+    const emptyEl = document.getElementById('review-entry-empty');
+    listEl.innerHTML = '';
+    emptyEl.style.display = review.entries.length ? 'none' : 'block';
+    review.entries.forEach(entry => {
+      const card = document.createElement('div');
+      card.className = 'review-entry-card';
+      card.innerHTML = `
+        <div class="review-entry-head">
+          <div class="review-entry-title">${escapeHtml(entry.name || '（未命名）')}${entry.symbol ? `<span class="muted">${escapeHtml(entry.symbol)}</span>` : ''}</div>
+          <span class="review-entry-badge ${entry.entered ? 'entered' : 'not-entered'}">${entry.entered ? '已進場' : '未進場'}</span>
+        </div>
+        ${entry.source ? `<div class="review-entry-row"><strong>消息來源：</strong>${escapeHtml(entry.source)}</div>` : ''}
+        ${entry.entryPoint ? `<div class="review-entry-row"><strong>進場點位：</strong>${escapeHtml(entry.entryPoint)}</div>` : ''}
+        ${entry.indicator ? `<div class="review-entry-row"><strong>指標：</strong>${escapeHtml(entry.indicator)}</div>` : ''}
+        ${entry.strategy ? `<div class="review-entry-row"><strong>${entry.entered ? '策略' : '未進場原因'}：</strong>${escapeHtml(entry.strategy)}</div>` : ''}
+        ${entry.result ? `<div class="review-entry-row"><strong>結果：</strong>${escapeHtml(entry.result)}</div>` : ''}
+        ${entry.meaning ? `<div class="review-entry-row"><strong>意義：</strong>${escapeHtml(entry.meaning)}</div>` : ''}
+      `;
+      card.addEventListener('click', () => openReviewEntryModal(review, entry));
+      listEl.appendChild(card);
+    });
+  }
+
+  function renderReviewReflections(review) {
+    const listEl = document.getElementById('review-reflection-list');
+    listEl.innerHTML = review.reflections.length ? review.reflections.map((text, i) => `
+      <div class="review-reflection-item">
+        <span class="bullet">•</span>
+        <span class="reflection-text">${escapeHtml(text)}</span>
+        <button type="button" class="row-del" data-del-reflection="${i}" title="刪除">✕</button>
+      </div>
+    `).join('') : '<p class="empty-state">尚無反思紀錄。</p>';
+    listEl.querySelectorAll('[data-del-reflection]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        review.reflections.splice(+btn.dataset.delReflection, 1);
+        save(); renderReviewReflections(review);
+      });
+    });
+  }
+
+  document.getElementById('review-reflection-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const review = findReview(reviewSelectedMonth);
+    if (!review) return;
+    const textEl = document.getElementById('f-new-reflection');
+    const text = textEl.value.trim();
+    if (!text) return;
+    review.reflections.push(text);
+    textEl.value = '';
+    save(); renderReviewReflections(review);
+  });
+
+  document.getElementById('btn-del-review-month').addEventListener('click', () => {
+    const review = findReview(reviewSelectedMonth);
+    if (!review) return;
+    if (confirm(`確定刪除「${monthLabel(review.month)}」整個月度回顧？`)) {
+      state.monthlyReviews = state.monthlyReviews.filter(r => r.month !== review.month);
+      reviewSelectedMonth = null;
+      save(); renderMonthlyReview();
+    }
+  });
+
+  // ---- review entry modal ----
+  const reviewEntryModal = document.getElementById('review-entry-modal');
+  const reviewEntryForm = document.getElementById('review-entry-form');
+  const btnDeleteReviewEntry = document.getElementById('btn-delete-review-entry');
+  let reviewEntryContextMonth = null;
+
+  document.getElementById('btn-add-review-entry').addEventListener('click', () => {
+    const review = findReview(reviewSelectedMonth);
+    if (review) openReviewEntryModal(review, null);
+  });
+
+  function updateReviewEntryStrategyLabel() {
+    const entered = document.getElementById('re-entered').checked;
+    document.getElementById('re-strategy-label').firstChild.textContent = entered ? '策略 ' : '未進場原因 ';
+  }
+  document.getElementById('re-entered').addEventListener('change', updateReviewEntryStrategyLabel);
+
+  function openReviewEntryModal(review, entry) {
+    reviewEntryContextMonth = review.month;
+    document.getElementById('review-entry-modal-title').textContent = entry ? '編輯單筆' : '新增單筆';
+    document.getElementById('re-id').value = entry ? entry.id : '';
+    document.getElementById('re-name').value = entry ? (entry.name || '') : '';
+    document.getElementById('re-symbol').value = entry ? (entry.symbol || '') : '';
+    document.getElementById('re-source').value = entry ? (entry.source || '') : '';
+    document.getElementById('re-entry-point').value = entry ? (entry.entryPoint || '') : '';
+    document.getElementById('re-indicator').value = entry ? (entry.indicator || '') : '';
+    document.getElementById('re-entered').checked = entry ? !!entry.entered : true;
+    document.getElementById('re-strategy').value = entry ? (entry.strategy || '') : '';
+    document.getElementById('re-result').value = entry ? (entry.result || '') : '';
+    document.getElementById('re-meaning').value = entry ? (entry.meaning || '') : '';
+    updateReviewEntryStrategyLabel();
+    btnDeleteReviewEntry.hidden = !entry;
+    reviewEntryModal.classList.add('open');
+  }
+
+  reviewEntryForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const review = findReview(reviewEntryContextMonth);
+    if (!review) return;
+    const id = document.getElementById('re-id').value || uid();
+    const rec = {
+      id,
+      name: document.getElementById('re-name').value.trim(),
+      symbol: document.getElementById('re-symbol').value.trim(),
+      source: document.getElementById('re-source').value.trim(),
+      entryPoint: document.getElementById('re-entry-point').value.trim(),
+      indicator: document.getElementById('re-indicator').value.trim(),
+      entered: document.getElementById('re-entered').checked,
+      strategy: document.getElementById('re-strategy').value.trim(),
+      result: document.getElementById('re-result').value.trim(),
+      meaning: document.getElementById('re-meaning').value.trim(),
+    };
+    const idx = review.entries.findIndex(x => x.id === id);
+    if (idx >= 0) review.entries[idx] = rec; else review.entries.push(rec);
+    save(); closeModals(); renderMonthlyReview();
+  });
+
+  btnDeleteReviewEntry.addEventListener('click', () => {
+    const review = findReview(reviewEntryContextMonth);
+    const id = document.getElementById('re-id').value;
+    if (review && id && confirm('確定刪除這筆單筆紀錄？')) {
+      review.entries = review.entries.filter(x => x.id !== id);
+      save(); closeModals(); renderMonthlyReview();
+    }
+  });
+
+  // ---- add / paste-import month ----
+  const reviewImportModal = document.getElementById('review-import-modal');
+  document.getElementById('btn-add-review-month').addEventListener('click', () => {
+    document.getElementById('ri-month').value = reviewSelectedMonth || new Date().toISOString().slice(0, 7);
+    document.getElementById('ri-text').value = '';
+    reviewImportModal.classList.add('open');
+  });
+
+  // 解析「一、單筆：」「二、反思：」格式的月度回顧文字。
+  // 對格式很寬鬆：找不到標頭就整段當單筆區塊；辨識不了的欄位行會被忽略而不是中斷整筆解析，
+  // 避免使用者貼上的內容跟範例有些微出入（多空白、全形/半形冒號、缺欄位）就整段匯入失敗。
+  function parseMonthlyReviewText(raw) {
+    const text = (raw || '').replace(/\r\n/g, '\n');
+    if (!text.trim()) return { month: null, entries: [], reflections: [] };
+
+    let month = null;
+    const monthMatch = text.match(/(\d{4})[^\d]{0,3}(\d{1,2})\s*月/);
+    if (monthMatch) month = `${monthMatch[1]}-${monthMatch[2].padStart(2, '0')}`;
+
+    const entryHeaderRe = /^[一二三四五六七八九十]*[、.\s]*單筆[：:]?\s*$/;
+    const reflectHeaderRe = /^[一二三四五六七八九十]*[、.\s]*反思[：:]?\s*$/;
+    const lines = text.split('\n');
+    let mode = 'preamble';
+    const entryLines = [], reflectionLines = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (entryHeaderRe.test(trimmed)) { mode = 'entries'; continue; }
+      if (reflectHeaderRe.test(trimmed)) { mode = 'reflections'; continue; }
+      if (mode === 'entries') entryLines.push(line);
+      else if (mode === 'reflections') reflectionLines.push(line);
+    }
+    if (mode === 'preamble') entryLines.push(...lines); // 沒有標頭時，整段當單筆區塊
+
+    const FIELD_MAP = {
+      '消息來源': 'source', '消息来源': 'source',
+      '進場點位': 'entryPoint', '进场点位': 'entryPoint',
+      '指標': 'indicator', '指标': 'indicator',
+      '策略': 'strategy', '未進場原因': 'strategy', '未进场原因': 'strategy',
+      '結果': 'result', '结果': 'result',
+      '意義': 'meaning', '意义': 'meaning',
+    };
+
+    const entries = [];
+    let block = [];
+    const flushBlock = () => {
+      const nonEmpty = block.map(l => l.trim()).filter(Boolean);
+      block = [];
+      if (!nonEmpty.length) return;
+      const entry = { name: '', symbol: '', source: '', entryPoint: '', indicator: '', entered: true, strategy: '', result: '', meaning: '' };
+      let sawStrategyLabel = null;
+      let lastKey = null;
+      let first = true;
+      for (const line of nonEmpty) {
+        const fieldMatch = line.match(/^([^:：]{1,12})[:：]\s*(.*)$/);
+        if (first && !fieldMatch) {
+          const parts = line.split(/\s+/).filter(Boolean);
+          if (parts.length > 1 && /^\d{3,6}[A-Za-z]?$/.test(parts[parts.length - 1])) {
+            entry.symbol = parts.pop();
+            entry.name = parts.join(' ');
+          } else {
+            // 名稱與代號中間沒有空格時（例如「南亞1303」），改用結尾數字回退切開
+            const noSpaceMatch = line.match(/^(.*?)(\d{3,6}[A-Za-z]?)$/);
+            if (noSpaceMatch && noSpaceMatch[1]) { entry.name = noSpaceMatch[1]; entry.symbol = noSpaceMatch[2]; }
+            else entry.name = line;
+          }
+          first = false;
+          continue;
+        }
+        first = false;
+        const label = fieldMatch ? fieldMatch[1].trim() : null;
+        const key = label ? FIELD_MAP[label] : null;
+        if (key) {
+          if (key === 'strategy') sawStrategyLabel = /未進場|未进场/.test(label) ? '未進場原因' : '策略';
+          // 欄位值裡若殘留重複冒號（例如使用者誤打「消息來源:：xxx」），一併清掉
+          entry[key] = fieldMatch[2].trim().replace(/^[：:]+\s*/, '');
+          lastKey = key;
+        } else if (lastKey) {
+          // 辨識不出「標籤：」開頭的行，視為上一個欄位換行接續的內容，直接接在後面，不能靜默丟棄
+          entry[lastKey] += line.trim();
+        }
+      }
+      if (sawStrategyLabel) entry.entered = sawStrategyLabel === '策略';
+      if (entry.name || entry.symbol || entry.source || entry.result) entries.push(entry);
+    };
+    for (const line of entryLines) {
+      if (!line.trim()) { flushBlock(); continue; }
+      block.push(line);
+    }
+    flushBlock();
+
+    const reflections = reflectionLines.map(l => l.trim()).filter(Boolean);
+    return { month, entries, reflections };
+  }
+
+  document.getElementById('review-import-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const raw = document.getElementById('ri-text').value;
+    const parsed = parseMonthlyReviewText(raw);
+    const month = document.getElementById('ri-month').value || parsed.month || new Date().toISOString().slice(0, 7);
+
+    let review = findReview(month);
+    if (review && (parsed.entries.length || parsed.reflections.length)) {
+      if (!confirm(`「${monthLabel(month)}」已存在回顧紀錄，貼上的內容會附加進去（不會覆蓋原有紀錄），確定繼續？`)) return;
+    }
+    if (!review) {
+      review = { month, entries: [], reflections: [] };
+      state.monthlyReviews.push(review);
+    }
+    parsed.entries.forEach(en => review.entries.push({ id: uid(), ...en }));
+    review.reflections.push(...parsed.reflections);
+
+    reviewSelectedMonth = month;
+    save(); closeModals(); renderMonthlyReview();
+    if (parsed.entries.length || parsed.reflections.length) {
+      alert(`已匯入 ${parsed.entries.length} 筆單筆紀錄、${parsed.reflections.length} 條反思。`);
+    }
+  });
 
   // ================= SUPPLY CHAIN =================
   // 節點/公司關聯查詢輔助函式：一律從 state.supplyChainNodes / state.companyLinks 現查，不快取，

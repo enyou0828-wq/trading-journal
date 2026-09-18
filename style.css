@@ -332,6 +332,46 @@ body {
 .diary-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .diary-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(42,120,214,0.12); color: var(--series-1); font-weight: 600; }
 
+/* ---------- Monthly Review ---------- */
+.review-month-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.review-month-chip {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-secondary); font-family: inherit;
+  font-size: 13.5px; font-weight: 600; cursor: pointer;
+}
+.review-month-chip:hover { background: var(--gridline); }
+.review-month-chip.active { background: var(--series-1); color: #fff; border-color: var(--series-1); }
+
+.review-content-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.review-content-head h2 { font-size: 17px; margin: 0; }
+
+.review-entry-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.review-entry-card {
+  background: var(--page-plane); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 14px 16px; cursor: pointer;
+}
+.review-entry-card:hover { background: var(--gridline); }
+.review-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.review-entry-title { font-weight: 700; font-size: 14.5px; }
+.review-entry-title .muted { color: var(--text-muted); font-weight: 500; margin-left: 6px; }
+.review-entry-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.review-entry-badge.entered { background: rgba(42,120,214,0.14); color: var(--series-1); }
+.review-entry-badge.not-entered { background: rgba(137,135,129,0.16); color: var(--text-muted); }
+.review-entry-row { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.review-entry-row strong { color: var(--text-primary); font-weight: 600; }
+
+.review-reflection-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.review-reflection-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+  background: var(--page-plane); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13.5px; line-height: 1.6;
+}
+.review-reflection-item .bullet { color: var(--series-1); font-weight: 700; }
+.review-reflection-item .reflection-text { flex: 1; white-space: pre-wrap; }
+.review-reflection-add { display: flex; gap: 10px; align-items: flex-start; }
+.review-reflection-add textarea { flex: 1; }
+.review-import-hint { font-size: 12px; color: var(--text-muted); margin: -4px 0 4px; }
+
 /* ---------- Modal ---------- */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(11,11,11,0.45);
@@ -345,7 +385,7 @@ body {
 }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--gridline); }
 .modal-head h2 { font-size: 16px; margin: 0; }
-#trade-form, #diary-form { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+#trade-form, #diary-form, #review-entry-form, #review-import-form { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
 .form-row { display: flex; gap: 12px; }
 .form-row.single { flex-direction: column; }
 .form-row label { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600; }
