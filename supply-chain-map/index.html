@@ -306,6 +306,12 @@ function render(source){
   // x/y 转换：水平树，root 在左
   nodes.forEach(d=>{ d.__rendered = true; });
 
+  // 連續快速點兩下（或很快點了兩個不同節點）時，上一次 render() 排的 transition 可能還沒跑完，
+  // 新的 transition 疊上去偶爾會卡在中間插值的位置，看起來像節點疊在一起沒展開。
+  // 這裡先中斷所有還在跑的 transition，確保每次 render() 都是從乾淨的狀態算起。
+  viewport.selectAll('g.node').interrupt();
+  viewport.selectAll('path.link-hier').interrupt();
+
   // ---- 階層連線 ----
   const link = viewport.selectAll('path.link-hier').data(links, d=>d.target.data.uid);
   link.join(
@@ -414,7 +420,14 @@ function onNodeClick(d){
     toggle(d);
   }
 }
+let toggleLock = false;
 function toggle(d){
+  // 快速連點兩下（或很快點了兩個節點）會在上一次展開/摺疊的 transition 還沒跑完時，
+  // 又叫了一次 render()，兩個 transition 疊在一起會讓節點卡在中間位置、疊在一起顯示不出來。
+  // 用一個鎖在 transition 期間（300ms）擋掉後續的點擊，逼它們一次做完一個動作再做下一個。
+  if(toggleLock) return;
+  toggleLock = true;
+  setTimeout(()=>{ toggleLock = false; }, 320);
   if(d.data.children){ d.data._children = d.data.children; d.data.children = null; }
   else { d.data.children = d.data._children; d.data._children = null; }
   currentHierarchy = layoutTree();
@@ -423,7 +436,7 @@ function toggle(d){
   updateFlowDim();
   // 展開/摺疊單一節點時也重新置中縮放，否則視窗停留在舊的縮放位置，
   // 新展開的子節點可能落在畫面外，看起來像是「擠在一起」或整個消失不見。
-  fitToContent(currentHierarchy.descendants().filter(n=>n.data.type!=='root'), true);
+  fitToContent(currentHierarchy.descendants().filter(n=>n.data.type!=='root'), false);
 }
 
 // 展開全部 / 摺疊全部
@@ -458,7 +471,12 @@ function collapseAll(){
 //    上下游關係改到「流向視圖」看，那邊是獨立的三欄式版面，不會互相干擾）
 // ---------------------------------------------------------------------
 function updateFlowDim(){
-  viewport.selectAll('g.node').transition().duration(200).style('opacity', d=>{
+  // 這裡只能動「目前還在樹裡」的節點：render() 摺疊/展開時，被移除的節點還會在 DOM 裡
+  // 停留 300ms（跑完退場動畫才會 remove）。如果不篩選、對它們也重新排一個新的
+  // opacity transition，會直接把它們的退場 transition 蓋掉，退場動畫裡的 .remove()
+  // 永遠不會執行，節點就卡在畫面上一直存在（半透明、疊在原地，看起來像沒清乾淨）。
+  const activeUids = new Set(currentHierarchy.descendants().map(d=>d.data.uid));
+  viewport.selectAll('g.node').filter(d=>activeUids.has(d.data.uid)).transition().duration(200).style('opacity', d=>{
     if(!selectedGroupUid) return 1;
     if(d.data.uid===selectedGroupUid) return 1;
     const rel = flows.some(f=>{
