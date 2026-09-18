@@ -216,6 +216,7 @@ const db = getFirestore(fbApp);
   // ---------- helpers ----------
   const fmtPct = (n, digits = 1) => n == null ? '–' : (n >= 0 ? '+' : '') + n.toFixed(digits) + '%';
   const isExitAction = (a) => EXIT_ACTIONS.has(a) || a === '當沖';
+  const displayContrib = (t) => t.contrib != null ? t.contrib : (t.returnPct != null && t.positionPct != null ? t.returnPct * t.positionPct / 100 : null);
 
   function actionBadgeClass(a) {
     if (a === '當沖') return 'action-day';
@@ -267,6 +268,8 @@ const db = getFirestore(fbApp);
       tr.dataset.id = t.id;
       if (t.markColor) tr.classList.add('marked-row-' + t.markColor);
       const pnlClass = t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero';
+      const contrib = displayContrib(t);
+      const contribClass = contrib == null ? 'pnl-zero' : contrib > 0 ? 'pnl-pos' : contrib < 0 ? 'pnl-neg' : 'pnl-zero';
       const ratingHtml = t.rating ? `<span class="rating-badge rating-${t.rating}">${t.rating}</span>` : '–';
       tr.innerHTML = `
         <td class="mark-col"><button type="button" class="mark-swatch mark-${t.markColor || 'none'}" data-mark="${t.id}" title="點擊切換標記顏色（無 → 黃 → 紅）"></button></td>
@@ -275,7 +278,7 @@ const db = getFirestore(fbApp);
         <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
         <td>${escapeHtml(t.strategy)}</td>
         <td>${escapeHtml(t.sector || '–')}</td>
-        <td class="num">${t.positionPct == null ? '–' : t.positionPct.toFixed(1) + '%'}</td>
+        <td class="num ${contribClass}">${fmtPct(contrib, 2)}</td>
         <td class="num ${pnlClass}">${fmtPct(t.returnPct, 2)}</td>
         <td>${ratingHtml}</td>
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">${escapeHtml(t.reason || '')}</td>
@@ -1414,16 +1417,15 @@ const db = getFirestore(fbApp);
         <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
         <div class="table-wrap">
           <table class="trade-table">
-            <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>資金佔比</th><th>報酬率</th></tr></thead>
-            <tbody>${trades.map(t => `
+            <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>資金加權貢獻</th><th>報酬率</th></tr></thead>
+            <tbody>${trades.map(t => { const c = displayContrib(t); const cClass = c == null ? 'pnl-zero' : c > 0 ? 'pnl-pos' : c < 0 ? 'pnl-neg' : 'pnl-zero'; return `
               <tr>
                 <td class="num">${t.date}</td>
                 <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
                 <td>${escapeHtml(t.strategy)}</td>
-                <td class="num">${t.positionPct == null ? '–' : t.positionPct.toFixed(1) + '%'}</td>
+                <td class="num ${cClass}">${fmtPct(c, 2)}</td>
                 <td class="num ${t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero'}">${fmtPct(t.returnPct, 2)}</td>
-              </tr>
-            `).join('')}</tbody>
+              </tr>`; }).join('')}</tbody>
           </table>
         </div>
       `;
