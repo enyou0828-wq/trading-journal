@@ -16,9 +16,9 @@
     flex-wrap:wrap;
   }
   #toolbar input[type=text]{font-size:13px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;width:200px;}
-  #toolbar button{font-size:12.5px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;
-    cursor:pointer;color:var(--ink);}
-  #toolbar button:hover{background:#eef2f7;}
+  #toolbar button,#toolbar a.btn{font-size:12.5px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;
+    cursor:pointer;color:var(--ink);text-decoration:none;display:inline-block;box-sizing:border-box;}
+  #toolbar button:hover,#toolbar a.btn:hover{background:#eef2f7;}
   #toolbar button.active{background:#1f2937;color:#fff;border-color:#1f2937;}
   #toolbar .sep{width:1px;height:22px;background:#e2e8f0;margin:0 2px;}
   #toolbar label.chk{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted);cursor:pointer;}
@@ -44,13 +44,14 @@
   .node-label{font-size:12px;fill:var(--ink);pointer-events:none;user-select:none;}
   .node-count{font-size:11px;fill:#f8fafc;pointer-events:none;user-select:none;}
   .link-hier{fill:none;stroke:var(--line);stroke-width:1.4;}
-  .link-flow{fill:none;stroke-dasharray:4,3;}
   .flow-arrow-defs path{fill:#94a3b8;}
   #creditline{position:fixed;right:12px;bottom:6px;font-size:10.5px;color:#9ca3af;z-index:5;}
 </style>
 </head>
 <body>
 <div id="toolbar">
+  <a class="btn" href="../">← 回主頁</a>
+  <div class="sep"></div>
   <input id="searchBox" type="text" placeholder="搜尋公司名稱或代號…">
   <button id="btnSearchClear">清除搜尋</button>
   <div class="sep"></div>
@@ -59,7 +60,6 @@
   <div class="sep"></div>
   <button id="btnViewTree" class="active">樹狀視圖</button>
   <button id="btnViewFlow">流向視圖</button>
-  <label class="chk"><input type="checkbox" id="chkFlows" checked> 顯示上下游流向箭頭</label>
   <div class="sep"></div>
   <button id="btnExportSVG">匯出 SVG</button>
   <button id="btnExportPNG">匯出 PNG</button>
@@ -68,11 +68,6 @@
 
 <div id="stage">
   <svg id="treeSvg">
-    <defs>
-      <marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"></path>
-      </marker>
-    </defs>
     <g id="viewport"></g>
   </svg>
 </div>
@@ -311,9 +306,6 @@ function render(source){
   // x/y 转换：水平树，root 在左
   nodes.forEach(d=>{ d.__rendered = true; });
 
-  const uidToNode = new Map();
-  currentHierarchy.each(d=>uidToNode.set(d.data.uid, d));
-
   // ---- 階層連線 ----
   const link = viewport.selectAll('path.link-hier').data(links, d=>d.target.data.uid);
   link.join(
@@ -400,8 +392,6 @@ function render(source){
     }).style('opacity',0).remove();
 
   nodes.forEach(d=>{ d.x0 = d.x; d.y0 = d.y; });
-
-  drawFlowArrows(uidToNode);
 }
 
 function countCompanies(groupData){
@@ -431,6 +421,9 @@ function toggle(d){
   currentHierarchy.each(n=>{ if(n.data.uid===d.data.uid){ n.x0=d.x; n.y0=d.y; } });
   render(d);
   updateFlowDim();
+  // 展開/摺疊單一節點時也重新置中縮放，否則視窗停留在舊的縮放位置，
+  // 新展開的子節點可能落在畫面外，看起來像是「擠在一起」或整個消失不見。
+  fitToContent(currentHierarchy.descendants().filter(n=>n.data.type!=='root'), true);
 }
 
 // 展開全部 / 摺疊全部
@@ -460,110 +453,10 @@ function collapseAll(){
 }
 
 // ---------------------------------------------------------------------
-// 5. 上下游流向箭頭（族群層級，摺疊時自動重導向到可見祖先）
+// 5. 點選族群時，把不相關的節點淡化（樹狀視圖不再畫供應鏈虛線箭頭——
+//    跟分類階層線混在一起很難看懂，使用者反應看不懂就移除了；
+//    上下游關係改到「流向視圖」看，那邊是獨立的三欄式版面，不會互相干擾）
 // ---------------------------------------------------------------------
-function findVisibleHierNodeByGroupName(uidToNode, groupName){
-  // 找到該族群節點；若其祖先（產業）被摺疊，重導向到該產業節點
-  let target = null;
-  uidToNode.forEach((v,k)=>{ if(v.data.type==='group' && v.data.name===groupName) target = v; });
-  if(!target) return null;
-  let n = target;
-  while(n.parent && !isNodeCurrentlyRendered(n)) n = n.parent;
-  return isNodeCurrentlyRendered(n) ? n : (isNodeCurrentlyRendered(n.parent)? n.parent : null);
-}
-function isNodeCurrentlyRendered(n){
-  // 一個 hierarchy node 若能從 root 沿著 children（非 _children）走到，代表目前可見
-  let cur = n;
-  while(cur.parent){
-    const p = cur.parent;
-    const kids = p.data.children;
-    if(!kids || !kids.includes(cur.data)) return false;
-    cur = p;
-  }
-  return true;
-}
-
-let externalNodePos = new Map();
-function drawFlowArrows(uidToNode){
-  const show = document.getElementById('chkFlows').checked;
-  const layer = viewport.selectAll('g.flow-layer').data([0]);
-  const layerEnter = layer.enter().append('g').attr('class','flow-layer');
-  const flowLayer = layerEnter.merge(layer);
-  if(!show){ flowLayer.selectAll('*').remove(); return; }
-
-  // 收集所有可見的族群 hierarchy node 位置
-  const groupPositions = new Map(); // groupName -> {x,y} (可能是自己或摺疊後的祖先)
-  uidToNode.forEach(n=>{
-    if(n.data.type==='group' && isNodeCurrentlyRendered(n)) groupPositions.set(n.data.name, n);
-  });
-
-  const arrowData = [];
-  externalNodePos = new Map();
-  flows.forEach(f=>{
-    let srcNode=null, dstNode=null;
-    if(f.from.kind==='group') srcNode = groupPositions.get(f.from.name) || findAncestorPos(uidToNode, f.from.name);
-    if(f.to.kind==='group') dstNode = groupPositions.get(f.to.name) || findAncestorPos(uidToNode, f.to.name);
-    if(f.from.kind==='external' || !srcNode){ /* 外部起點目前無案例，略 */ }
-    if(f.to.kind==='external' && dstNode===null){
-      if(srcNode){ arrowData.push({src:srcNode, extName:f.to.name, item:f.item, fromGroup:f.from.name, toGroup:f.to.name}); }
-      return;
-    }
-    if(srcNode && dstNode && srcNode!==dstNode){
-      arrowData.push({src:srcNode, dst:dstNode, item:f.item, fromGroup:f.from.name, toGroup:f.to.name});
-    }
-  });
-
-  // 外部節點位置：依來源節點平均 y 值計算，x 放在整棵樹最右側
-  const maxY = d3.max(currentHierarchy.descendants(), d=>d.y) || 0;
-  const byExt = d3.group(arrowData.filter(a=>a.extName), a=>a.extName);
-  byExt.forEach((arr, name)=>{
-    const avgX = d3.mean(arr, a=>a.src.x);
-    externalNodePos.set(name, {x:avgX, y:maxY+260, name});
-  });
-
-  const link = flowLayer.selectAll('path.link-flow').data(arrowData, (d,i)=>d.fromGroup+'>>'+d.toGroup+'>>'+i);
-  link.join(
-    enter=>enter.append('path').attr('class','link-flow')
-      .attr('marker-end','url(#arrow-flow)')
-      .attr('stroke','#94a3b8').attr('opacity',0),
-    update=>update,
-    exit=>exit.remove()
-  )
-  .attr('d', d=>{
-    const s = {x:d.src.x, y:d.src.y+ (d.src.data.type==='industry'?59:0)};
-    const t = d.dst ? {x:d.dst.x, y:d.dst.y} : externalNodePos.get(d.extName);
-    if(!t) return null;
-    return d3.linkHorizontal().x(p=>p.y).y(p=>p.x)({source:{x:s.x,y:s.y+70}, target:{x:t.x,y:t.y-8}});
-  })
-  .attr('stroke', d=>{
-    const dim = selectedGroupUid && !isRelated(d);
-    return dim? '#e2e8f0' : '#94a3b8';
-  })
-  .transition().duration(200).attr('opacity', d=> (selectedGroupUid && !isRelated(d)) ? 0.15 : 0.85);
-
-  // 外部終端節點方框
-  const extG = flowLayer.selectAll('g.ext-node').data(Array.from(externalNodePos.values()), d=>d.name);
-  const extEnter = extG.enter().append('g').attr('class','ext-node');
-  extEnter.append('rect').attr('x',-70).attr('y',-16).attr('width',140).attr('height',32)
-    .attr('rx',6).attr('fill','#f8fafc').attr('stroke','#cbd5e1').attr('stroke-dasharray','3,2');
-  extEnter.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
-    .attr('fill','#64748b').text(d=>d.name+'（外部）');
-  extG.merge(extEnter).transition().duration(200)
-    .attr('transform', d=>`translate(${d.y},${d.x})`);
-  extG.exit().remove();
-}
-function findAncestorPos(uidToNode, groupName){
-  let target=null;
-  uidToNode.forEach(n=>{ if(n.data.type==='group' && n.data.name===groupName) target=n; });
-  if(!target) return null;
-  let n = target;
-  while(n.parent && !isNodeCurrentlyRendered(n)) n = n.parent;
-  return isNodeCurrentlyRendered(n)? n : null;
-}
-function isRelated(d){
-  if(!selectedGroupUid) return true;
-  return d.src.data.uid===selectedGroupUid || (d.dst && d.dst.data.uid===selectedGroupUid);
-}
 function updateFlowDim(){
   viewport.selectAll('g.node').transition().duration(200).style('opacity', d=>{
     if(!selectedGroupUid) return 1;
@@ -574,8 +467,6 @@ function updateFlowDim(){
     });
     return rel || d.data.type==='industry' ? 1 : 0.2;
   });
-  const uidToNode = new Map(); currentHierarchy.each(d=>uidToNode.set(d.data.uid,d));
-  drawFlowArrows(uidToNode);
 }
 function selectedGroupName(){
   let name=null; currentHierarchy.each(d=>{ if(d.data.uid===selectedGroupUid) name=d.data.name; });
@@ -681,10 +572,6 @@ document.getElementById('btnSearchClear').onclick = ()=>{
 // ---------------------------------------------------------------------
 document.getElementById('btnExpandAll').onclick = ()=>{ selectedGroupUid=null; expandAll(); };
 document.getElementById('btnCollapseAll').onclick = ()=>{ selectedGroupUid=null; collapseAll(); };
-document.getElementById('chkFlows').addEventListener('change', ()=>{
-  const uidToNode = new Map(); currentHierarchy.each(d=>uidToNode.set(d.data.uid,d));
-  drawFlowArrows(uidToNode);
-});
 svg.on('click', ()=>{ selectedGroupUid=null; updateFlowDim(); });
 
 document.getElementById('btnViewTree').onclick = ()=> switchView('tree');
