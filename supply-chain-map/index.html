@@ -242,7 +242,7 @@ const flows = rawFlows.map(f=>({
 // ---------------------------------------------------------------------
 const svg = d3.select('#treeSvg');
 const viewport = d3.select('#viewport');
-const zoomBehavior = d3.zoom().scaleExtent([0.15, 3]).on('zoom', (ev)=>{
+const zoomBehavior = d3.zoom().scaleExtent([0.3, 3]).on('zoom', (ev)=>{
   viewport.attr('transform', ev.transform);
 });
 svg.call(zoomBehavior);
@@ -256,7 +256,9 @@ function fitToContent(nodes, animate){
   const minX = d3.min(nodes, d=>d.x)-40, maxX = d3.max(nodes, d=>d.x)+40;
   const minY = 0, maxY = d3.max(nodes, d=>d.y)+260;
   const contentW = maxY-minY, contentH = maxX-minX;
-  const scale = Math.max(0.15, Math.min(1.4, Math.min(W/contentW, H/contentH)));
+  // 節點很多（例如全部展開）時，把整棵樹硬塞進視窗高度會讓文字縮到看不清楚；
+  // 縮放比例下限設在還能閱讀文字的程度，內容比視窗高的部分改用拖曳/捲動瀏覽，而不是繼續縮小。
+  const scale = Math.max(0.3, Math.min(1.4, Math.min(W/contentW, H/contentH)));
   const tx = -minY*scale + 24;
   const ty = H/2 - ((minX+maxX)/2)*scale;
   const t = d3.zoomIdentity.translate(tx,ty).scale(scale);
@@ -276,9 +278,11 @@ industries.forEach(ind=>{
 
 function layoutTree(){
   const h = d3.hierarchy(root, d=>d.children);
-  // 計算目前可見節點數，動態決定節點間距
-  const visibleCount = h.descendants().length;
-  const dx = Math.max(16, Math.min(34, 900/Math.max(visibleCount,1)*1.6));
+  // 固定的節點間距（最高的節點框是產業層 30px，34px 留了足夠的呼吸空間不會互相貼住）。
+  // 之前這裡會依可見節點數動態縮小間距（900/visibleCount），節點一多間距就會小於節點框本身的高度，
+  // 造成整批節點疊在一起、文字互相蓋住——樹本身的總高度本來就該隨節點數量增加而變高，
+  // 交給 d3.zoom + fitToContent 縮放/捲動去處理，而不是硬把間距壓扁。
+  const dx = 34;
   const treeLayout = d3.tree().nodeSize([dx, DY]);
   treeLayout(h);
   return h;
