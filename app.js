@@ -521,7 +521,8 @@ const db = getFirestore(fbApp);
       const m = t.date.slice(0, 7);
       (byMonth[m] = byMonth[m] || []).push(t);
     });
-    const months = Object.keys(byMonth).sort().reverse();
+    // 5 月樣本數太少（只有 2 筆），數字容易失真誤導，月度明細表不顯示
+    const months = Object.keys(byMonth).filter(m => m !== '2026-05').sort().reverse();
 
     for (const m of months) {
       const s = computeStats(byMonth[m]);
