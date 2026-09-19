@@ -1483,15 +1483,7 @@ const db = getFirestore(fbApp);
     if (willOpen) renderChainEdit();
   });
 
-  function populateNodeSelect(selectEl, { includeEmpty } = {}) {
-    const options = state.supplyChainNodes.map(n => `<option value="${n.id}">${'　'.repeat(scDepth(n.id))}${escapeHtml(n.name)}</option>`).join('');
-    selectEl.innerHTML = (includeEmpty ? '<option value="">（無，作為根節點）</option>' : '') + options;
-  }
-
   function renderChainEdit() {
-    populateNodeSelect(document.getElementById('cn-parent'), { includeEmpty: true });
-    populateNodeSelect(document.getElementById('cl-node'), {});
-
     const nodeListEl = document.getElementById('chain-node-list');
     nodeListEl.innerHTML = state.supplyChainNodes.length ? state.supplyChainNodes.map(n => `
       <div class="chain-manage-row">
@@ -1526,39 +1518,6 @@ const db = getFirestore(fbApp);
       });
     });
   }
-
-  document.getElementById('chain-node-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('cn-name').value.trim();
-    if (!name) return;
-    const parentId = document.getElementById('cn-parent').value;
-    const stage = document.getElementById('cn-stage').value;
-    state.supplyChainNodes.push({ id: 'n_' + uid(), name, parentIds: parentId ? [parentId] : [], stage: stage || null });
-    save();
-    e.target.reset();
-    renderChainEdit(); renderChainTree();
-  });
-
-  document.getElementById('chain-link-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const symbol = document.getElementById('cl-symbol').value.trim();
-    const nodeId = document.getElementById('cl-node').value;
-    const role = document.getElementById('cl-role').value.trim();
-    if (!symbol || !nodeId) return;
-    // 以 symbol + nodeId 當唯一鍵：已存在同樣的公司+節點關聯就更新角色，不會產生重複項目。
-    const existing = state.companyLinks.find(l => l.symbol === symbol && l.nodeId === nodeId);
-    if (existing) {
-      existing.role = role;
-    } else {
-      const name = symbolLookup().get(symbol)?.name
-        || state.companyLinks.find(l => l.symbol === symbol)?.name
-        || '';
-      state.companyLinks.push({ symbol, name, nodeId, role });
-    }
-    save();
-    e.target.reset();
-    renderChainEdit(); renderChainTree(); renderChainDetail();
-  });
 
   // ================= MODALS shared =================
   function closeModals() {
