@@ -388,8 +388,13 @@ function render(source){
     }
   });
 
-  node.merge(nodeEnter).transition().duration(300)
+  // 位置一律立即套用（不透過 transition），只有透明度做淡入動畫。
+  // 之前位置也是動畫慢慢移過去，如果這個 transition 被下一次點擊中斷，節點就會卡在移到一半、
+  // 還沒到達正確位置的地方——跟一開始「新節點疊在一起」是同一類問題，只是發生在「既有節點被擠開」的情況。
+  // 位置改成同步套用後，不管動畫有沒有播完，節點在任何時間點的座標都保證正確。
+  node.merge(nodeEnter)
     .attr('transform', d=> `translate(${d.y},${d.x})`)
+    .transition().duration(300)
     .style('opacity', 1);
 
   node.exit().transition().duration(300)
