@@ -810,11 +810,9 @@ const db = getFirestore(fbApp);
     }
     const byStrategy = STRATEGIES.map((name, i) => {
       const trades = realized.filter(t => t.strategy === name);
-      // 以「貢獻值」為單位取平均：有手動填資金加權貢獻就直接用，沒填才用資金佔比×報酬率算
-      const weightedTrades = trades
-        .filter(t => t.contrib != null || t.positionPct != null)
-        .map(t => t.contrib != null ? t.contrib : t.returnPct * t.positionPct / 100);
-      const avg = weightedTrades.length ? weightedTrades.reduce((s, c) => s + c, 0) / weightedTrades.length : 0;
+      // 平均獲利 = 總獲利（報酬率加總）÷ 總次數，不看資金佔比/資金加權貢獻
+      const totalProfit = trades.reduce((s, t) => s + t.returnPct, 0);
+      const avg = trades.length ? totalProfit / trades.length : 0;
       return { name, avg, count: trades.length, color: SERIES[i % SERIES.length] };
     }).filter(s => s.count > 0);
 
@@ -881,7 +879,7 @@ const db = getFirestore(fbApp);
     wrap.querySelectorAll('.bar').forEach(bar => {
       bar.addEventListener('mouseenter', () => {
         const s = byStrategy[+bar.dataset.i];
-        tooltip.innerHTML = `<div class="tt-title">${s.name}</div><div>平均資金加權貢獻 ${fmtPct(s.avg, 2)}</div><div>${s.count} 筆紀錄</div>`;
+        tooltip.innerHTML = `<div class="tt-title">${s.name}</div><div>平均獲利 ${fmtPct(s.avg, 2)}</div><div>${s.count} 筆紀錄</div>`;
         tooltip.style.opacity = '1';
         bar.style.opacity = '0.8';
       });
