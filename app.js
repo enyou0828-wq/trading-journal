@@ -18,6 +18,8 @@ const db = getFirestore(fbApp);
 
   // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
+  // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
+  const EQUITY_CURVE_START = '2026-06-01';
 
   // ---- 供應鏈資料模型 ----
   // 節點是扁平陣列，用 parentIds（可多個上層）表達階層，不用巢狀樹狀結構，
@@ -74,6 +76,8 @@ const db = getFirestore(fbApp);
       const startClose = i === 0 ? OTC_INDEX_CLOSE[firstDateOfMonth[m]] : OTC_INDEX_CLOSE[lastDateOfMonth[months[i - 1]]];
       result[m] = (endClose / startClose - 1) * 100;
     });
+    // 5 月沒有每日收盤資料可算，使用者提供官方月報酬數字直接寫死
+    result['2026-05'] = 15.53;
     return result;
   }
 
@@ -496,7 +500,7 @@ const db = getFirestore(fbApp);
     }
 
     renderMonthlyStatsTable(allRealized);
-    renderEquityCurve(s.weighted);
+    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START));
     renderMonthlyChart(s.weighted);
     renderStrategyChart(s.realized);
     renderSectorChart(s.realized);
