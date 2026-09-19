@@ -27,12 +27,6 @@ const db = getFirestore(fbApp);
   // 公司與節點是多對多關聯（companyLinks），一家公司可以同時掛在多個供應鏈節點上。
   // 種子資料（SUPPLY_CHAIN_NODES / COMPANY_LINKS）抽離在 supplyChainData.js，跟這裡的 App 邏輯完全分離，
   // 之後要調整供應鏈分類/公司清單只需要改那個檔案，不用動這裡任何一行程式碼。
-  const STAGE_LABEL = {
-    theme: '題材', industry: '產業', upstream: '上游', midstream: '中游', downstream: '下游',
-    manufacturing: '製造', equipment: '設備', material: '材料', component: '元件',
-    system: '系統', technology: '技術', ip: 'IP',
-  };
-
   // 台灣櫃買指數（TPEx OTC Index）每日收盤，作為資金加權報酬曲線的對照基準。
   // 6/1–9/10 由使用者逐日核對提供，並與證交所 TPEx OpenAPI 官方數字（8/3–8/12）交叉比對完全吻合（誤差在0.03內）；
   // 9/11 起改為直接呼叫 TPEx OpenAPI（https://www.tpex.org.tw/openapi/v1/tpex_index）取得，重疊區間（9/1–9/10）數字完全吻合。
@@ -1469,52 +1463,6 @@ const db = getFirestore(fbApp);
       row.addEventListener('click', () => {
         chainSelectedSymbol = row.dataset.symbol;
         renderChainDetail();
-      });
-    });
-  }
-
-  // ---- 編輯供應鏈 ----
-  const btnChainEditToggle = document.getElementById('btn-chain-edit-toggle');
-  const chainEditPanel = document.getElementById('chain-edit');
-  btnChainEditToggle.addEventListener('click', () => {
-    const willOpen = chainEditPanel.hidden;
-    chainEditPanel.hidden = !willOpen;
-    btnChainEditToggle.textContent = willOpen ? '完成編輯' : '編輯供應鏈';
-    if (willOpen) renderChainEdit();
-  });
-
-  function renderChainEdit() {
-    const nodeListEl = document.getElementById('chain-node-list');
-    nodeListEl.innerHTML = state.supplyChainNodes.length ? state.supplyChainNodes.map(n => `
-      <div class="chain-manage-row">
-        <span>${'　'.repeat(scDepth(n.id))}${escapeHtml(n.name)}</span>
-        <span class="chain-manage-meta">${n.stage ? STAGE_LABEL[n.stage] : ''}</span>
-        <button type="button" class="row-del" data-del-node="${n.id}" title="刪除">✕</button>
-      </div>
-    `).join('') : '<p class="empty-state">尚無節點。</p>';
-    nodeListEl.querySelectorAll('[data-del-node]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.delNode;
-        if (!confirm('刪除此節點？（子節點不會一併刪除，會變成暫時沒有上層，建議先處理子節點）')) return;
-        state.supplyChainNodes = state.supplyChainNodes.filter(n => n.id !== id);
-        state.supplyChainNodes.forEach(n => { n.parentIds = (n.parentIds || []).filter(p => p !== id); });
-        state.companyLinks = state.companyLinks.filter(l => l.nodeId !== id);
-        if (chainSelectedNodeId === id) { chainSelectedNodeId = null; chainSelectedSymbol = null; }
-        save(); renderChainEdit(); renderChainTree(); renderChainDetail();
-      });
-    });
-
-    const linkListEl = document.getElementById('chain-link-list');
-    linkListEl.innerHTML = state.companyLinks.length ? state.companyLinks.map((l, i) => `
-      <div class="chain-manage-row">
-        <span><strong>${escapeHtml(l.symbol)}</strong> → ${escapeHtml(scNode(l.nodeId)?.name || '（節點已刪除）')}${l.role ? `（${escapeHtml(l.role)}）` : ''}</span>
-        <button type="button" class="row-del" data-del-link="${i}" title="刪除">✕</button>
-      </div>
-    `).join('') : '<p class="empty-state">尚無公司關聯。</p>';
-    linkListEl.querySelectorAll('[data-del-link]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.companyLinks.splice(+btn.dataset.delLink, 1);
-        save(); renderChainEdit(); renderChainTree(); renderChainDetail();
       });
     });
   }
