@@ -331,12 +331,13 @@ function render(source){
 
   // ---- 節點 ----
   const node = viewport.selectAll('g.node').data(nodes, d=>d.data.uid);
+  // 新節點直接出現在最終位置（不再從父節點的位置滑過來）、透明度從 0 淡入。
+  // 之前是「從父節點位置滑到定位」，展開一個有很多小孩的節點時，全部節點會從同一個起點
+  // 一起滑出去，動畫播放到一半那幾格畫面看起來就像全部疊在一起（尤其截圖抓到那個瞬間）。
+  // 直接淡入沒有這個問題：不管什麼時候看，節點都已經在正確位置上，只是還沒淡入完全。
   const nodeEnter = node.enter().append('g').attr('class','node')
-    .attr('transform', d=>{
-      const px = source ? source.x0 : d.x;
-      const py = source ? source.y0 : d.y;
-      return `translate(${py},${px})`;
-    })
+    .attr('transform', d=> `translate(${d.y},${d.x})`)
+    .style('opacity', 0)
     .style('cursor','pointer')
     .on('click', (ev,d)=>{ ev.stopPropagation(); onNodeClick(d); })
     .on('mouseover', (ev,d)=> showTooltip(ev,d))
