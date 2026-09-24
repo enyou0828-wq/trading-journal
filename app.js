@@ -613,7 +613,10 @@ const db = getFirestore(fbApp);
           const point = bins.get(idx) || otcBinsByIdx.get(idx); // 個人紀錄沒有該區間資料時，改用櫃買指數的資料點定位
           if (!point || usedBins.has(idx)) return; // 該 6 天區間內兩邊都沒有資料，或已被同月另一個標記用掉，就不標示
           usedBins.add(idx);
-          const gx = x(point.binTs);
+          // 用 idx 直接算區間時間，不要用 point.binTs——bins（個人資料）裡存的物件沒有 binTs 這個欄位
+          // （binTs 是後面組 points 陣列時才另外加上去的，bins 本身沒有），point.binTs 會是 undefined，
+          // 算出來的 x 座標就是 NaN，全部標籤都疊到 (0,0) 附近，看起來像擠在左下角。
+          const gx = x(binStart + idx * binMs);
           const label = `${mo + 1}/${day}`;
           monthTicks += `<line x1="${gx.toFixed(1)}" y1="${PAD.top}" x2="${gx.toFixed(1)}" y2="${H - PAD.bottom}" stroke="var(--gridline)" stroke-width="1" stroke-dasharray="2,3"/>`;
           monthTicks += `<text x="${gx.toFixed(1)}" y="${H - PAD.bottom + 16}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${label}</text>`;
