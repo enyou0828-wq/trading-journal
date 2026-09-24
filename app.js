@@ -901,12 +901,11 @@ const db = getFirestore(fbApp);
     const sectorNames = [...new Set(realized.map(t => (t.sector || '').trim()).filter(Boolean))];
     const bySectorAll = sectorNames.map(name => {
       const trades = realized.filter(t => (t.sector || '').trim() === name);
-      const contribs = trades
-        .filter(t => t.contrib != null || t.positionPct != null)
-        .map(t => t.contrib != null ? t.contrib : t.returnPct * t.positionPct / 100);
-      const total = contribs.reduce((s, c) => s + c, 0);
-      return { name, total, count: trades.length };
-    }).filter(s => s.count > 0).sort((a, b) => b.total - a.total);
+      // 平均獲利 = 總獲利（報酬率加總）÷ 總次數，不看資金佔比/資金加權貢獻
+      const totalProfit = trades.reduce((s, t) => s + t.returnPct, 0);
+      const avg = trades.length ? totalProfit / trades.length : 0;
+      return { name, avg, count: trades.length };
+    }).filter(s => s.count > 0).sort((a, b) => b.avg - a.avg);
 
     if (!bySectorAll.length) { el.innerHTML = '<p class="empty-state">尚無資料。</p>'; return; }
 
@@ -917,7 +916,7 @@ const db = getFirestore(fbApp);
 
     const W = 900, H = 240, PAD = { top: 16, right: 16, bottom: 40, left: 56 };
     const innerW = W - PAD.left - PAD.right, innerH = H - PAD.top - PAD.bottom;
-    const values = bySectorAll.map(s => s.total);
+    const values = bySectorAll.map(s => s.avg);
     let min = Math.min(0, ...values), max = Math.max(0, ...values);
     if (min === max) { max += 1; }
     const padV = (max - min) * 0.15 || 1;
@@ -942,13 +941,13 @@ const db = getFirestore(fbApp);
     let bars = '', labels = '';
     bySector.forEach((s, i) => {
       const bx = startX + i * (barW + gap);
-      const barY = Math.min(y(s.total), zeroY);
-      const barH = Math.max(2, Math.abs(y(s.total) - zeroY));
-      const color = s.total >= 0 ? 'var(--good)' : 'var(--critical)';
-      bars += `<path class="bar" data-i="${i}" d="${roundedBarPath(bx, barY, barW, barH, s.total >= 0 ? 4 : 0, s.total < 0 ? 4 : 0)}" fill="${color}" style="cursor:pointer"/>`;
+      const barY = Math.min(y(s.avg), zeroY);
+      const barH = Math.max(2, Math.abs(y(s.avg) - zeroY));
+      const color = s.avg >= 0 ? 'var(--good)' : 'var(--critical)';
+      bars += `<path class="bar" data-i="${i}" d="${roundedBarPath(bx, barY, barW, barH, s.avg >= 0 ? 4 : 0, s.avg < 0 ? 4 : 0)}" fill="${color}" style="cursor:pointer"/>`;
       labels += `<text x="${(bx + barW / 2).toFixed(1)}" y="${H - PAD.bottom + 18}" text-anchor="middle" font-size="12" fill="var(--text-secondary)">${escapeHtml(s.name)}</text>`;
-      const valY = s.total >= 0 ? barY - 6 : barY + barH + 14;
-      labels += `<text x="${(bx + barW / 2).toFixed(1)}" y="${valY.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${color}">${fmtPct(s.total, 1)}</text>`;
+      const valY = s.avg >= 0 ? barY - 6 : barY + barH + 14;
+      labels += `<text x="${(bx + barW / 2).toFixed(1)}" y="${valY.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${color}">${fmtPct(s.avg, 1)}</text>`;
     });
 
     const pager = totalPages > 1 ? `
@@ -983,7 +982,7 @@ const db = getFirestore(fbApp);
     wrap.querySelectorAll('.bar').forEach(bar => {
       bar.addEventListener('mouseenter', () => {
         const s = bySector[+bar.dataset.i];
-        tooltip.innerHTML = `<div class="tt-title">${escapeHtml(s.name)}</div><div>總報酬 ${fmtPct(s.total, 2)}</div><div>${s.count} 筆紀錄</div>`;
+        tooltip.innerHTML = `<div class="tt-title">${escapeHtml(s.name)}</div><div>平均獲利 ${fmtPct(s.avg, 2)}</div><div>${s.count} 筆紀錄</div>`;
         tooltip.style.opacity = '1';
         bar.style.opacity = '0.8';
       });
