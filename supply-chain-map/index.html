@@ -233,7 +233,9 @@ function fitToContent(nodes, animate){
   const box = document.getElementById('treeSvg').getBoundingClientRect();
   const W = Math.max(box.width,600), H = Math.max(box.height,400);
   const minX = d3.min(nodes, d=>d.x)-40, maxX = d3.max(nodes, d=>d.x)+40;
-  const minY = 0, maxY = d3.max(nodes, d=>d.y)+260;
+  // minY 不能寫死 0：產業左右交錯展開後，往左長的那一半節點 y 座標是負值，
+  // 寫死 0 會讓左側內容整個算不進畫面範圍裡。
+  const minY = d3.min(nodes, d=>d.y)-260, maxY = d3.max(nodes, d=>d.y)+260;
   const contentW = maxY-minY, contentH = maxX-minX;
   // 節點很多（例如全部展開）時，把整棵樹硬塞進視窗高度會讓文字縮到看不清楚；
   // 縮放比例下限設在還能閱讀文字的程度，內容比視窗高的部分改用拖曳/捲動瀏覽，而不是繼續縮小。
@@ -264,6 +266,18 @@ function layoutTree(){
   const dx = 34;
   const treeLayout = d3.tree().nodeSize([dx, DY]);
   treeLayout(h);
+
+  // 產業固定在同一欄，底下的族群／公司整條子樹左右交錯展開：
+  // 第 0、2、4...個產業維持預設往右長，第 1、3、5...個產業把子樹的 y 座標鏡射到左邊
+  // （2*industryY - y，industryY 自己代入結果不變，子孫的深度距離對稱翻到另一側）。
+  // 這樣兩側都有內容可以看，畫面不會因為產業一多就一直往右變寬。
+  (h.children || []).forEach((industryNode, i) => {
+    if (i % 2 === 1) {
+      const industryY = industryNode.y;
+      industryNode.each(n => { n.y = 2 * industryY - n.y; });
+    }
+  });
+
   return h;
 }
 
