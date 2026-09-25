@@ -21,10 +21,8 @@
   #toolbar button:hover,#toolbar a.btn:hover{background:#eef2f7;}
   #toolbar button.active{background:#1f2937;color:#fff;border-color:#1f2937;}
   #toolbar .sep{width:1px;height:22px;background:#e2e8f0;margin:0 2px;}
-  #toolbar label.chk{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted);cursor:pointer;}
   #stage{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden;}
   svg{width:100%;height:100%;display:block;background:#ffffff;}
-  #flowWrap{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:auto;display:none;background:#fff;}
   #legend{
     position:fixed;left:14px;bottom:14px;z-index:15;background:rgba(255,255,255,.96);
     border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--ink);
@@ -44,7 +42,6 @@
   .node-label{font-size:12px;fill:var(--ink);pointer-events:none;user-select:none;}
   .node-count{font-size:11px;fill:#f8fafc;pointer-events:none;user-select:none;}
   .link-hier{fill:none;stroke:var(--line);stroke-width:1.4;}
-  .flow-arrow-defs path{fill:#94a3b8;}
   #creditline{position:fixed;right:12px;bottom:6px;font-size:10.5px;color:#9ca3af;z-index:5;}
 </style>
 </head>
@@ -58,9 +55,6 @@
   <button id="btnExpandAll">全部展開</button>
   <button id="btnCollapseAll">全部摺疊</button>
   <div class="sep"></div>
-  <button id="btnViewTree" class="active">樹狀視圖</button>
-  <button id="btnViewFlow">流向視圖</button>
-  <div class="sep"></div>
   <button id="btnExportSVG">匯出 SVG</button>
   <button id="btnExportPNG">匯出 PNG</button>
   <span id="statusMsg" style="color:var(--muted);margin-left:6px;"></span>
@@ -72,16 +66,6 @@
   </svg>
 </div>
 
-<div id="flowWrap">
-  <svg id="flowSvg">
-    <defs>
-      <marker id="arrow-flow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"></path>
-      </marker>
-    </defs>
-    <g id="flowViewport"></g>
-  </svg>
-</div>
 
 <div id="legend"></div>
 <div id="tooltip"></div>
@@ -598,147 +582,11 @@ document.getElementById('btnExpandAll').onclick = ()=>{ selectedGroupUid=null; e
 document.getElementById('btnCollapseAll').onclick = ()=>{ selectedGroupUid=null; collapseAll(); };
 svg.on('click', ()=>{ selectedGroupUid=null; updateFlowDim(); });
 
-document.getElementById('btnViewTree').onclick = ()=> switchView('tree');
-document.getElementById('btnViewFlow').onclick = ()=> switchView('flow');
-function switchView(v){
-  document.getElementById('btnViewTree').classList.toggle('active', v==='tree');
-  document.getElementById('btnViewFlow').classList.toggle('active', v==='flow');
-  document.getElementById('stage').style.display = v==='tree' ? 'block':'none';
-  document.getElementById('flowWrap').style.display = v==='flow' ? 'block':'none';
-  if(v==='flow') renderFlowView();
-}
-
 // ---------------------------------------------------------------------
-// 9. 流向視圖（上／中／下游 三欄卡片）
-// ---------------------------------------------------------------------
-function renderFlowView(){
-  const flowSvg = d3.select('#flowSvg');
-  const fv = d3.select('#flowViewport');
-  fv.selectAll('*').remove();
-
-  const groupsByKey = Array.from(groupIndex.values());
-  const posOf = g=>{
-    const kids = (g.children||g._children||[]).filter(k=>!k.isShadow);
-    const counts = d3.rollup(kids, v=>v.length, k=>k.position);
-    let best='中游', bestN=-1;
-    counts.forEach((n,p)=>{ if(n>bestN){ bestN=n; best=p; } });
-    return best;
-  };
-  const columns = {'上游':[], '中游':[], '下游':[]};
-  groupsByKey.forEach(g=> columns[posOf(g)].push(g));
-
-  const colW = 340, cardGapY = 14, padTop=30, padX=60;
-  const positions = new Map(); // group.uid -> {x,y,w,h}
-  const colOrder = ['上游','中游','下游'];
-  let maxColHeight = 0;
-  colOrder.forEach((colName, ci)=>{
-    let y = padTop;
-    columns[colName].forEach(g=>{
-      const kids = (g.children||g._children||[]).filter(k=>!k.isShadow);
-      const h = 46 + kids.length*17;
-      positions.set(g.uid, {x: padX+ci*colW, y, w: colW-60, h, group:g});
-      y += h + cardGapY;
-    });
-    maxColHeight = Math.max(maxColHeight, y);
-  });
-  // 外部節點放第 4 欄
-  const extCol = padX + 3*colW;
-  let extY = padTop;
-  const extPositions = new Map();
-  EXTERNAL_NODES.forEach(name=>{
-    const used = flows.some(f=> resolveFlowEndpoint(f.to_group||'')); // no-op guard
-  });
-  const usedExternal = new Set(flows.filter(f=>f.to.kind==='external').map(f=>f.to.name));
-  usedExternal.forEach(name=>{
-    extPositions.set(name, {x:extCol, y:extY, w:colW-60, h:46});
-    extY += 46+cardGapY;
-  });
-  maxColHeight = Math.max(maxColHeight, extY);
-
-  flowSvg.attr('viewBox', [0,0, extCol+colW, maxColHeight+40].join(' '));
-
-  // 欄位標題
-  colOrder.forEach((colName,ci)=>{
-    fv.append('text').attr('x', padX+ci*colW+ (colW-60)/2).attr('y',18)
-      .attr('text-anchor','middle').style('font-weight','700').style('font-size','14px')
-      .text(colName);
-  });
-  fv.append('text').attr('x', extCol+(colW-60)/2).attr('y',18)
-    .attr('text-anchor','middle').style('font-weight','700').style('font-size','14px').style('fill','#64748b')
-    .text('外部／終端');
-
-  // 卡片
-  positions.forEach(p=>{
-    const g = fv.append('g').attr('transform',`translate(${p.x},${p.y})`)
-      .style('cursor','pointer')
-      .on('click', ()=>{
-        selectedGroupUid = (selectedGroupUid===p.group.uid)? null : p.group.uid;
-        renderFlowView();
-      });
-    g.append('rect').attr('width',p.w).attr('height',p.h).attr('rx',8)
-      .attr('fill','#ffffff')
-      .attr('stroke', industryColor(p.group.industry)).attr('stroke-width', selectedGroupUid===p.group.uid?3:2)
-      .attr('opacity', (selectedGroupUid && !flowRelated(p.group)) ? 0.25:1);
-    g.append('rect').attr('width',p.w).attr('height',20).attr('rx',8)
-      .attr('fill', industryColor(p.group.industry));
-    g.append('rect').attr('y',10).attr('width',p.w).attr('height',10).attr('fill',industryColor(p.group.industry));
-    const kids = (p.group.children||p.group._children||[]).filter(k=>!k.isShadow);
-    g.append('text').attr('x',8).attr('y',14).attr('fill','#fff').style('font-weight','600').style('font-size','12px')
-      .text(`${p.group.name} (${kids.length})`);
-    kids.forEach((k,i)=>{
-      const badge = POSITION_STYLE[k.position]||POSITION_STYLE['中游'];
-      const row = g.append('g').attr('transform',`translate(10,${34+i*17})`);
-      row.append('path').attr('d', shapePath(badge.shape,26)).attr('fill',badge.color)
-        .attr('transform','translate(4,-4)');
-      row.append('text').attr('x',16).attr('y',0).style('font-size','11.5px').text(k.name);
-    });
-  });
-
-  extPositions.forEach((p,name)=>{
-    const g = fv.append('g').attr('transform',`translate(${p.x},${p.y})`);
-    g.append('rect').attr('width',p.w).attr('height',p.h).attr('rx',8)
-      .attr('fill','#f8fafc').attr('stroke','#cbd5e1').attr('stroke-dasharray','3,2');
-    g.append('text').attr('x',p.w/2).attr('y',p.h/2+4).attr('text-anchor','middle')
-      .style('font-size','12px').attr('fill','#64748b').text(name);
-  });
-
-  // 箭頭
-  const arrowLayer = fv.append('g');
-  flows.forEach(f=>{
-    let s=null, t=null;
-    if(f.from.kind==='group'){ const pp=findGroupPosByName(positions,f.from.name); s=pp; }
-    if(f.to.kind==='group'){ const pp=findGroupPosByName(positions,f.to.name); t=pp; }
-    else if(f.to.kind==='external'){ t = extPositions.get(f.to.name); }
-    if(s && t){
-      const rel = !selectedGroupUid || (s.group && s.group.uid===selectedGroupUid) || (t.group && t.group.uid===selectedGroupUid);
-      arrowLayer.append('path')
-        .attr('d', d3.linkHorizontal().x(p=>p.x).y(p=>p.y)({
-          source:{x:s.x+s.w, y:s.y+s.h/2}, target:{x:t.x, y:t.y+t.h/2}
-        }))
-        .attr('fill','none').attr('stroke', rel? '#94a3b8':'#eef2f7')
-        .attr('stroke-width',1.4).attr('stroke-dasharray','4,3')
-        .attr('marker-end','url(#arrow-flow2)')
-        .attr('opacity', rel?0.85:0.4);
-    }
-  });
-}
-function findGroupPosByName(positions, name){
-  let found=null;
-  positions.forEach(p=>{ if(p.group.name===name) found=p; });
-  return found;
-}
-function flowRelated(group){
-  if(!selectedGroupUid) return true;
-  if(group.uid===selectedGroupUid) return true;
-  return flows.some(f=> (f.from.name===group.name || f.to.name===group.name));
-}
-
-// ---------------------------------------------------------------------
-// 10. 匯出 SVG / PNG（依目前視圖）
+// 9. 匯出 SVG / PNG
 // ---------------------------------------------------------------------
 function currentSvgEl(){
-  return document.getElementById('flowWrap').style.display==='block'
-    ? document.getElementById('flowSvg') : document.getElementById('treeSvg');
+  return document.getElementById('treeSvg');
 }
 function serializeSvg(svgEl){
   const clone = svgEl.cloneNode(true);
@@ -790,7 +638,7 @@ function downloadBlob(blob, filename){
 }
 
 // ---------------------------------------------------------------------
-// 11. 圖例
+// 10. 圖例
 // ---------------------------------------------------------------------
 function buildLegend(){
   const el = document.getElementById('legend');
@@ -802,17 +650,15 @@ function buildLegend(){
   Object.entries(POSITION_STYLE).forEach(([k,v])=>{
     html += `<div class="row"><span class="sw" style="background:${v.color};border-radius:${v.shape==='circle'?'50%':v.shape==='square'?'2px':'0'};clip-path:${v.shape==='triangle'?'polygon(50% 0,0 100%,100% 100%)':'none'}"></span>${k}</div>`;
   });
-  html += '<div class="row" style="margin-top:6px;color:#6b7280;">實線＝分類階層　┄　虛線＝供應流向</div>';
   el.innerHTML = html;
 }
 
 // ---------------------------------------------------------------------
-// 12. 啟動
+// 11. 啟動
 // ---------------------------------------------------------------------
 buildLegend();
 render(null);
 fitToContent(currentHierarchy.descendants().filter(d=>d.data.type!=='root'), false);
-switchView('tree');
 
 })();
 </script>
