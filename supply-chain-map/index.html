@@ -236,11 +236,14 @@ function fitToContent(nodes, animate){
   // minY 不能寫死 0：產業左右交錯展開後，往左長的那一半節點 y 座標是負值，
   // 寫死 0 會讓左側內容整個算不進畫面範圍裡。
   const minY = d3.min(nodes, d=>d.y)-260, maxY = d3.max(nodes, d=>d.y)+260;
-  const contentW = maxY-minY, contentH = maxX-minX;
+  const contentH = maxX-minX;
+  // 產業固定在 y=DY 這一欄，畫面要讓這欄置中，而不是讓整個內容範圍的最左邊貼齊畫面左緣。
+  // 所以左右兩側個別算「離產業欄多遠」，各自要塞進畫面的一半寬度，取比較吃緊的那一邊決定縮放比例。
+  const leftSpan = Math.max(1, DY - minY), rightSpan = Math.max(1, maxY - DY);
   // 節點很多（例如全部展開）時，把整棵樹硬塞進視窗高度會讓文字縮到看不清楚；
   // 縮放比例下限設在還能閱讀文字的程度，內容比視窗高的部分改用拖曳/捲動瀏覽，而不是繼續縮小。
-  const scale = Math.max(0.3, Math.min(1.4, Math.min(W/contentW, H/contentH)));
-  const tx = -minY*scale + 24;
+  const scale = Math.max(0.3, Math.min(1.4, Math.min((W/2)/leftSpan, (W/2)/rightSpan, H/contentH)));
+  const tx = W/2 - DY*scale;
   const ty = H/2 - ((minX+maxX)/2)*scale;
   const t = d3.zoomIdentity.translate(tx,ty).scale(scale);
   (animate ? svg.transition().duration(400) : svg).call(zoomBehavior.transform, t);
