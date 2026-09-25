@@ -424,9 +424,10 @@ function toggle(d){
   currentHierarchy.each(n=>{ if(n.data.uid===d.data.uid){ n.x0=d.x; n.y0=d.y; } });
   render(d);
   updateFlowDim();
-  // 展開/摺疊單一節點時也重新置中縮放，否則視窗停留在舊的縮放位置，
-  // 新展開的子節點可能落在畫面外，看起來像是「擠在一起」或整個消失不見。
-  fitToContent(currentHierarchy.descendants().filter(n=>n.data.type!=='root'), false);
+  // 這裡故意不呼叫 fitToContent：每次展開/摺疊單一節點都自動縮放置中的話，
+  // 畫面涵蓋範圍每點一次就變大一點，縮放比例會跟著越縮越小，點沒幾下就縮到最小值。
+  // 節點位置現在是同步套用（見 render() 內的說明），不會再有子節點跑到畫面外疊在一起的問題，
+  // 所以不需要每次都重新置中；縮放/平移交給使用者自己操作，只有「全部展開／全部摺疊」才自動置中。
 }
 
 // 展開全部 / 摺疊全部
