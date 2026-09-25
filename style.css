@@ -328,6 +328,12 @@ body {
 .chain-manage-row:last-child { border-bottom: none; }
 .chain-manage-meta { color: var(--text-muted); font-size: 11.5px; }
 
+.chain-map-embed {
+  margin-top: 16px; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.chain-map-embed iframe { display: block; width: 100%; height: 800px; border: none; }
+
 @media (max-width: 720px) {
   .chain-layout { flex-direction: column; }
   .chain-tree-panel { max-width: none; max-height: 300px; }

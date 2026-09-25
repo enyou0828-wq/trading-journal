@@ -235,7 +235,7 @@
       <div class="panel-head">
         <h1>供應鏈</h1>
         <div class="panel-head-actions">
-          <a class="btn primary" href="./supply-chain-map/">開啟互動地圖 ↗</a>
+          <a class="btn primary" href="./supply-chain-map/" target="_blank" rel="noopener">在新分頁開啟完整版 ↗</a>
         </div>
       </div>
 
@@ -246,6 +246,10 @@
         <div class="chain-detail-panel" id="chain-detail">
           <p class="empty-state">點選左側的供應鏈節點查看詳細資料。</p>
         </div>
+      </div>
+
+      <div class="chain-map-embed">
+        <iframe id="chain-map-frame" src="./supply-chain-map/" title="台股供應鏈互動地圖" loading="lazy"></iframe>
       </div>
     </section>
 
