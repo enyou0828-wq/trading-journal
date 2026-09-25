@@ -6,58 +6,89 @@
 <style>
   :root{
     --up-color:#0072B2; --mid-color:#009E73; --down-color:#D55E00;
-    --line:#94a3b8; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --surface-raised: #ffffff;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
   }
-  html,body{margin:0;padding:0;height:100%;background:#ffffff;color:var(--ink);
+  @media (prefers-color-scheme: dark){
+    :root{
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --surface-raised: #232322;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+    }
+  }
+  :root[data-theme="dark"]{
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --surface-raised: #232322;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --border:         rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+  }
+  :root[data-theme="light"]{
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --surface-raised: #ffffff;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+  }
+  html,body{margin:0;padding:0;height:100%;background:var(--page-plane);color:var(--text-primary);
     font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:13px;}
   #toolbar{
     position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:10px;
-    padding:8px 14px;background:#ffffff;border-bottom:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.05);
+    padding:8px 14px;background:var(--surface-raised);border-bottom:1px solid var(--border);
     flex-wrap:wrap;
   }
-  #toolbar input[type=text]{font-size:13px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;width:200px;}
-  #toolbar button,#toolbar a.btn{font-size:12.5px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;
-    cursor:pointer;color:var(--ink);text-decoration:none;display:inline-block;box-sizing:border-box;}
-  #toolbar button:hover,#toolbar a.btn:hover{background:#eef2f7;}
-  #toolbar button.active{background:#1f2937;color:#fff;border-color:#1f2937;}
-  #toolbar .sep{width:1px;height:22px;background:#e2e8f0;margin:0 2px;}
+  #toolbar input[type=text]{font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;width:200px;
+    background:var(--page-plane);color:var(--text-primary);}
   #stage{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden;}
-  svg{width:100%;height:100%;display:block;background:#ffffff;}
+  svg{width:100%;height:100%;display:block;background:var(--page-plane);}
   #legend{
-    position:fixed;left:14px;bottom:14px;z-index:15;background:rgba(255,255,255,.96);
-    border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--ink);
-    max-width:300px;box-shadow:0 2px 8px rgba(0,0,0,.08);
+    position:fixed;left:14px;bottom:14px;z-index:15;background:var(--surface-raised);
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text-primary);
+    max-width:300px;box-shadow:0 2px 8px rgba(0,0,0,.2);
   }
   #legend h4{margin:0 0 6px;font-size:12px;}
   #legend .row{display:flex;align-items:center;gap:6px;margin:2px 0;}
   #legend .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
   #legend .indgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;margin-bottom:6px;}
   #tooltip{
-    position:fixed;z-index:30;pointer-events:none;background:#1f2937;color:#f8fafc;
+    position:fixed;z-index:30;pointer-events:none;background:var(--surface-raised);color:var(--text-primary);
+    border:1px solid var(--border);
     padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.55;max-width:280px;
-    box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;transition:opacity .1s;
+    box-shadow:0 4px 14px rgba(0,0,0,.3);opacity:0;transition:opacity .1s;
   }
-  #tooltip b{color:#fff;}
-  #tooltip .lbl{color:#93c5fd;}
-  .node-label{font-size:12px;fill:var(--ink);pointer-events:none;user-select:none;}
+  #tooltip b{color:var(--text-primary);}
+  #tooltip .lbl{color:var(--series-1);}
+  .node-label{font-size:12px;fill:var(--text-primary);pointer-events:none;user-select:none;}
   .node-count{font-size:11px;fill:#f8fafc;pointer-events:none;user-select:none;}
-  .link-hier{fill:none;stroke:var(--line);stroke-width:1.4;}
-  #creditline{position:fixed;right:12px;bottom:6px;font-size:10.5px;color:#9ca3af;z-index:5;}
+  .link-hier{fill:none;stroke:var(--gridline);stroke-width:1.4;}
+  #creditline{position:fixed;right:12px;bottom:6px;font-size:10.5px;color:var(--text-muted);z-index:5;}
 </style>
 </head>
 <body>
 <div id="toolbar">
-  <a class="btn" href="../">← 回主頁</a>
-  <div class="sep"></div>
   <input id="searchBox" type="text" placeholder="搜尋公司名稱或代號…">
-  <button id="btnSearchClear">清除搜尋</button>
-  <div class="sep"></div>
-  <button id="btnExpandAll">全部展開</button>
-  <button id="btnCollapseAll">全部摺疊</button>
-  <div class="sep"></div>
-  <button id="btnExportSVG">匯出 SVG</button>
-  <button id="btnExportPNG">匯出 PNG</button>
-  <span id="statusMsg" style="color:var(--muted);margin-left:6px;"></span>
+  <span id="statusMsg" style="color:var(--text-muted);margin-left:6px;"></span>
 </div>
 
 <div id="stage">
@@ -359,7 +390,7 @@ function render(source){
       const label = `${d.data.name} (${cnt})`;
       const w = Math.max(64, label.length*9.5+18), hgt=26;
       g.append('rect').attr('x',-w/2).attr('y',-hgt/2).attr('width',w).attr('height',hgt)
-        .attr('rx',6).attr('fill','#ffffff')
+        .attr('rx',6).attr('fill','var(--surface-1)')
         .attr('stroke', industryColor(d.data.industry)).attr('stroke-width',2);
       g.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
         .text(label);
@@ -369,8 +400,8 @@ function render(source){
       const w = Math.max(56, label.length*11+30), hgt=22;
       g.append('rect').attr('x',-w/2).attr('y',-hgt/2).attr('width',w).attr('height',hgt)
         .attr('rx',11)
-        .attr('fill', isShadow? '#f1f5f9':'#eef2ff')
-        .attr('stroke', isShadow? '#cbd5e1':'#c7d2fe')
+        .attr('fill', isShadow? 'var(--gridline)':'rgba(42,120,214,0.14)')
+        .attr('stroke', isShadow? 'var(--border)':'var(--series-1)')
         .attr('stroke-dasharray', isShadow? '3,2':null)
         .attr('opacity', isShadow? 0.55:1);
       g.append('text').attr('class','node-label').attr('text-anchor','middle').attr('dy','0.32em')
@@ -384,8 +415,8 @@ function render(source){
     }
     if(t==='group'){
       g.append('circle').attr('class','collapse-indicator').attr('r',3.2)
-        .attr('cx', 0).attr('cy', 17).attr('fill', d.data._children? '#334155':'transparent')
-        .attr('stroke','#334155').attr('stroke-width', d.data._children?0:1);
+        .attr('cx', 0).attr('cy', 17).attr('fill', d.data._children? 'var(--text-secondary)':'transparent')
+        .attr('stroke','var(--text-secondary)').attr('stroke-width', d.data._children?0:1);
     }
   });
 
@@ -444,33 +475,7 @@ function toggle(d){
   // 這裡故意不呼叫 fitToContent：每次展開/摺疊單一節點都自動縮放置中的話，
   // 畫面涵蓋範圍每點一次就變大一點，縮放比例會跟著越縮越小，點沒幾下就縮到最小值。
   // 節點位置現在是同步套用（見 render() 內的說明），不會再有子節點跑到畫面外疊在一起的問題，
-  // 所以不需要每次都重新置中；縮放/平移交給使用者自己操作，只有「全部展開／全部摺疊」才自動置中。
-}
-
-// 展開全部 / 摺疊全部
-function expandAll(){
-  function walk(n){
-    if(n._children){ n.children = n._children; n._children = null; }
-    (n.children||[]).forEach(walk);
-  }
-  industries.forEach(walk);
-  currentHierarchy = layoutTree();
-  render(null);
-  fitToContent(currentHierarchy.descendants().filter(d=>d.data.type!=='root'), true);
-}
-function collapseAll(){
-  industries.forEach(ind=>{
-    const groups = ind.children || ind._children || [];
-    groups.forEach(grp=>{
-      grp._children = grp.children || grp._children;
-      grp.children = null;
-    });
-    ind._children = groups;
-    ind.children = null;
-  });
-  currentHierarchy = layoutTree();
-  render(null);
-  fitToContent(currentHierarchy.descendants().filter(d=>d.data.type!=='root'), true);
+  // 所以不需要每次都重新置中；縮放/平移交給使用者自己操作。
 }
 
 // ---------------------------------------------------------------------
@@ -589,74 +594,10 @@ document.getElementById('searchBox').addEventListener('input', (e)=>{
     else setStatus('查無符合的公司');
   }, 200);
 });
-document.getElementById('btnSearchClear').onclick = ()=>{
-  document.getElementById('searchBox').value=''; setStatus('');
-};
-
-// ---------------------------------------------------------------------
-// 8. 工具列事件
-// ---------------------------------------------------------------------
-document.getElementById('btnExpandAll').onclick = ()=>{ selectedGroupUid=null; expandAll(); };
-document.getElementById('btnCollapseAll').onclick = ()=>{ selectedGroupUid=null; collapseAll(); };
 svg.on('click', ()=>{ selectedGroupUid=null; updateFlowDim(); });
 
 // ---------------------------------------------------------------------
-// 9. 匯出 SVG / PNG
-// ---------------------------------------------------------------------
-function currentSvgEl(){
-  return document.getElementById('treeSvg');
-}
-function serializeSvg(svgEl){
-  const clone = svgEl.cloneNode(true);
-  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  clone.style.background = '#ffffff';
-  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-  const vb = clone.getAttribute('viewBox');
-  if(vb){
-    const [x,y,w,h] = vb.split(' ').map(Number);
-    rect.setAttribute('x',x); rect.setAttribute('y',y); rect.setAttribute('width',w); rect.setAttribute('height',h);
-  } else { rect.setAttribute('x',0); rect.setAttribute('y',0); rect.setAttribute('width','100%'); rect.setAttribute('height','100%'); }
-  rect.setAttribute('fill','#ffffff');
-  clone.insertBefore(rect, clone.firstChild);
-  return new XMLSerializer().serializeToString(clone);
-}
-document.getElementById('btnExportSVG').onclick = ()=>{
-  const svgEl = currentSvgEl();
-  const str = serializeSvg(svgEl);
-  const blob = new Blob([str], {type:'image/svg+xml;charset=utf-8'});
-  downloadBlob(blob, 'supply-chain-map.svg');
-};
-document.getElementById('btnExportPNG').onclick = ()=>{
-  const svgEl = currentSvgEl();
-  const str = serializeSvg(svgEl);
-  const vb = svgEl.getAttribute('viewBox');
-  let w=1600,h=1000;
-  if(vb){ const p=vb.split(' ').map(Number); w=p[2]; h=p[3]; }
-  const img = new Image();
-  const svgBlob = new Blob([str], {type:'image/svg+xml;charset=utf-8'});
-  const url = URL.createObjectURL(svgBlob);
-  img.onload = ()=>{
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = w*scale; canvas.height = h*scale;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.scale(scale,scale);
-    ctx.drawImage(img,0,0,w,h);
-    URL.revokeObjectURL(url);
-    canvas.toBlob(blob=> downloadBlob(blob,'supply-chain-map.png'));
-  };
-  img.src = url;
-};
-function downloadBlob(blob, filename){
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
-}
-
-// ---------------------------------------------------------------------
-// 10. 圖例
+// 8. 圖例
 // ---------------------------------------------------------------------
 function buildLegend(){
   const el = document.getElementById('legend');
