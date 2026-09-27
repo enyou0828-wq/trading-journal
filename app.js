@@ -247,23 +247,24 @@ const db = getFirestore(fbApp);
   // ================= SIGNALS =================
   let signalsLoaded = false;
 
+  function signalGroupHtml(s) {
+    if (!s.industry && !s.sub_group) return '–';
+    if (s.industry && s.sub_group) {
+      return `${escapeHtml(s.industry)} <span style="color:var(--text-muted)">· ${escapeHtml(s.sub_group)}</span>`;
+    }
+    return escapeHtml(s.industry || s.sub_group);
+  }
+
   function signalRowsHtml(signals) {
     return signals.map(s => {
-      const related = s.related_groups
-        ? [
-            s.related_groups.upstream.length ? `上游：${s.related_groups.upstream.join('、')}` : '',
-            s.related_groups.downstream.length ? `下游：${s.related_groups.downstream.join('、')}` : '',
-          ].filter(Boolean).join('　')
-        : '–';
+      const changeClass = s.daily_change_pct == null ? 'pnl-zero' : s.daily_change_pct > 0 ? 'pnl-pos' : s.daily_change_pct < 0 ? 'pnl-neg' : 'pnl-zero';
+      const changeText = s.daily_change_pct == null ? '–' : (s.daily_change_pct > 0 ? '+' : '') + s.daily_change_pct + '%';
       return `
         <tr>
           <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
-          <td class="num">${s.close}</td>
-          <td class="num">${s.prior_high}</td>
+          <td class="num ${changeClass}">${changeText}</td>
           <td class="num pnl-pos">${s.volume_multiple != null ? s.volume_multiple + 'x' : '–'}</td>
-          <td>${s.in_supply_chain_map ? escapeHtml(s.group) : '–'}</td>
-          <td>${s.in_supply_chain_map ? escapeHtml(s.supply_chain_position) : '（不在供應鏈圖收錄清單內）'}</td>
-          <td>${escapeHtml(related)}</td>
+          <td>${signalGroupHtml(s)}</td>
         </tr>
       `;
     }).join('');
@@ -278,8 +279,7 @@ const db = getFirestore(fbApp);
           <table class="trade-table">
             <thead>
               <tr>
-                <th>股票</th><th class="num">收盤</th><th class="num">前波高</th>
-                <th class="num">量增倍數</th><th>族群</th><th>供應鏈位置</th><th>相關族群</th>
+                <th>股票</th><th class="num">當日漲幅</th><th class="num">量增倍數</th><th>族群</th>
               </tr>
             </thead>
             <tbody>${signalRowsHtml(set.signals)}</tbody>

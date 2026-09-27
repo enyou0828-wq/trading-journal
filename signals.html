@@ -13,6 +13,7 @@
     --border: rgba(11,11,11,0.10);
     --accent: #2a78d6;
     --up: #1baf7a;
+    --down: #d03b3b;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -23,6 +24,7 @@
       --border: rgba(255,255,255,0.12);
       --accent: #5b9bef;
       --up: #33d19a;
+      --down: #e35b5b;
     }
   }
   * { box-sizing: border-box; }
@@ -57,17 +59,6 @@
   .name { color: var(--text-muted); font-size: 0.9rem; margin-left: 6px; }
   .multiple { color: var(--up); font-weight: 600; }
   .row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); }
-  .tag {
-    display: inline-block;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px 8px;
-    font-size: 0.8rem;
-    margin: 2px 4px 0 0;
-  }
-  .related { margin-top: 10px; font-size: 0.85rem; }
-  .related b { color: var(--text); }
   .empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
 </style>
 </head>
@@ -85,12 +76,9 @@ function renderSet(set) {
     : '';
   const cardsHtml = set.signals.length
     ? set.signals.map(s => {
-        const relatedHtml = s.related_groups
-          ? `<div class="related">
-               ${s.related_groups.upstream.length ? `<div><b>上游族群：</b>${s.related_groups.upstream.join('、')}</div>` : ''}
-               ${s.related_groups.downstream.length ? `<div><b>下游族群：</b>${s.related_groups.downstream.join('、')}</div>` : ''}
-             </div>`
-          : '';
+        const changeColor = s.daily_change_pct == null ? 'var(--text-muted)' : s.daily_change_pct > 0 ? 'var(--up)' : s.daily_change_pct < 0 ? 'var(--down)' : 'var(--text-muted)';
+        const changeText = s.daily_change_pct == null ? '–' : (s.daily_change_pct > 0 ? '+' : '') + s.daily_change_pct + '%';
+        const groupText = s.industry && s.sub_group ? `${s.industry} · ${s.sub_group}` : (s.industry || s.sub_group || '–');
         return `
           <div class="card">
             <div class="card-top">
@@ -98,17 +86,9 @@ function renderSet(set) {
               <div class="multiple">${s.volume_multiple != null ? `量增 ${s.volume_multiple}x` : '連續創新高'}</div>
             </div>
             <div class="row">
-              <span>收盤 ${s.close}</span>
-              <span>前波高 ${s.prior_high}</span>
+              <span style="color:${changeColor}">當日 ${changeText}</span>
+              <span>${groupText}</span>
             </div>
-            ${s.in_supply_chain_map ? `
-              <div style="margin-top:8px">
-                <span class="tag">${s.industry}</span>
-                <span class="tag">${s.group}</span>
-                <span class="tag">${s.supply_chain_position}</span>
-              </div>
-              ${relatedHtml}
-            ` : '<div class="row">（不在供應鏈圖收錄清單內）</div>'}
           </div>
         `;
       }).join('')

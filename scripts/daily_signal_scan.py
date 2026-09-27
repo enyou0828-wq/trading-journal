@@ -2,7 +2,10 @@
 """
 每日盤後訊號掃描：抓 TWSE / TPEx 全市場日收盤資料，累積到本地歷史，
 同時用多組「創 N 日新高 + 爆量」條件（見 SIGNAL_SETS）各自獨立篩出
-突破訊號，並比對 supply-chain-map 的 companies.csv 標出族群與供應鏈相關股。
+突破訊號。族群欄位同時標出兩層：data/industries.csv 的官方產業別
+（涵蓋幾乎全部股票，見 scripts/build_industries.py）＋
+supply-chain-map/companies.csv 手動查證過的細分族群（僅涵蓋部分股票，
+命中時會再往下顯示這一層）。
 
 執行後更新：
   - data/price_history.csv   累積的每日收盤/成交量歷史（自動裁到最近 max(lookback)*3 天）
@@ -25,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 HISTORY_CSV = REPO_ROOT / "data" / "price_history.csv"
 SIGNALS_JSON = REPO_ROOT / "signals" / "latest.json"
 COMPANIES_CSV = REPO_ROOT / "supply-chain-map" / "data" / "companies.csv"
-FLOWS_CSV = REPO_ROOT / "supply-chain-map" / "data" / "flows.csv"
+INDUSTRIES_CSV = REPO_ROOT / "data" / "industries.csv"
 
 TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
@@ -195,40 +198,37 @@ def load_companies() -> dict[str, dict]:
         return {row["代號"].strip(): row for row in reader if row.get("代號", "").strip()}
 
 
-def load_flows() -> list[dict]:
-    if not FLOWS_CSV.exists():
-        return []
-    with open(FLOWS_CSV, encoding="utf-8-sig", newline="") as f:
-        return list(csv.DictReader(f))
+def load_industries() -> dict[str, dict]:
+    if not INDUSTRIES_CSV.exists():
+        return {}
+    with open(INDUSTRIES_CSV, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        return {row["code"].strip(): row for row in reader if row.get("code", "").strip()}
 
 
-def related_groups(group: str, flows: list[dict]) -> dict[str, list[str]]:
-    upstream = [f["from_group"] for f in flows if f["to_group"] == group]
-    downstream = [f["to_group"] for f in flows if f["from_group"] == group]
-    return {"upstream": upstream, "downstream": downstream}
-
-
-def build_entry(code: str, today: dict, prior_high: float, volume_multiple, companies: dict, flows: list[dict]) -> dict:
-    info = companies.get(code)
-    entry = {
+def build_entry(
+    code: str, name: str, daily_change_pct, volume_multiple, companies: dict, industries: dict
+) -> dict:
+    official = industries.get(code)
+    curated = companies.get(code)
+    return {
         "code": code,
-        "name": today["name"],
-        "market": today["market"],
-        "close": today["close"],
-        "volume": today["volume"],
-        "prior_high": round(prior_high, 2),
+        "name": name,
+        "daily_change_pct": round(daily_change_pct, 2) if daily_change_pct is not None else None,
         "volume_multiple": round(volume_multiple, 2) if volume_multiple is not None else None,
-        "in_supply_chain_map": info is not None,
+        "industry": official["industry"] if official else None,
+        "sub_group": curated["族群"] if curated else None,
     }
-    if info:
-        group = info["族群"]
-        entry.update({
-            "industry": info["產業"],
-            "group": group,
-            "supply_chain_position": info["供應鏈位置"],
-            "related_groups": related_groups(group, flows),
-        })
-    return entry
+
+
+def daily_change_pct(rows: list[dict]) -> float | None:
+    """今天收盤相對昨天收盤的漲跌幅（%）。rows 需已按日期排序。"""
+    if len(rows) < 2:
+        return None
+    prev_close = rows[-2]["close"]
+    if not prev_close:
+        return None
+    return (rows[-1]["close"] / prev_close - 1) * 100
 
 
 def compute_signals(
@@ -237,7 +237,7 @@ def compute_signals(
     lookback: int,
     volume_multiplier: float,
     companies: dict[str, dict],
-    flows: list[dict],
+    industries: dict[str, dict],
 ) -> tuple[list[dict], bool]:
     """今天創 N 日新高，且量增達到過去均量的指定倍數。"""
     signals = []
@@ -258,7 +258,9 @@ def compute_signals(
         is_volume_surge = prior_avg_vol > 0 and today["volume"] >= volume_multiplier * prior_avg_vol
 
         if is_breakout and is_volume_surge:
-            signals.append(build_entry(code, today, prior_high, today["volume"] / prior_avg_vol, companies, flows))
+            signals.append(build_entry(
+                code, today["name"], daily_change_pct(rows), today["volume"] / prior_avg_vol, companies, industries
+            ))
 
     signals.sort(key=lambda s: s["volume_multiple"], reverse=True)
     return signals, warmup
@@ -270,7 +272,7 @@ def compute_consecutive_high_signals(
     lookback: int,
     consecutive_days: int,
     companies: dict[str, dict],
-    flows: list[dict],
+    industries: dict[str, dict],
 ) -> tuple[list[dict], bool]:
     """連續 consecutive_days 天，每一天收盤都各自創下當天的 N 日新高（不看量）。"""
     signals = []
@@ -294,10 +296,9 @@ def compute_consecutive_high_signals(
 
         if all_new_high:
             today = rows[-1]
-            prior_high = max(r["close"] for r in window[-(lookback + 1):-1])
-            signals.append(build_entry(code, today, prior_high, None, companies, flows))
+            signals.append(build_entry(code, today["name"], daily_change_pct(rows), None, companies, industries))
 
-    signals.sort(key=lambda s: (s["close"] / s["prior_high"]) if s["prior_high"] else 0, reverse=True)
+    signals.sort(key=lambda s: s["daily_change_pct"] or 0, reverse=True)
     return signals, warmup
 
 
@@ -334,19 +335,19 @@ def main() -> int:
     save_history(trimmed)
 
     companies = load_companies()
-    flows = load_flows()
+    industries = load_industries()
 
     sets_output = []
     for spec in SIGNAL_SETS:
         set_type = spec.get("type", "breakout_volume")
         if set_type == "breakout_volume":
             signals, warmup = compute_signals(
-                by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, flows
+                by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, industries
             )
             params = {"breakout_lookback_days": spec["lookback"], "volume_multiplier": spec["volume_multiplier"]}
         elif set_type == "consecutive_high":
             signals, warmup = compute_consecutive_high_signals(
-                by_code, today_date, spec["lookback"], spec["consecutive_days"], companies, flows
+                by_code, today_date, spec["lookback"], spec["consecutive_days"], companies, industries
             )
             params = {"lookback_days": spec["lookback"], "consecutive_days": spec["consecutive_days"]}
         else:
