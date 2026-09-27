@@ -258,7 +258,6 @@ const db = getFirestore(fbApp);
       return `
         <tr>
           <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
-          <td>${escapeHtml(s.market)}</td>
           <td class="num">${s.close}</td>
           <td class="num">${s.prior_high}</td>
           <td class="num pnl-pos">${s.volume_multiple != null ? s.volume_multiple + 'x' : '–'}</td>
@@ -279,7 +278,7 @@ const db = getFirestore(fbApp);
           <table class="trade-table">
             <thead>
               <tr>
-                <th>股票</th><th>市場</th><th class="num">收盤</th><th class="num">前波高</th>
+                <th>股票</th><th class="num">收盤</th><th class="num">前波高</th>
                 <th class="num">量增倍數</th><th>族群</th><th>供應鏈位置</th><th>相關族群</th>
               </tr>
             </thead>
