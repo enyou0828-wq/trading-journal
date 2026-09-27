@@ -1,12 +1,12 @@
 {
   "scan_date": "2026-09-24",
-  "generated_at": "2026-09-27T15:46:07.308865+00:00",
+  "generated_at": "2026-09-27T15:48:46.444332+00:00",
   "sets": [
     {
       "key": "swing",
-      "label": "中期（20日新高＋量增2倍）",
+      "label": "中期（10日新高＋量增2倍）",
       "params": {
-        "breakout_lookback_days": 20,
+        "breakout_lookback_days": 10,
         "volume_multiplier": 2.0
       },
       "warmup": true,

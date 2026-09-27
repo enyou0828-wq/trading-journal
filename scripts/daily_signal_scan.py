@@ -32,7 +32,7 @@ TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes
 
 # 同時算多組篩選條件，各自獨立產出訊號清單。之後要加/改組合，直接改這個 list。
 SIGNAL_SETS = [
-    {"key": "swing", "label": "中期（20日新高＋量增2倍）", "lookback": 20, "volume_multiplier": 2.0},
+    {"key": "swing", "label": "中期（10日新高＋量增2倍）", "lookback": 10, "volume_multiplier": 2.0},
     {"key": "fast", "label": "短線（5日新高＋量增1.5倍）", "lookback": 5, "volume_multiplier": 1.5},
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
