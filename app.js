@@ -240,8 +240,69 @@ const db = getFirestore(fbApp);
       if (target === 'stats') renderStats();
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainTree(); renderChainDetail(); }
+      if (target === 'signals') renderSignals();
     });
   });
+
+  // ================= SIGNALS =================
+  let signalsLoaded = false;
+
+  async function renderSignals() {
+    if (signalsLoaded) return;
+    signalsLoaded = true;
+
+    const metaEl = document.getElementById('signals-meta');
+    const warmupEl = document.getElementById('signals-warmup');
+    const tbody = document.getElementById('signals-tbody');
+    const emptyEl = document.getElementById('signals-empty');
+
+    try {
+      const res = await fetch('signals/latest.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      metaEl.textContent =
+        `資料日期 ${data.scan_date }　條件：${data.params.breakout_lookback_days}日新高 + 量增${data.params.volume_multiplier}倍以上　更新於 ${new Date(data.generated_at).toLocaleString('zh-TW')}`;
+
+      if (data.warmup) {
+        warmupEl.style.display = 'block';
+        warmupEl.textContent = '提醒：部分股票累積歷史還不到門檻天數，暖機期尚未結束，訊號會隨每天累積資料陸續補齊。';
+      } else {
+        warmupEl.style.display = 'none';
+      }
+
+      tbody.innerHTML = '';
+      emptyEl.style.display = data.signals.length ? 'none' : 'block';
+
+      for (const s of data.signals) {
+        const tr = document.createElement('tr');
+        const related = s.related_groups
+          ? [
+              s.related_groups.upstream.length ? `上游：${s.related_groups.upstream.join('、')}` : '',
+              s.related_groups.downstream.length ? `下游：${s.related_groups.downstream.join('、')}` : '',
+            ].filter(Boolean).join('　')
+          : '–';
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
+          <td>${escapeHtml(s.market)}</td>
+          <td class="num">${s.close}</td>
+          <td class="num">${s.prior_high}</td>
+          <td class="num pnl-pos">${s.volume_multiple}x</td>
+          <td>${s.in_supply_chain_map ? escapeHtml(s.group) : '–'}</td>
+          <td>${s.in_supply_chain_map ? escapeHtml(s.supply_chain_position) : '（不在供應鏈圖收錄清單內）'}</td>
+          <td>${escapeHtml(related)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    } catch (e) {
+      metaEl.textContent = '';
+      warmupEl.style.display = 'none';
+      tbody.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = '讀取訊號失敗：' + e.message;
+      signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
+    }
+  }
 
   // ================= TRADES =================
   const tbody = document.getElementById('trade-tbody');

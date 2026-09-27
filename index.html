@@ -37,6 +37,7 @@
       <button class="tab" data-tab="stats" role="tab" aria-selected="false">統計分析</button>
       <button class="tab" data-tab="review" role="tab" aria-selected="false">月度回顧</button>
       <button class="tab" data-tab="chain" role="tab" aria-selected="false">供應鏈</button>
+      <button class="tab" data-tab="signals" role="tab" aria-selected="false">訊號</button>
     </nav>
     <div class="topbar-actions">
       <span class="sync-status" id="sync-status">已同步</span>
@@ -250,6 +251,34 @@
 
       <div class="chain-map-embed">
         <iframe id="chain-map-frame" src="./supply-chain-map/" title="台股供應鏈互動地圖" loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <!-- ===== SIGNALS TAB ===== -->
+    <section class="panel" id="panel-signals">
+      <div class="panel-head">
+        <h1>訊號</h1>
+      </div>
+      <p id="signals-meta" style="color:var(--text-muted);font-size:13px;margin:-8px 0 16px;"></p>
+      <p id="signals-warmup" class="empty-state" style="display:none;padding:12px 16px;text-align:left;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-1);"></p>
+
+      <div class="table-wrap">
+        <table class="trade-table">
+          <thead>
+            <tr>
+              <th>股票</th>
+              <th>市場</th>
+              <th class="num">收盤</th>
+              <th class="num">前波高</th>
+              <th class="num">量增倍數</th>
+              <th>族群</th>
+              <th>供應鏈位置</th>
+              <th>相關族群</th>
+            </tr>
+          </thead>
+          <tbody id="signals-tbody"></tbody>
+        </table>
+        <p class="empty-state" id="signals-empty">今天沒有符合條件的訊號。</p>
       </div>
     </section>
 
