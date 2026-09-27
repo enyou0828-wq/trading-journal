@@ -1,6 +1,6 @@
 {
   "scan_date": "2026-09-24",
-  "generated_at": "2026-09-27T15:48:46.444332+00:00",
+  "generated_at": "2026-09-27T15:54:30.172057+00:00",
   "sets": [
     {
       "key": "swing",
@@ -19,6 +19,17 @@
       "params": {
         "breakout_lookback_days": 5,
         "volume_multiplier": 1.5
+      },
+      "warmup": true,
+      "signal_count": 0,
+      "signals": []
+    },
+    {
+      "key": "streak",
+      "label": "連續2天創5日新高",
+      "params": {
+        "lookback_days": 5,
+        "consecutive_days": 2
       },
       "warmup": true,
       "signal_count": 0,

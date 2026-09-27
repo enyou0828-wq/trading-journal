@@ -32,8 +32,9 @@ TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes
 
 # 同時算多組篩選條件，各自獨立產出訊號清單。之後要加/改組合，直接改這個 list。
 SIGNAL_SETS = [
-    {"key": "swing", "label": "中期（10日新高＋量增2倍）", "lookback": 10, "volume_multiplier": 2.0},
-    {"key": "fast", "label": "短線（5日新高＋量增1.5倍）", "lookback": 5, "volume_multiplier": 1.5},
+    {"key": "swing", "label": "中期（10日新高＋量增2倍）", "type": "breakout_volume", "lookback": 10, "volume_multiplier": 2.0},
+    {"key": "fast", "label": "短線（5日新高＋量增1.5倍）", "type": "breakout_volume", "lookback": 5, "volume_multiplier": 1.5},
+    {"key": "streak", "label": "連續2天創5日新高", "type": "consecutive_high", "lookback": 5, "consecutive_days": 2},
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
 
@@ -207,6 +208,29 @@ def related_groups(group: str, flows: list[dict]) -> dict[str, list[str]]:
     return {"upstream": upstream, "downstream": downstream}
 
 
+def build_entry(code: str, today: dict, prior_high: float, volume_multiple, companies: dict, flows: list[dict]) -> dict:
+    info = companies.get(code)
+    entry = {
+        "code": code,
+        "name": today["name"],
+        "market": today["market"],
+        "close": today["close"],
+        "volume": today["volume"],
+        "prior_high": round(prior_high, 2),
+        "volume_multiple": round(volume_multiple, 2) if volume_multiple is not None else None,
+        "in_supply_chain_map": info is not None,
+    }
+    if info:
+        group = info["族群"]
+        entry.update({
+            "industry": info["產業"],
+            "group": group,
+            "supply_chain_position": info["供應鏈位置"],
+            "related_groups": related_groups(group, flows),
+        })
+    return entry
+
+
 def compute_signals(
     by_code: dict[str, list[dict]],
     today_date: str,
@@ -215,6 +239,7 @@ def compute_signals(
     companies: dict[str, dict],
     flows: list[dict],
 ) -> tuple[list[dict], bool]:
+    """今天創 N 日新高，且量增達到過去均量的指定倍數。"""
     signals = []
     warmup = False
     for code, rows in by_code.items():
@@ -233,28 +258,46 @@ def compute_signals(
         is_volume_surge = prior_avg_vol > 0 and today["volume"] >= volume_multiplier * prior_avg_vol
 
         if is_breakout and is_volume_surge:
-            info = companies.get(code)
-            entry = {
-                "code": code,
-                "name": today["name"],
-                "market": today["market"],
-                "close": today["close"],
-                "volume": today["volume"],
-                "prior_high": round(prior_high, 2),
-                "volume_multiple": round(today["volume"] / prior_avg_vol, 2),
-                "in_supply_chain_map": info is not None,
-            }
-            if info:
-                group = info["族群"]
-                entry.update({
-                    "industry": info["產業"],
-                    "group": group,
-                    "supply_chain_position": info["供應鏈位置"],
-                    "related_groups": related_groups(group, flows),
-                })
-            signals.append(entry)
+            signals.append(build_entry(code, today, prior_high, today["volume"] / prior_avg_vol, companies, flows))
 
     signals.sort(key=lambda s: s["volume_multiple"], reverse=True)
+    return signals, warmup
+
+
+def compute_consecutive_high_signals(
+    by_code: dict[str, list[dict]],
+    today_date: str,
+    lookback: int,
+    consecutive_days: int,
+    companies: dict[str, dict],
+    flows: list[dict],
+) -> tuple[list[dict], bool]:
+    """連續 consecutive_days 天，每一天收盤都各自創下當天的 N 日新高（不看量）。"""
+    signals = []
+    warmup = False
+    needed = lookback + consecutive_days
+    for code, rows in by_code.items():
+        if rows[-1]["date"] != today_date:
+            continue
+        if len(rows) < needed:
+            warmup = True
+            continue
+
+        window = rows[-needed:]
+        all_new_high = True
+        for offset in range(consecutive_days):
+            day = window[lookback + offset]
+            preceding = window[offset:offset + lookback]
+            if day["close"] <= max(r["close"] for r in preceding):
+                all_new_high = False
+                break
+
+        if all_new_high:
+            today = rows[-1]
+            prior_high = max(r["close"] for r in window[-(lookback + 1):-1])
+            signals.append(build_entry(code, today, prior_high, None, companies, flows))
+
+    signals.sort(key=lambda s: (s["close"] / s["prior_high"]) if s["prior_high"] else 0, reverse=True)
     return signals, warmup
 
 
@@ -295,16 +338,24 @@ def main() -> int:
 
     sets_output = []
     for spec in SIGNAL_SETS:
-        signals, warmup = compute_signals(
-            by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, flows
-        )
+        set_type = spec.get("type", "breakout_volume")
+        if set_type == "breakout_volume":
+            signals, warmup = compute_signals(
+                by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, flows
+            )
+            params = {"breakout_lookback_days": spec["lookback"], "volume_multiplier": spec["volume_multiplier"]}
+        elif set_type == "consecutive_high":
+            signals, warmup = compute_consecutive_high_signals(
+                by_code, today_date, spec["lookback"], spec["consecutive_days"], companies, flows
+            )
+            params = {"lookback_days": spec["lookback"], "consecutive_days": spec["consecutive_days"]}
+        else:
+            raise ValueError(f"未知的 signal set type：{set_type}")
+
         sets_output.append({
             "key": spec["key"],
             "label": spec["label"],
-            "params": {
-                "breakout_lookback_days": spec["lookback"],
-                "volume_multiplier": spec["volume_multiplier"],
-            },
+            "params": params,
             "warmup": warmup,
             "signal_count": len(signals),
             "signals": signals,

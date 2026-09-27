@@ -95,7 +95,7 @@ function renderSet(set) {
           <div class="card">
             <div class="card-top">
               <div><span class="code">${s.code}</span><span class="name">${s.name}</span></div>
-              <div class="multiple">量增 ${s.volume_multiple}x</div>
+              <div class="multiple">${s.volume_multiple != null ? `量增 ${s.volume_multiple}x` : '連續創新高'}</div>
             </div>
             <div class="row">
               <span>收盤 ${s.close}</span>

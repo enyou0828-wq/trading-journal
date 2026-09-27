@@ -261,7 +261,7 @@ const db = getFirestore(fbApp);
           <td>${escapeHtml(s.market)}</td>
           <td class="num">${s.close}</td>
           <td class="num">${s.prior_high}</td>
-          <td class="num pnl-pos">${s.volume_multiple}x</td>
+          <td class="num pnl-pos">${s.volume_multiple != null ? s.volume_multiple + 'x' : '–'}</td>
           <td>${s.in_supply_chain_map ? escapeHtml(s.group) : '–'}</td>
           <td>${s.in_supply_chain_map ? escapeHtml(s.supply_chain_position) : '（不在供應鏈圖收錄清單內）'}</td>
           <td>${escapeHtml(related)}</td>
