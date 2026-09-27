@@ -1,11 +1,28 @@
 {
   "scan_date": "2026-09-24",
-  "generated_at": "2026-09-27T15:35:11.495219+00:00",
-  "params": {
-    "breakout_lookback_days": 20,
-    "volume_multiplier": 2.0
-  },
-  "warmup": true,
-  "signal_count": 0,
-  "signals": []
+  "generated_at": "2026-09-27T15:46:07.308865+00:00",
+  "sets": [
+    {
+      "key": "swing",
+      "label": "中期（20日新高＋量增2倍）",
+      "params": {
+        "breakout_lookback_days": 20,
+        "volume_multiplier": 2.0
+      },
+      "warmup": true,
+      "signal_count": 0,
+      "signals": []
+    },
+    {
+      "key": "fast",
+      "label": "短線（5日新高＋量增1.5倍）",
+      "params": {
+        "breakout_lookback_days": 5,
+        "volume_multiplier": 1.5
+      },
+      "warmup": true,
+      "signal_count": 0,
+      "signals": []
+    }
+  ]
 }

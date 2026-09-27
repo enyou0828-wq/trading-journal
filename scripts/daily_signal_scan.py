@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
 每日盤後訊號掃描：抓 TWSE / TPEx 全市場日收盤資料，累積到本地歷史，
-偵測「創 N 日新高 + 爆量」的突破訊號，並比對 supply-chain-map 的
-companies.csv 標出族群與供應鏈相關股。
+同時用多組「創 N 日新高 + 爆量」條件（見 SIGNAL_SETS）各自獨立篩出
+突破訊號，並比對 supply-chain-map 的 companies.csv 標出族群與供應鏈相關股。
 
 執行後更新：
-  - data/price_history.csv   累積的每日收盤/成交量歷史（自動裁到最近 LOOKBACK*3 天）
-  - signals/latest.json      當天篩出的訊號
+  - data/price_history.csv   累積的每日收盤/成交量歷史（自動裁到最近 max(lookback)*3 天）
+  - signals/latest.json      當天每組條件各自篩出的訊號（signals/latest.json 的 "sets" 陣列）
 
-參數（BREAKOUT_LOOKBACK / VOLUME_MULTIPLIER）先給預設值，
-之後要調整靈敏度直接改這兩個常數即可。
+要加/改篩選條件組合，直接改 SIGNAL_SETS 這個 list。
 """
 import csv
 import json
@@ -31,9 +30,12 @@ FLOWS_CSV = REPO_ROOT / "supply-chain-map" / "data" / "flows.csv"
 TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
 
-BREAKOUT_LOOKBACK = 20      # 創幾日新高
-VOLUME_MULTIPLIER = 2.0     # 成交量要達到過去均量的幾倍
-HISTORY_KEEP_DAYS = BREAKOUT_LOOKBACK * 3  # 歷史檔只保留這麼多天，避免無限膨脹
+# 同時算多組篩選條件，各自獨立產出訊號清單。之後要加/改組合，直接改這個 list。
+SIGNAL_SETS = [
+    {"key": "swing", "label": "中期（20日新高＋量增2倍）", "lookback": 20, "volume_multiplier": 2.0},
+    {"key": "fast", "label": "短線（5日新高＋量增1.5倍）", "lookback": 5, "volume_multiplier": 1.5},
+]
+HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
 
 PLAIN_STOCK_CODE = re.compile(r"^(?!00)\d{4}$")  # 只留 4 碼數字股票，濾掉 00 開頭的 ETF 與帶字母的權證等
 
@@ -205,6 +207,57 @@ def related_groups(group: str, flows: list[dict]) -> dict[str, list[str]]:
     return {"upstream": upstream, "downstream": downstream}
 
 
+def compute_signals(
+    by_code: dict[str, list[dict]],
+    today_date: str,
+    lookback: int,
+    volume_multiplier: float,
+    companies: dict[str, dict],
+    flows: list[dict],
+) -> tuple[list[dict], bool]:
+    signals = []
+    warmup = False
+    for code, rows in by_code.items():
+        if rows[-1]["date"] != today_date:
+            continue  # 今天没有這檔的資料（新上市/資料缺漏），跳過
+        if len(rows) < lookback + 1:
+            warmup = True
+            continue  # 歷史還不夠長，跳過（暖機期）
+
+        prior = rows[-(lookback + 1):-1]
+        today = rows[-1]
+        prior_high = max(r["close"] for r in prior)
+        prior_avg_vol = sum(r["volume"] for r in prior) / len(prior)
+
+        is_breakout = today["close"] > prior_high
+        is_volume_surge = prior_avg_vol > 0 and today["volume"] >= volume_multiplier * prior_avg_vol
+
+        if is_breakout and is_volume_surge:
+            info = companies.get(code)
+            entry = {
+                "code": code,
+                "name": today["name"],
+                "market": today["market"],
+                "close": today["close"],
+                "volume": today["volume"],
+                "prior_high": round(prior_high, 2),
+                "volume_multiple": round(today["volume"] / prior_avg_vol, 2),
+                "in_supply_chain_map": info is not None,
+            }
+            if info:
+                group = info["族群"]
+                entry.update({
+                    "industry": info["產業"],
+                    "group": group,
+                    "supply_chain_position": info["供應鏈位置"],
+                    "related_groups": related_groups(group, flows),
+                })
+            signals.append(entry)
+
+    signals.sort(key=lambda s: s["volume_multiple"], reverse=True)
+    return signals, warmup
+
+
 def main() -> int:
     try:
         today_rows = fetch_twse_rows() + fetch_tpex_rows()
@@ -240,66 +293,34 @@ def main() -> int:
     companies = load_companies()
     flows = load_flows()
 
-    signals = []
-    for code, rows in by_code.items():
-        rows.sort(key=lambda r: r["date"])
-        if rows[-1]["date"] != today_date:
-            continue  # 今天没有這檔的資料（新上市/資料缺漏），跳過
-        if len(rows) < BREAKOUT_LOOKBACK + 1:
-            continue  # 歷史還不夠長，跳過（暖機期）
-
-        prior = rows[-(BREAKOUT_LOOKBACK + 1):-1]
-        today = rows[-1]
-        prior_high = max(r["close"] for r in prior)
-        prior_avg_vol = sum(r["volume"] for r in prior) / len(prior)
-
-        is_breakout = today["close"] > prior_high
-        is_volume_surge = prior_avg_vol > 0 and today["volume"] >= VOLUME_MULTIPLIER * prior_avg_vol
-
-        if is_breakout and is_volume_surge:
-            info = companies.get(code)
-            entry = {
-                "code": code,
-                "name": today["name"],
-                "market": today["market"],
-                "close": today["close"],
-                "volume": today["volume"],
-                "prior_high": round(prior_high, 2),
-                "volume_multiple": round(today["volume"] / prior_avg_vol, 2),
-                "in_supply_chain_map": info is not None,
-            }
-            if info:
-                group = info["族群"]
-                entry.update({
-                    "industry": info["產業"],
-                    "group": group,
-                    "supply_chain_position": info["供應鏈位置"],
-                    "related_groups": related_groups(group, flows),
-                })
-            signals.append(entry)
-
-    signals.sort(key=lambda s: s["volume_multiple"], reverse=True)
+    sets_output = []
+    for spec in SIGNAL_SETS:
+        signals, warmup = compute_signals(
+            by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, flows
+        )
+        sets_output.append({
+            "key": spec["key"],
+            "label": spec["label"],
+            "params": {
+                "breakout_lookback_days": spec["lookback"],
+                "volume_multiplier": spec["volume_multiplier"],
+            },
+            "warmup": warmup,
+            "signal_count": len(signals),
+            "signals": signals,
+        })
+        print(f"[{spec['key']}] 篩出 {len(signals)} 檔訊號" + ("（部分股票仍在暖機期）" if warmup else ""))
 
     SIGNALS_JSON.parent.mkdir(parents=True, exist_ok=True)
     output = {
         "scan_date": today_date,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "params": {
-            "breakout_lookback_days": BREAKOUT_LOOKBACK,
-            "volume_multiplier": VOLUME_MULTIPLIER,
-        },
-        "warmup": {
-            code_: len(rows) for code_, rows in by_code.items()
-        } and (min(len(rows) for rows in by_code.values()) < BREAKOUT_LOOKBACK + 1),
-        "signal_count": len(signals),
-        "signals": signals,
+        "sets": sets_output,
     }
     with open(SIGNALS_JSON, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"完成：{today_date}，共 {len(by_code)} 檔有資料，篩出 {len(signals)} 檔訊號")
-    if output["warmup"]:
-        print("注意：部分股票歷史天數還不到 %d 天，暖機期尚未結束，訊號會隨天數增加陸續補齊" % (BREAKOUT_LOOKBACK + 1))
+    print(f"完成：{today_date}，共 {len(by_code)} 檔有資料")
     return 0
 
 
