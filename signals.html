@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日突破訊號</title>
+<style>
+  :root {
+    --bg: #f9f9f7;
+    --surface: #ffffff;
+    --text: #0b0b0b;
+    --text-muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --accent: #2a78d6;
+    --up: #1baf7a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --surface: #1e1e1c;
+      --text: #f2f1ee;
+      --text-muted: #9a988f;
+      --border: rgba(255,255,255,0.12);
+      --accent: #5b9bef;
+      --up: #33d19a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .meta { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; }
+  .warmup {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .card-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .code { font-weight: 600; font-size: 1.05rem; }
+  .name { color: var(--text-muted); font-size: 0.9rem; margin-left: 6px; }
+  .multiple { color: var(--up); font-weight: 600; }
+  .row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); }
+  .tag {
+    display: inline-block;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    margin: 2px 4px 0 0;
+  }
+  .related { margin-top: 10px; font-size: 0.85rem; }
+  .related b { color: var(--text); }
+  .empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>每日突破訊號</h1>
+  <div class="meta" id="meta">載入中…</div>
+  <div id="warmup" style="display:none" class="warmup"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+async function load() {
+  const metaEl = document.getElementById('meta');
+  const warmupEl = document.getElementById('warmup');
+  const listEl = document.getElementById('list');
+  try {
+    const res = await fetch('signals/latest.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    metaEl.textContent =
+      `資料日期：${data.scan_date}　條件：${data.params.breakout_lookback_days}日新高 + 量增${data.params.volume_multiplier}倍以上　產生時間：${new Date(data.generated_at).toLocaleString('zh-TW')}`;
+
+    if (data.warmup) {
+      warmupEl.style.display = 'block';
+      warmupEl.textContent = '提醒：部分股票累積歷史還不到門檻天數，暖機期尚未結束，訊號會隨著每天累積資料陸續補齊。';
+    }
+
+    if (!data.signals.length) {
+      listEl.innerHTML = '<div class="empty">今天沒有符合條件的訊號</div>';
+      return;
+    }
+
+    listEl.innerHTML = data.signals.map(s => {
+      const relatedHtml = s.related_groups
+        ? `<div class="related">
+             ${s.related_groups.upstream.length ? `<div><b>上游族群：</b>${s.related_groups.upstream.join('、')}</div>` : ''}
+             ${s.related_groups.downstream.length ? `<div><b>下游族群：</b>${s.related_groups.downstream.join('、')}</div>` : ''}
+           </div>`
+        : '';
+      return `
+        <div class="card">
+          <div class="card-top">
+            <div><span class="code">${s.code}</span><span class="name">${s.name}</span></div>
+            <div class="multiple">量增 ${s.volume_multiple}x</div>
+          </div>
+          <div class="row">
+            <span>收盤 ${s.close}</span>
+            <span>前波高 ${s.prior_high}</span>
+            <span>${s.market}</span>
+          </div>
+          ${s.in_supply_chain_map ? `
+            <div style="margin-top:8px">
+              <span class="tag">${s.industry}</span>
+              <span class="tag">${s.group}</span>
+              <span class="tag">${s.supply_chain_position}</span>
+            </div>
+            ${relatedHtml}
+          ` : '<div class="row">（不在供應鏈圖收錄清單內）</div>'}
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    metaEl.textContent = '';
+    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "scan_date": "2026-09-24",
+  "generated_at": "2026-09-27T15:28:13.586467+00:00",
+  "params": {
+    "breakout_lookback_days": 20,
+    "volume_multiplier": 2.0
+  },
+  "warmup": true,
+  "signal_count": 0,
+  "signals": []
+}
