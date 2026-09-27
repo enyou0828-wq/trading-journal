@@ -258,9 +258,10 @@ body {
 .chart-body svg { width: 100%; display: block; overflow: visible; }
 
 .signal-sets-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px; align-items: start;
 }
+.signal-sets-grid .table-wrap { overflow-x: auto; }
 .signal-set-warmup { padding: 10px 14px; font-size: 12.5px; }
 
 @media (max-width: 900px) {
