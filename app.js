@@ -460,7 +460,7 @@ const db = getFirestore(fbApp);
       const groups = data.group_rotation ? data.group_rotation.groups : [];
       rotationEl.innerHTML = groups.length
         ? groups.map(groupRotationHtml).join('')
-        : `<p class="empty-state">今天沒有族群同步噴出。</p>`;
+        : `<div class="chart-card"><p class="empty-state" style="padding:16px 0;">今天沒有族群同步噴出。</p></div>`;
     } catch (e) {
       metaEl.textContent = '';
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;

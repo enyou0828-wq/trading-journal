@@ -1,6 +1,6 @@
 {
   "scan_date": "2026-09-24",
-  "generated_at": "2026-09-28T08:58:09.280292+00:00",
+  "generated_at": "2026-09-28T09:09:14.726640+00:00",
   "sets": [
     {
       "key": "fast",
@@ -1335,8 +1335,44 @@
   "group_rotation": {
     "params": {
       "threshold_pct": 5.0,
-      "min_count": 3
+      "min_fraction": 0.3333333333333333,
+      "min_stocks": 2
     },
-    "groups": []
+    "groups": [
+      {
+        "group": "半導體設備",
+        "total_in_group": 5,
+        "triggered_count": 2,
+        "stocks": [
+          {
+            "code": "6207",
+            "name": "雷科",
+            "daily_change_pct": 9.65
+          },
+          {
+            "code": "7734",
+            "name": "印能科技",
+            "daily_change_pct": 6.59
+          }
+        ]
+      },
+      {
+        "group": "散熱",
+        "total_in_group": 4,
+        "triggered_count": 2,
+        "stocks": [
+          {
+            "code": "3653",
+            "name": "健策",
+            "daily_change_pct": 7.96
+          },
+          {
+            "code": "3324",
+            "name": "雙鴻",
+            "daily_change_pct": 7.21
+          }
+        ]
+      }
+    ]
   }
 }

@@ -136,7 +136,7 @@ async function load() {
     const groups = data.group_rotation ? data.group_rotation.groups : [];
     rotationEl.innerHTML = groups.length
       ? groups.map(renderGroupRotation).join('')
-      : '<div class="empty">今天沒有族群同步噴出</div>';
+      : '<div class="card"><div class="empty" style="padding:16px 0;">今天沒有族群同步噴出</div></div>';
   } catch (e) {
     metaEl.textContent = '';
     setsEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;

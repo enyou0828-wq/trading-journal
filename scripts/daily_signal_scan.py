@@ -15,7 +15,7 @@ supply-chain-map/companies.csv 手動查證過的細分族群（僅涵蓋部分�
   - signals/latest.json      當天每組條件各自篩出的訊號（"sets" 陣列）＋族群輪動結果（"group_rotation"）
 
 要加/改篩選條件組合，直接改 SIGNAL_SETS 這個 list；族群輪動的門檻改
-GROUP_ROTATION_THRESHOLD_PCT / GROUP_ROTATION_MIN_COUNT。
+GROUP_ROTATION_THRESHOLD_PCT / GROUP_ROTATION_MIN_FRACTION / GROUP_ROTATION_MIN_STOCKS。
 """
 import csv
 import json
@@ -53,11 +53,13 @@ PRIORITY_INDUSTRIES = {
     "電子零組件業", "電子通路業", "資訊服務業", "其他電子業",
 }
 
-# 族群同步噴出：用 companies.csv 現成的細分族群（不額外合併），
-# 一個族群裡同一天有 GROUP_ROTATION_MIN_COUNT 檔以上漲幅達到 GROUP_ROTATION_THRESHOLD_PCT，
-# 就判定這個族群今天在輪動。這兩個數字是起始猜測值，之後可以再調整。
+# 族群同步噴出：用 companies.csv 現成的細分族群（不額外合併），一個族群裡同一天漲幅達到
+# GROUP_ROTATION_THRESHOLD_PCT 的家數，超過該族群總家數的 GROUP_ROTATION_MIN_FRACTION（1/3）
+# 就判定這個族群今天在輪動。額外要求至少 2 檔（「同步」本來就該是多檔一起動，只有 1 家的
+# 族群不該用比例算出「1 家也算輪動」）。這些數字是起始猜測值，之後可以再調整。
 GROUP_ROTATION_THRESHOLD_PCT = 5.0
-GROUP_ROTATION_MIN_COUNT = 3
+GROUP_ROTATION_MIN_FRACTION = 1 / 3
+GROUP_ROTATION_MIN_STOCKS = 2
 
 
 def priority_sort_key(entry: dict, secondary: float) -> tuple:
@@ -332,9 +334,11 @@ def compute_group_rotation(
     today_date: str,
     companies: dict[str, dict],
     threshold_pct: float = GROUP_ROTATION_THRESHOLD_PCT,
-    min_count: int = GROUP_ROTATION_MIN_COUNT,
+    min_fraction: float = GROUP_ROTATION_MIN_FRACTION,
+    min_stocks: int = GROUP_ROTATION_MIN_STOCKS,
 ) -> list[dict]:
-    """companies.csv 現成的細分族群裡，今天同時有 min_count 檔以上漲幅達 threshold_pct，判定該族群今天在輪動。"""
+    """companies.csv 現成的細分族群裡，今天漲幅達 threshold_pct 的家數超過該族群總家數的
+    min_fraction（且至少 min_stocks 檔），判定該族群今天在輪動。"""
     codes_by_group: dict[str, list[str]] = defaultdict(list)
     for code, info in companies.items():
         group = info.get("族群")
@@ -352,7 +356,7 @@ def compute_group_rotation(
             if change is not None and change >= threshold_pct:
                 triggered.append({"code": code, "name": rows[-1]["name"], "daily_change_pct": round(change, 2)})
 
-        if len(triggered) >= min_count:
+        if len(triggered) > len(codes) * min_fraction and len(triggered) >= min_stocks:
             triggered.sort(key=lambda s: s["daily_change_pct"], reverse=True)
             results.append({
                 "group": group,
@@ -440,7 +444,8 @@ def main() -> int:
         "group_rotation": {
             "params": {
                 "threshold_pct": GROUP_ROTATION_THRESHOLD_PCT,
-                "min_count": GROUP_ROTATION_MIN_COUNT,
+                "min_fraction": GROUP_ROTATION_MIN_FRACTION,
+                "min_stocks": GROUP_ROTATION_MIN_STOCKS,
             },
             "groups": rotating_groups,
         },
