@@ -16,11 +16,13 @@ const db = getFirestore(fbApp);
   const ENTRY_ACTIONS = new Set(['買進', '加碼']);
   const EXIT_ACTIONS = new Set(['減碼', '賣出', '加碼轉賣出']);
 
-  // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬
+  // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬。
+  // 資金加權累計報酬曲線／總計數字永遠用這個固定兩段式基準計算，不受 MONTHLY_CAPITAL_BASE 影響
+  // ——這條曲線代表「以固定基準 100 為底」的加權報酬指數，不是真實資產報酬率。
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
-  // 曾經試過改用這份「各月份精確資金」取代兩段式基準（2026-09-28），但會連帶影響資金加權累計報酬曲線
-  // （不該被動到），所以已經用 capitalBaseMonthlyRevert 這個 migration 復原。留著這個常數只給
-  // 前面 V1/V2/Revert 三個一次性 migration 讀取，不會再有新程式碼使用它。
+  // 各月份實際總資產（元）。只用在「顯示層」：月度統計表與月度長條圖的「資金加權報酬」
+  // 這一欄，代表當月用真實總資產當分母算出來的真實報酬率，不會去改 positionPct/contrib
+  // 這些底層儲存欄位（改儲存欄位會連帶動到曲線，2026-09-28 踩過這個坑，見 monthlyCapitalFactor）。
   const MONTHLY_CAPITAL_BASE = {
     '2026-05': 750000,
     '2026-06': 1270000,
@@ -28,6 +30,14 @@ const db = getFirestore(fbApp);
     '2026-08': 650000,
     '2026-09': 550000,
   };
+  // contrib（資金加權貢獻，%）原本是相對於兩段式固定基準算出來的；把它換算成「相對於當月真實總資產」
+  // 的真實報酬率，換算比例 = 固定基準 ÷ 當月真實總資產。月份不在表列時回傳 1（不調整）。
+  function monthlyCapitalFactor(dateStr) {
+    const m = dateStr.slice(0, 7);
+    if (MONTHLY_CAPITAL_BASE[m] == null) return 1;
+    const fixedBasis = dateStr >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
+    return fixedBasis / MONTHLY_CAPITAL_BASE[m];
+  }
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
   const EQUITY_CURVE_START = '2026-06-01';
 
@@ -655,11 +665,13 @@ const db = getFirestore(fbApp);
 
     for (const m of months) {
       const s = computeStats(byMonth[m]);
-      const pnlClass = s.totalWeighted > 0 ? 'pnl-pos' : s.totalWeighted < 0 ? 'pnl-neg' : 'pnl-zero';
+      // 「資金加權報酬」這一欄用當月真實總資產換算的真實報酬率，其餘欄位（勝率、次數等）不受影響
+      const realReturn = s.weighted.reduce((sum, t) => sum + t.contrib * monthlyCapitalFactor(t.date), 0);
+      const pnlClass = realReturn > 0 ? 'pnl-pos' : realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${m.replace('-', '/')}</strong></td>
-        <td class="num ${pnlClass}">${fmtPct(s.totalWeighted, 2)}</td>
+        <td class="num ${pnlClass}">${fmtPct(realReturn, 2)}</td>
         <td class="num">${s.winRate.toFixed(1)}%</td>
         <td class="num">${s.realized.length}（${s.wins.length}勝${s.losses.length}敗）</td>
         <td class="num">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</td>
@@ -829,10 +841,11 @@ const db = getFirestore(fbApp);
       el.innerHTML = '<p class="empty-state">尚無帶有資金佔比與報酬率的已實現紀錄，無法繪製月度統計。</p>';
       return;
     }
+    // 各月份長條圖跟月度統計表用同一套「當月真實總資產」換算，見 monthlyCapitalFactor
     const byMonth = {};
     weighted.forEach(t => {
       const m = t.date.slice(0, 7); // YYYY-MM
-      byMonth[m] = (byMonth[m] || 0) + t.contrib;
+      byMonth[m] = (byMonth[m] || 0) + t.contrib * monthlyCapitalFactor(t.date);
     });
     const months = Object.keys(byMonth).sort();
     const otcMonthly = computeOtcMonthlyReturns();
