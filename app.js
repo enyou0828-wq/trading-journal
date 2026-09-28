@@ -422,21 +422,13 @@ const db = getFirestore(fbApp);
   }
 
   function groupRotationHtml(group) {
-    const rowsHtml = group.stocks.map(s => `
-      <tr>
-        <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
-        <td class="num pnl-pos">${s.daily_change_pct > 0 ? '+' : ''}${s.daily_change_pct}%</td>
-      </tr>
-    `).join('');
+    const stocksLine = group.stocks.map(s =>
+      `<strong>${escapeHtml(s.code)}</strong> ${escapeHtml(s.name)} <span class="pnl-pos">${s.daily_change_pct > 0 ? '+' : ''}${s.daily_change_pct}%</span>`
+    ).join('　');
     return `
       <div class="chart-card">
         <div class="chart-head"><h2>${escapeHtml(group.group)}（${group.triggered_count}/${group.total_in_group}家噴出）</h2></div>
-        <div class="table-wrap">
-          <table class="trade-table">
-            <thead><tr><th>股票</th><th class="num">當日漲幅</th></tr></thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-        </div>
+        <p style="margin:0;font-size:13.5px;line-height:1.8;">${stocksLine}</p>
       </div>
     `;
   }

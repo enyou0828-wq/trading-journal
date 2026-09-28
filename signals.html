@@ -60,32 +60,32 @@
   .multiple { color: var(--up); font-weight: 600; }
   .row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); }
   .empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
+  .rotation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .rotation-grid .card { margin-bottom: 0; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>每日突破訊號</h1>
   <div class="meta" id="meta">載入中…</div>
+  <h2 style="margin:0 0 10px;font-size:1.05rem;">族群同步噴出</h2>
+  <div id="rotation" class="rotation-grid"></div>
+  <h2 style="margin:24px 0 10px;font-size:1.05rem;">個股訊號</h2>
   <div id="sets"></div>
-  <h2 style="margin:24px 0 10px;font-size:1.05rem;">族群同步噴出</h2>
-  <div id="rotation"></div>
 </div>
 
 <script>
 function renderGroupRotation(group) {
-  const rows = group.stocks.map(s => `
-    <div class="card-top" style="margin-top:6px;">
-      <div><span class="code">${s.code}</span><span class="name">${s.name}</span></div>
-      <div class="multiple">+${s.daily_change_pct}%</div>
-    </div>
-  `).join('');
+  const stocksLine = group.stocks.map(s =>
+    `<strong>${s.code}</strong> ${s.name} <span style="color:var(--up)">+${s.daily_change_pct}%</span>`
+  ).join('　');
   return `
     <div class="card">
       <div class="card-top">
         <div><strong>${group.group}</strong></div>
         <div class="multiple">${group.triggered_count}/${group.total_in_group}家噴出</div>
       </div>
-      ${rows}
+      <p style="margin:8px 0 0;font-size:0.85rem;line-height:1.8;">${stocksLine}</p>
     </div>
   `;
 }
