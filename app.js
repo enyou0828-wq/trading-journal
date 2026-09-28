@@ -421,12 +421,33 @@ const db = getFirestore(fbApp);
     `;
   }
 
+  function groupRotationHtml(group) {
+    const rowsHtml = group.stocks.map(s => `
+      <tr>
+        <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
+        <td class="num pnl-pos">${s.daily_change_pct > 0 ? '+' : ''}${s.daily_change_pct}%</td>
+      </tr>
+    `).join('');
+    return `
+      <div class="chart-card">
+        <div class="chart-head"><h2>${escapeHtml(group.group)}（${group.triggered_count}/${group.total_in_group}家噴出）</h2></div>
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead><tr><th>股票</th><th class="num">當日漲幅</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   async function renderSignals() {
     if (signalsLoaded) return;
     signalsLoaded = true;
 
     const metaEl = document.getElementById('signals-meta');
     const setsEl = document.getElementById('signals-sets');
+    const rotationEl = document.getElementById('group-rotation-sets');
 
     try {
       const res = await fetch('signals/latest.json', { cache: 'no-store' });
@@ -435,9 +456,15 @@ const db = getFirestore(fbApp);
 
       metaEl.textContent = `資料日期 ${data.scan_date}　更新於 ${new Date(data.generated_at).toLocaleString('zh-TW')}`;
       setsEl.innerHTML = data.sets.map(signalSetHtml).join('');
+
+      const groups = data.group_rotation ? data.group_rotation.groups : [];
+      rotationEl.innerHTML = groups.length
+        ? groups.map(groupRotationHtml).join('')
+        : `<p class="empty-state">今天沒有族群同步噴出。</p>`;
     } catch (e) {
       metaEl.textContent = '';
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;
+      rotationEl.innerHTML = '';
       signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
     }
   }

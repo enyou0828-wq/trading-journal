@@ -268,6 +268,11 @@ body {
   .signal-sets-grid { grid-template-columns: 1fr; }
 }
 
+.group-rotation-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px; align-items: start;
+}
+
 .legend { display: flex; gap: 14px; flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .legend-swatch { width: 10px; height: 10px; border-radius: 3px; }

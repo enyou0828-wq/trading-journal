@@ -7,11 +7,15 @@
 supply-chain-map/companies.csv 手動查證過的細分族群（僅涵蓋部分股票，
 命中時會再往下顯示這一層）。
 
+另外用 companies.csv 現成的細分族群（光通訊、被動元件、PCB…）偵測「族群同步噴出」：
+同一族群裡今天有多檔股票同時大漲，判定該族群今天在輪動（見 compute_group_rotation）。
+
 執行後更新：
   - data/price_history.csv   累積的每日收盤/成交量歷史（自動裁到最近 max(lookback)*3 天）
-  - signals/latest.json      當天每組條件各自篩出的訊號（signals/latest.json 的 "sets" 陣列）
+  - signals/latest.json      當天每組條件各自篩出的訊號（"sets" 陣列）＋族群輪動結果（"group_rotation"）
 
-要加/改篩選條件組合，直接改 SIGNAL_SETS 這個 list。
+要加/改篩選條件組合，直接改 SIGNAL_SETS 這個 list；族群輪動的門檻改
+GROUP_ROTATION_THRESHOLD_PCT / GROUP_ROTATION_MIN_COUNT。
 """
 import csv
 import json
@@ -35,8 +39,10 @@ TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes
 
 # 同時算多組篩選條件，各自獨立產出訊號清單。之後要加/改組合，直接改這個 list。
 SIGNAL_SETS = [
-    {"key": "swing", "label": "中期（10日新高＋量增2倍）", "type": "breakout_volume", "lookback": 10, "volume_multiplier": 2.0},
-    {"key": "fast", "label": "短線（5日新高＋量增1.5倍）", "type": "breakout_volume", "lookback": 5, "volume_multiplier": 1.5},
+    {
+        "key": "fast", "label": "短線（5日新高＋量增1.5倍＋當日漲幅5%以上）", "type": "breakout_volume",
+        "lookback": 5, "volume_multiplier": 1.5, "min_daily_change_pct": 5.0,
+    },
     {"key": "streak", "label": "連續2天創5日新高", "type": "consecutive_high", "lookback": 5, "consecutive_days": 2},
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
@@ -46,6 +52,12 @@ PRIORITY_INDUSTRIES = {
     "半導體業", "電腦及週邊設備業", "光電業", "通信網路業",
     "電子零組件業", "電子通路業", "資訊服務業", "其他電子業",
 }
+
+# 族群同步噴出：用 companies.csv 現成的細分族群（不額外合併），
+# 一個族群裡同一天有 GROUP_ROTATION_MIN_COUNT 檔以上漲幅達到 GROUP_ROTATION_THRESHOLD_PCT，
+# 就判定這個族群今天在輪動。這兩個數字是起始猜測值，之後可以再調整。
+GROUP_ROTATION_THRESHOLD_PCT = 5.0
+GROUP_ROTATION_MIN_COUNT = 3
 
 
 def priority_sort_key(entry: dict, secondary: float) -> tuple:
@@ -248,8 +260,9 @@ def compute_signals(
     volume_multiplier: float,
     companies: dict[str, dict],
     industries: dict[str, dict],
+    min_daily_change_pct: float | None = None,
 ) -> tuple[list[dict], bool]:
-    """今天創 N 日新高，且量增達到過去均量的指定倍數。"""
+    """今天創 N 日新高，且量增達到過去均量的指定倍數（可選：當日漲幅也要達標）。"""
     signals = []
     warmup = False
     for code, rows in by_code.items():
@@ -266,10 +279,12 @@ def compute_signals(
 
         is_breakout = today["close"] > prior_high
         is_volume_surge = prior_avg_vol > 0 and today["volume"] >= volume_multiplier * prior_avg_vol
+        change = daily_change_pct(rows)
+        is_strong_enough = min_daily_change_pct is None or (change is not None and change >= min_daily_change_pct)
 
-        if is_breakout and is_volume_surge:
+        if is_breakout and is_volume_surge and is_strong_enough:
             signals.append(build_entry(
-                code, today["name"], daily_change_pct(rows), today["volume"] / prior_avg_vol, companies, industries
+                code, today["name"], change, today["volume"] / prior_avg_vol, companies, industries
             ))
 
     signals.sort(key=lambda s: priority_sort_key(s, s["volume_multiple"]))
@@ -312,6 +327,44 @@ def compute_consecutive_high_signals(
     return signals, warmup
 
 
+def compute_group_rotation(
+    by_code: dict[str, list[dict]],
+    today_date: str,
+    companies: dict[str, dict],
+    threshold_pct: float = GROUP_ROTATION_THRESHOLD_PCT,
+    min_count: int = GROUP_ROTATION_MIN_COUNT,
+) -> list[dict]:
+    """companies.csv 現成的細分族群裡，今天同時有 min_count 檔以上漲幅達 threshold_pct，判定該族群今天在輪動。"""
+    codes_by_group: dict[str, list[str]] = defaultdict(list)
+    for code, info in companies.items():
+        group = info.get("族群")
+        if group:
+            codes_by_group[group].append(code)
+
+    results = []
+    for group, codes in codes_by_group.items():
+        triggered = []
+        for code in codes:
+            rows = by_code.get(code)
+            if not rows or rows[-1]["date"] != today_date:
+                continue
+            change = daily_change_pct(rows)
+            if change is not None and change >= threshold_pct:
+                triggered.append({"code": code, "name": rows[-1]["name"], "daily_change_pct": round(change, 2)})
+
+        if len(triggered) >= min_count:
+            triggered.sort(key=lambda s: s["daily_change_pct"], reverse=True)
+            results.append({
+                "group": group,
+                "total_in_group": len(codes),
+                "triggered_count": len(triggered),
+                "stocks": triggered,
+            })
+
+    results.sort(key=lambda r: r["triggered_count"], reverse=True)
+    return results
+
+
 def main() -> int:
     try:
         today_rows = fetch_twse_rows() + fetch_tpex_rows()
@@ -352,9 +405,12 @@ def main() -> int:
         set_type = spec.get("type", "breakout_volume")
         if set_type == "breakout_volume":
             signals, warmup = compute_signals(
-                by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, industries
+                by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, industries,
+                min_daily_change_pct=spec.get("min_daily_change_pct"),
             )
             params = {"breakout_lookback_days": spec["lookback"], "volume_multiplier": spec["volume_multiplier"]}
+            if spec.get("min_daily_change_pct") is not None:
+                params["min_daily_change_pct"] = spec["min_daily_change_pct"]
         elif set_type == "consecutive_high":
             signals, warmup = compute_consecutive_high_signals(
                 by_code, today_date, spec["lookback"], spec["consecutive_days"], companies, industries
@@ -373,11 +429,21 @@ def main() -> int:
         })
         print(f"[{spec['key']}] 篩出 {len(signals)} 檔訊號" + ("（部分股票仍在暖機期）" if warmup else ""))
 
+    rotating_groups = compute_group_rotation(by_code, today_date, companies)
+    print(f"[group_rotation] {len(rotating_groups)} 個族群同步噴出")
+
     SIGNALS_JSON.parent.mkdir(parents=True, exist_ok=True)
     output = {
         "scan_date": today_date,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "sets": sets_output,
+        "group_rotation": {
+            "params": {
+                "threshold_pct": GROUP_ROTATION_THRESHOLD_PCT,
+                "min_count": GROUP_ROTATION_MIN_COUNT,
+            },
+            "groups": rotating_groups,
+        },
     }
     with open(SIGNALS_JSON, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)

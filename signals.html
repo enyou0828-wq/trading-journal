@@ -67,9 +67,29 @@
   <h1>每日突破訊號</h1>
   <div class="meta" id="meta">載入中…</div>
   <div id="sets"></div>
+  <h2 style="margin:24px 0 10px;font-size:1.05rem;">族群同步噴出</h2>
+  <div id="rotation"></div>
 </div>
 
 <script>
+function renderGroupRotation(group) {
+  const rows = group.stocks.map(s => `
+    <div class="card-top" style="margin-top:6px;">
+      <div><span class="code">${s.code}</span><span class="name">${s.name}</span></div>
+      <div class="multiple">+${s.daily_change_pct}%</div>
+    </div>
+  `).join('');
+  return `
+    <div class="card">
+      <div class="card-top">
+        <div><strong>${group.group}</strong></div>
+        <div class="multiple">${group.triggered_count}/${group.total_in_group}家噴出</div>
+      </div>
+      ${rows}
+    </div>
+  `;
+}
+
 function renderSet(set) {
   const warmupHtml = set.warmup
     ? `<div class="warmup">提醒：部分股票累積歷史還不到門檻天數，暖機期尚未結束，訊號會隨著每天累積資料陸續補齊。</div>`
@@ -104,6 +124,7 @@ function renderSet(set) {
 async function load() {
   const metaEl = document.getElementById('meta');
   const setsEl = document.getElementById('sets');
+  const rotationEl = document.getElementById('rotation');
   try {
     const res = await fetch('signals/latest.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -111,9 +132,15 @@ async function load() {
 
     metaEl.textContent = `資料日期：${data.scan_date}　產生時間：${new Date(data.generated_at).toLocaleString('zh-TW')}`;
     setsEl.innerHTML = data.sets.map(renderSet).join('');
+
+    const groups = data.group_rotation ? data.group_rotation.groups : [];
+    rotationEl.innerHTML = groups.length
+      ? groups.map(renderGroupRotation).join('')
+      : '<div class="empty">今天沒有族群同步噴出</div>';
   } catch (e) {
     metaEl.textContent = '';
     setsEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+    rotationEl.innerHTML = '';
   }
 }
 load();
