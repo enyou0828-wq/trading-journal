@@ -41,6 +41,16 @@ SIGNAL_SETS = [
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
 
+# 這些官方產業別優先顯示（置頂），同一組內其餘排序邏輯不變
+PRIORITY_INDUSTRIES = {
+    "半導體業", "電腦及週邊設備業", "光電業", "通信網路業",
+    "電子零組件業", "電子通路業", "資訊服務業", "其他電子業",
+}
+
+
+def priority_sort_key(entry: dict, secondary: float) -> tuple:
+    return (entry["industry"] not in PRIORITY_INDUSTRIES, -secondary)
+
 PLAIN_STOCK_CODE = re.compile(r"^(?!00)\d{4}$")  # 只留 4 碼數字股票，濾掉 00 開頭的 ETF 與帶字母的權證等
 
 # 模擬真實瀏覽器的標頭：純 UA 字串在部分反爬蟲/WAF 規則下會被視為可疑，
@@ -262,7 +272,7 @@ def compute_signals(
                 code, today["name"], daily_change_pct(rows), today["volume"] / prior_avg_vol, companies, industries
             ))
 
-    signals.sort(key=lambda s: s["volume_multiple"], reverse=True)
+    signals.sort(key=lambda s: priority_sort_key(s, s["volume_multiple"]))
     return signals, warmup
 
 
@@ -298,7 +308,7 @@ def compute_consecutive_high_signals(
             today = rows[-1]
             signals.append(build_entry(code, today["name"], daily_change_pct(rows), None, companies, industries))
 
-    signals.sort(key=lambda s: s["daily_change_pct"] or 0, reverse=True)
+    signals.sort(key=lambda s: priority_sort_key(s, s["daily_change_pct"] or 0))
     return signals, warmup
 
 
