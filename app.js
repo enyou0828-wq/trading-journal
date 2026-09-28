@@ -16,8 +16,21 @@ const db = getFirestore(fbApp);
   const ENTRY_ACTIONS = new Set(['買進', '加碼']);
   const EXIT_ACTIONS = new Set(['減碼', '賣出', '加碼轉賣出']);
 
-  // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬
+  // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬（月份不在 MONTHLY_CAPITAL_BASE 表列時的預設值）
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
+  // 各月份實際總資金（元），比兩段式的 100萬/70萬 更精確，用於資金佔比／資金加權貢獻的計算基準
+  const MONTHLY_CAPITAL_BASE = {
+    '2026-05': 750000,
+    '2026-06': 1270000,
+    '2026-07': 1420000,
+    '2026-08': 650000,
+    '2026-09': 550000,
+  };
+  function capitalBaseForDate(dateStr) {
+    const m = dateStr.slice(0, 7);
+    if (MONTHLY_CAPITAL_BASE[m] != null) return MONTHLY_CAPITAL_BASE[m];
+    return dateStr >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
+  }
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
   const EQUITY_CURVE_START = '2026-06-01';
 
@@ -157,6 +170,22 @@ const db = getFirestore(fbApp);
             : t
         );
         state.capitalBase70kAug = true;
+        await save();
+      }
+
+      // 一次性換算：5～9 月改用 MONTHLY_CAPITAL_BASE 的精確月資金，取代原本兩段式的 100萬/70萬。
+      // 換算方式：新資金佔比 = 舊資金佔比 ×（換算前的兩段式基準 ÷ 新的精確月基準），
+      // 只調整這幾個月份的紀錄，其餘月份不受影響。
+      if (!state.capitalBaseMonthlyV1) {
+        state.trades = state.trades.map(t => {
+          if (t.positionPct == null) return t;
+          const month = t.date.slice(0, 7);
+          if (MONTHLY_CAPITAL_BASE[month] == null) return t;
+          const oldBasis = t.date >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
+          const newBasis = MONTHLY_CAPITAL_BASE[month];
+          return { ...t, positionPct: Math.round(t.positionPct * (oldBasis / newBasis) * 10) / 10 };
+        });
+        state.capitalBaseMonthlyV1 = true;
         await save();
       }
 
@@ -443,13 +472,13 @@ const db = getFirestore(fbApp);
   document.getElementById('f-action').addEventListener('change', maybeAutofillEntryPrice);
 
   // 交易價格 × 股數 ÷ 總資本，自動算出資金佔比（會儲存價格，供之後減碼/賣出時自動帶入）
-  // 總資本會依這筆交易的日期自動切換：8/1 起用 70 萬，之前用 100 萬
+  // 總資本依這筆交易的日期查 MONTHLY_CAPITAL_BASE（見檔案開頭），月份不在表列時退回兩段式 100萬/70萬
   function recalcPositionPct() {
     const price = parseFloat(document.getElementById('f-calc-price').value);
     const shares = parseFloat(document.getElementById('f-calc-shares').value);
     if (!price || !shares) return;
     const date = document.getElementById('f-date').value;
-    const totalCapital = date >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
+    const totalCapital = capitalBaseForDate(date);
     const pct = (price * shares / totalCapital) * 100;
     document.getElementById('f-position-pct').value = pct.toFixed(1);
   }
