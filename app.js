@@ -421,14 +421,31 @@ const db = getFirestore(fbApp);
     `;
   }
 
-  function groupRotationHtml(group) {
-    const stocksLine = group.stocks.map(s =>
-      `<strong>${escapeHtml(s.code)}</strong> ${escapeHtml(s.name)} <span class="pnl-pos">${s.daily_change_pct > 0 ? '+' : ''}${s.daily_change_pct}%</span>`
-    ).join('　');
+  function groupRotationSetHtml(groups) {
+    const rowsHtml = groups.map(g => {
+      const stocksLine = g.stocks.map(s =>
+        `<strong>${escapeHtml(s.code)}</strong> ${escapeHtml(s.name)} <span class="pnl-pos">${s.daily_change_pct > 0 ? '+' : ''}${s.daily_change_pct}%</span>`
+      ).join('　');
+      return `
+        <tr>
+          <td>${escapeHtml(g.group)}</td>
+          <td class="num">${g.triggered_count}/${g.total_in_group}</td>
+          <td>${stocksLine}</td>
+        </tr>
+      `;
+    }).join('');
+    const bodyHtml = groups.length
+      ? `<div class="table-wrap">
+          <table class="trade-table">
+            <thead><tr><th>族群</th><th class="num">家數</th><th>股票</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>`
+      : `<p class="empty-state">今天沒有族群同步噴出。</p>`;
     return `
       <div class="chart-card">
-        <div class="chart-head"><h2>${escapeHtml(group.group)}（${group.triggered_count}/${group.total_in_group}家噴出）</h2></div>
-        <p style="margin:0;font-size:13.5px;line-height:1.8;">${stocksLine}</p>
+        <div class="chart-head"><h2>族群同步噴出</h2></div>
+        ${bodyHtml}
       </div>
     `;
   }
@@ -439,7 +456,6 @@ const db = getFirestore(fbApp);
 
     const metaEl = document.getElementById('signals-meta');
     const setsEl = document.getElementById('signals-sets');
-    const rotationEl = document.getElementById('group-rotation-sets');
 
     try {
       const res = await fetch('signals/latest.json', { cache: 'no-store' });
@@ -447,16 +463,11 @@ const db = getFirestore(fbApp);
       const data = await res.json();
 
       metaEl.textContent = `資料日期 ${data.scan_date}　更新於 ${new Date(data.generated_at).toLocaleString('zh-TW')}`;
-      setsEl.innerHTML = data.sets.map(signalSetHtml).join('');
-
       const groups = data.group_rotation ? data.group_rotation.groups : [];
-      rotationEl.innerHTML = groups.length
-        ? groups.map(groupRotationHtml).join('')
-        : `<div class="chart-card"><p class="empty-state" style="padding:16px 0;">今天沒有族群同步噴出。</p></div>`;
+      setsEl.innerHTML = data.sets.map(signalSetHtml).join('') + groupRotationSetHtml(groups);
     } catch (e) {
       metaEl.textContent = '';
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;
-      rotationEl.innerHTML = '';
       signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
     }
   }

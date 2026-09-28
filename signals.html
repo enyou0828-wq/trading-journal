@@ -60,33 +60,37 @@
   .multiple { color: var(--up); font-weight: 600; }
   .row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); }
   .empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
-  .rotation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-  .rotation-grid .card { margin-bottom: 0; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>每日突破訊號</h1>
   <div class="meta" id="meta">載入中…</div>
-  <h2 style="margin:0 0 10px;font-size:1.05rem;">族群同步噴出</h2>
-  <div id="rotation" class="rotation-grid"></div>
-  <h2 style="margin:24px 0 10px;font-size:1.05rem;">個股訊號</h2>
   <div id="sets"></div>
 </div>
 
 <script>
-function renderGroupRotation(group) {
-  const stocksLine = group.stocks.map(s =>
-    `<strong>${s.code}</strong> ${s.name} <span style="color:var(--up)">+${s.daily_change_pct}%</span>`
-  ).join('　');
+function renderGroupRotationSet(groups) {
+  const cardsHtml = groups.length
+    ? groups.map(group => {
+        const stocksLine = group.stocks.map(s =>
+          `<strong>${s.code}</strong> ${s.name} <span style="color:var(--up)">+${s.daily_change_pct}%</span>`
+        ).join('　');
+        return `
+          <div class="card">
+            <div class="card-top">
+              <div><strong>${group.group}</strong></div>
+              <div class="multiple">${group.triggered_count}/${group.total_in_group}家噴出</div>
+            </div>
+            <p style="margin:8px 0 0;font-size:0.85rem;line-height:1.8;">${stocksLine}</p>
+          </div>
+        `;
+      }).join('')
+    : '<div class="empty">今天沒有族群同步噴出</div>';
+
   return `
-    <div class="card">
-      <div class="card-top">
-        <div><strong>${group.group}</strong></div>
-        <div class="multiple">${group.triggered_count}/${group.total_in_group}家噴出</div>
-      </div>
-      <p style="margin:8px 0 0;font-size:0.85rem;line-height:1.8;">${stocksLine}</p>
-    </div>
+    <h2 style="margin:24px 0 10px;font-size:1.05rem;">族群同步噴出</h2>
+    ${cardsHtml}
   `;
 }
 
@@ -124,23 +128,17 @@ function renderSet(set) {
 async function load() {
   const metaEl = document.getElementById('meta');
   const setsEl = document.getElementById('sets');
-  const rotationEl = document.getElementById('rotation');
   try {
     const res = await fetch('signals/latest.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
     metaEl.textContent = `資料日期：${data.scan_date}　產生時間：${new Date(data.generated_at).toLocaleString('zh-TW')}`;
-    setsEl.innerHTML = data.sets.map(renderSet).join('');
-
     const groups = data.group_rotation ? data.group_rotation.groups : [];
-    rotationEl.innerHTML = groups.length
-      ? groups.map(renderGroupRotation).join('')
-      : '<div class="card"><div class="empty" style="padding:16px 0;">今天沒有族群同步噴出</div></div>';
+    setsEl.innerHTML = data.sets.map(renderSet).join('') + renderGroupRotationSet(groups);
   } catch (e) {
     metaEl.textContent = '';
     setsEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
-    rotationEl.innerHTML = '';
   }
 }
 load();
