@@ -16,13 +16,14 @@ const db = getFirestore(fbApp);
   const ENTRY_ACTIONS = new Set(['買進', '加碼']);
   const EXIT_ACTIONS = new Set(['減碼', '賣出', '加碼轉賣出']);
 
-  // 總資金基準：8/1 起改為 70 萬，之前的紀錄維持 100 萬。
-  // 資金加權累計報酬曲線／總計數字永遠用這個固定兩段式基準計算，不受 MONTHLY_CAPITAL_BASE 影響
-  // ——這條曲線代表「以固定基準 100 為底」的加權報酬指數，不是真實資產報酬率。
+  // 每筆交易的損益（f-profit-wan，單位：萬元）是唯一手動輸入的原始金額；
+  // 資金加權累計報酬（曲線／總計）跟各月份資金加權報酬都是從這個金額即時換算成 % 顯示，
+  // 差別只在分母用哪個資金基準：
+  //   - fixedCapitalBasis：固定兩段式基準（8/1 起 70 萬，之前 100 萬）。
+  //     資金加權累計報酬曲線／總計永遠用這個，代表「以固定基準為底」的加權報酬指數，不是真實資產報酬率。
+  //   - monthlyCapitalBasis：MONTHLY_CAPITAL_BASE 表列的當月實際總資產，月份不在表列時退回固定基準。
+  //     只用在各月份資金加權報酬（月度統計表／長條圖），代表當月真實報酬率。
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
-  // 各月份實際總資產（元）。只用在「顯示層」：月度統計表與月度長條圖的「資金加權報酬」
-  // 這一欄，代表當月用真實總資產當分母算出來的真實報酬率，不會去改 positionPct/contrib
-  // 這些底層儲存欄位（改儲存欄位會連帶動到曲線，2026-09-28 踩過這個坑，見 monthlyCapitalFactor）。
   const MONTHLY_CAPITAL_BASE = {
     '2026-05': 750000,
     '2026-06': 1270000,
@@ -30,13 +31,16 @@ const db = getFirestore(fbApp);
     '2026-08': 650000,
     '2026-09': 550000,
   };
-  // contrib（資金加權貢獻，%）原本是相對於兩段式固定基準算出來的；把它換算成「相對於當月真實總資產」
-  // 的真實報酬率，換算比例 = 固定基準 ÷ 當月真實總資產。月份不在表列時回傳 1（不調整）。
-  function monthlyCapitalFactor(dateStr) {
+  function fixedCapitalBasis(dateStr) {
+    return dateStr >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
+  }
+  function monthlyCapitalBasis(dateStr) {
     const m = dateStr.slice(0, 7);
-    if (MONTHLY_CAPITAL_BASE[m] == null) return 1;
-    const fixedBasis = dateStr >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
-    return fixedBasis / MONTHLY_CAPITAL_BASE[m];
+    return MONTHLY_CAPITAL_BASE[m] != null ? MONTHLY_CAPITAL_BASE[m] : fixedCapitalBasis(dateStr);
+  }
+  // 損益（萬）換算成相對於某個資金基準（元）的百分比報酬
+  function profitPct(profitWan, dateStr, basisFn) {
+    return (profitWan * 10000 / basisFn(dateStr)) * 100;
   }
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
   const EQUITY_CURVE_START = '2026-06-01';
@@ -231,6 +235,23 @@ const db = getFirestore(fbApp);
         await save();
       }
 
+      // 一次性建立：新增 profitWan（損益，萬元）取代 positionPct/contrib 當作資金加權計算的原始輸入。
+      // 換算方式：舊的資金加權貢獻 %（contrib，或用 positionPct×returnPct/100 推算）本來就是相對於
+      // 固定兩段式基準算出來的，所以 profitWan = 舊 % × 固定基準 ÷ 100 ÷ 10000。
+      // positionPct/contrib 兩個舊欄位保留在資料裡當歷史紀錄，之後的計算都不會再讀它們。
+      if (!state.profitWanMigrationV1) {
+        state.trades = state.trades.map(t => {
+          const contribPct = t.contrib != null
+            ? t.contrib
+            : (t.positionPct != null && t.returnPct != null ? t.returnPct * t.positionPct / 100 : null);
+          if (contribPct == null) return t;
+          const profitWan = Math.round((contribPct / 100) * fixedCapitalBasis(t.date) / 10000 * 100) / 100;
+          return { ...t, profitWan };
+        });
+        state.profitWanMigrationV1 = true;
+        await save();
+      }
+
       // 一次性建立/升級：供應鏈資料模型（節點 + 公司關聯），改用完整版種子資料（supplyChainData.js）。
       // 種子資料建立後完全開放編輯，不會再被自動覆蓋；只在第一次（或從舊版簡化種子升級）時執行一次。
       if (!state.supplyChainSeedV2) {
@@ -287,8 +308,9 @@ const db = getFirestore(fbApp);
 
   // ---------- helpers ----------
   const fmtPct = (n, digits = 1) => n == null ? '–' : (n >= 0 ? '+' : '') + n.toFixed(digits) + '%';
+  const fmtWan = (n, digits = 2) => n == null ? '–' : (n >= 0 ? '+' : '') + n.toFixed(digits) + '萬';
   const isExitAction = (a) => EXIT_ACTIONS.has(a) || a === '當沖';
-  const displayContrib = (t) => t.contrib != null ? t.contrib : (t.returnPct != null && t.positionPct != null ? t.returnPct * t.positionPct / 100 : null);
+  const displayProfitWan = (t) => t.profitWan != null ? t.profitWan : null;
 
   function actionBadgeClass(a) {
     if (a === '當沖') return 'action-day';
@@ -413,8 +435,8 @@ const db = getFirestore(fbApp);
       tr.dataset.id = t.id;
       if (t.markColor) tr.classList.add('marked-row-' + t.markColor);
       const pnlClass = t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero';
-      const contrib = displayContrib(t);
-      const contribClass = contrib == null ? 'pnl-zero' : contrib > 0 ? 'pnl-pos' : contrib < 0 ? 'pnl-neg' : 'pnl-zero';
+      const profitWan = displayProfitWan(t);
+      const profitClass = profitWan == null ? 'pnl-zero' : profitWan > 0 ? 'pnl-pos' : profitWan < 0 ? 'pnl-neg' : 'pnl-zero';
       const ratingHtml = t.rating ? `<span class="rating-badge rating-${t.rating}">${t.rating}</span>` : '–';
       tr.innerHTML = `
         <td class="mark-col"><button type="button" class="mark-swatch mark-${t.markColor || 'none'}" data-mark="${t.id}" title="點擊切換標記顏色（無 → 黃 → 紅）"></button></td>
@@ -423,7 +445,7 @@ const db = getFirestore(fbApp);
         <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
         <td>${escapeHtml(t.strategy)}</td>
         <td>${escapeHtml(t.sector || '–')}</td>
-        <td class="num ${contribClass}">${fmtPct(contrib, 2)}</td>
+        <td class="num ${profitClass}">${fmtWan(profitWan, 2)}</td>
         <td class="num ${pnlClass}">${fmtPct(t.returnPct, 2)}</td>
         <td>${ratingHtml}</td>
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">${escapeHtml(t.reason || '')}</td>
@@ -528,16 +550,6 @@ const db = getFirestore(fbApp);
   document.getElementById('f-calc-shares').addEventListener('input', recalcPositionPct);
   document.getElementById('f-date').addEventListener('change', recalcPositionPct);
 
-  // 資金加權貢獻 = 資金佔比 × 報酬率 ÷ 100，自動計算，也可手動覆蓋
-  function recalcContrib() {
-    const pos = parseFloat(document.getElementById('f-position-pct').value);
-    const ret = parseFloat(document.getElementById('f-return-pct').value);
-    if (isNaN(pos) || isNaN(ret)) return;
-    document.getElementById('f-contrib').value = (pos * ret / 100).toFixed(2);
-  }
-  document.getElementById('f-position-pct').addEventListener('input', recalcContrib);
-  document.getElementById('f-return-pct').addEventListener('input', recalcContrib);
-
   function openTradeModal(t) {
     document.getElementById('trade-modal-title').textContent = t ? '編輯交易' : '新增交易';
     document.getElementById('trade-id').value = t ? t.id : '';
@@ -552,7 +564,7 @@ const db = getFirestore(fbApp);
     document.getElementById('f-strategy').value = t ? t.strategy : '族群效應';
     document.getElementById('f-position-pct').value = t && t.positionPct != null ? t.positionPct : '';
     document.getElementById('f-return-pct').value = t && t.returnPct != null ? t.returnPct : '';
-    document.getElementById('f-contrib').value = t && t.contrib != null ? t.contrib : '';
+    document.getElementById('f-profit-wan').value = t && t.profitWan != null ? t.profitWan : '';
     document.getElementById('f-rating').value = t ? (t.rating || '') : '';
     document.getElementById('f-reason').value = t ? (t.reason || '') : '';
     document.getElementById('f-review').value = t ? (t.review || '') : '';
@@ -565,7 +577,7 @@ const db = getFirestore(fbApp);
     const id = document.getElementById('trade-id').value || uid();
     const posVal = document.getElementById('f-position-pct').value;
     const retVal = document.getElementById('f-return-pct').value;
-    const contribVal = document.getElementById('f-contrib').value;
+    const profitWanVal = document.getElementById('f-profit-wan').value;
     const priceVal = document.getElementById('f-calc-price').value;
     const rec = {
       id,
@@ -579,7 +591,7 @@ const db = getFirestore(fbApp);
       price: priceVal === '' ? null : parseFloat(priceVal),
       positionPct: posVal === '' ? null : parseFloat(posVal),
       returnPct: retVal === '' ? null : parseFloat(retVal),
-      contrib: contribVal === '' ? null : parseFloat(contribVal),
+      profitWan: profitWanVal === '' ? null : parseFloat(profitWanVal),
       rating: document.getElementById('f-rating').value,
       reason: document.getElementById('f-reason').value.trim(),
       review: document.getElementById('f-review').value.trim(),
@@ -603,10 +615,13 @@ const db = getFirestore(fbApp);
   function computeStats(realized) {
     const wins = realized.filter(t => t.returnPct > 0);
     const losses = realized.filter(t => t.returnPct < 0);
+    // weighted 的 contrib 欄位永遠是「相對於固定兩段式基準」的 %（資金加權累計報酬曲線／總計用這個）；
+    // 各月份資金加權報酬要改用當月真實總資產當分母時，直接從 profitWan 重新算，不要用這裡的 contrib。
     const weighted = realized
-      .filter(t => t.contrib != null || t.positionPct != null)
-      .map(t => ({ ...t, contrib: t.contrib != null ? t.contrib : t.returnPct * t.positionPct / 100 }));
+      .filter(t => t.profitWan != null)
+      .map(t => ({ ...t, contrib: profitPct(t.profitWan, t.date, fixedCapitalBasis) }));
     const totalWeighted = weighted.reduce((s, t) => s + t.contrib, 0);
+    const totalProfitWan = weighted.reduce((s, t) => s + t.profitWan, 0);
     const winRate = realized.length ? (wins.length / realized.length) * 100 : 0;
     const avgWin = wins.length ? wins.reduce((s, t) => s + t.returnPct, 0) / wins.length : 0;
     const avgLoss = losses.length ? losses.reduce((s, t) => s + t.returnPct, 0) / losses.length : 0;
@@ -615,7 +630,7 @@ const db = getFirestore(fbApp);
     const pf = grossLoss > 0 ? (grossWin / grossLoss) : (grossWin > 0 ? Infinity : 0);
     const maxWin = realized.length ? Math.max(...realized.map(t => t.returnPct)) : 0;
     const maxLoss = realized.length ? Math.min(...realized.map(t => t.returnPct)) : 0;
-    return { realized, wins, losses, weighted, totalWeighted, winRate, avgWin, avgLoss, pf, maxWin, maxLoss };
+    return { realized, wins, losses, weighted, totalWeighted, totalProfitWan, winRate, avgWin, avgLoss, pf, maxWin, maxLoss };
   }
 
   function renderStats() {
@@ -665,8 +680,8 @@ const db = getFirestore(fbApp);
 
     for (const m of months) {
       const s = computeStats(byMonth[m]);
-      // 「資金加權報酬」這一欄用當月真實總資產換算的真實報酬率，其餘欄位（勝率、次數等）不受影響
-      const realReturn = s.weighted.reduce((sum, t) => sum + t.contrib * monthlyCapitalFactor(t.date), 0);
+      // 「資金加權報酬」這一欄直接用當月真實總資產當分母算真實報酬率，其餘欄位（勝率、次數等）不受影響
+      const realReturn = s.weighted.reduce((sum, t) => sum + profitPct(t.profitWan, t.date, monthlyCapitalBasis), 0);
       const pnlClass = realReturn > 0 ? 'pnl-pos' : realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -689,7 +704,7 @@ const db = getFirestore(fbApp);
     const el = document.getElementById('equity-chart');
     el.innerHTML = '';
     if (!weighted.length) {
-      el.innerHTML = '<p class="empty-state">尚無帶有資金佔比與報酬率的已實現紀錄，無法繪製曲線。</p>';
+      el.innerHTML = '<p class="empty-state">尚無帶有損益（萬）的已實現紀錄，無法繪製曲線。</p>';
       return;
     }
     const sorted = [...weighted].sort((a, b) => a.date > b.date ? 1 : -1);
@@ -838,14 +853,14 @@ const db = getFirestore(fbApp);
     const el = document.getElementById('monthly-chart');
     el.innerHTML = '';
     if (!weighted.length) {
-      el.innerHTML = '<p class="empty-state">尚無帶有資金佔比與報酬率的已實現紀錄，無法繪製月度統計。</p>';
+      el.innerHTML = '<p class="empty-state">尚無帶有損益（萬）的已實現紀錄，無法繪製月度統計。</p>';
       return;
     }
-    // 各月份長條圖跟月度統計表用同一套「當月真實總資產」換算，見 monthlyCapitalFactor
+    // 各月份長條圖跟月度統計表用同一套「當月真實總資產」當分母，見 monthlyCapitalBasis
     const byMonth = {};
     weighted.forEach(t => {
       const m = t.date.slice(0, 7); // YYYY-MM
-      byMonth[m] = (byMonth[m] || 0) + t.contrib * monthlyCapitalFactor(t.date);
+      byMonth[m] = (byMonth[m] || 0) + profitPct(t.profitWan, t.date, monthlyCapitalBasis);
     });
     const months = Object.keys(byMonth).sort();
     const otcMonthly = computeOtcMonthlyReturns();
@@ -1536,7 +1551,7 @@ const db = getFirestore(fbApp);
         <div class="stat-tile"><span class="stat-label">已實現次數</span><span class="stat-value">${s.realized.length}</span></div>
         <div class="stat-tile"><span class="stat-label">勝率</span><span class="stat-value">${s.realized.length ? s.winRate.toFixed(1) + '%' : '–'}</span></div>
         <div class="stat-tile"><span class="stat-label">平均獲利 / 虧損</span><span class="stat-value">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</span></div>
-        <div class="stat-tile"><span class="stat-label">資金加權貢獻</span><span class="stat-value">${fmtPct(s.totalWeighted, 2)}</span></div>
+        <div class="stat-tile"><span class="stat-label">損益 (萬)</span><span class="stat-value">${fmtWan(s.totalProfitWan, 2)}</span></div>
       </div>
     `;
   }
@@ -1566,13 +1581,13 @@ const db = getFirestore(fbApp);
         <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
         <div class="table-wrap">
           <table class="trade-table">
-            <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>資金加權貢獻</th><th>報酬率</th></tr></thead>
-            <tbody>${trades.map(t => { const c = displayContrib(t); const cClass = c == null ? 'pnl-zero' : c > 0 ? 'pnl-pos' : c < 0 ? 'pnl-neg' : 'pnl-zero'; return `
+            <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>損益 (萬)</th><th>報酬率</th></tr></thead>
+            <tbody>${trades.map(t => { const c = displayProfitWan(t); const cClass = c == null ? 'pnl-zero' : c > 0 ? 'pnl-pos' : c < 0 ? 'pnl-neg' : 'pnl-zero'; return `
               <tr>
                 <td class="num">${t.date}</td>
                 <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
                 <td>${escapeHtml(t.strategy)}</td>
-                <td class="num ${cClass}">${fmtPct(c, 2)}</td>
+                <td class="num ${cClass}">${fmtWan(c, 2)}</td>
                 <td class="num ${t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero'}">${fmtPct(t.returnPct, 2)}</td>
               </tr>`; }).join('')}</tbody>
           </table>
