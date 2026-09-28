@@ -189,6 +189,22 @@ const db = getFirestore(fbApp);
         await save();
       }
 
+      // 一次性換算（V1 的補漏）：V1 只換算了 positionPct，但有些紀錄是直接手動填「資金加權貢獻」
+      // （positionPct 是空的，contrib 才是實際存的值），這些完全沒被 V1 動到。用同一套換算比例
+      // 直接調整 contrib 本身：新 contrib = 舊 contrib ×（換算前的兩段式基準 ÷ 新的精確月基準）。
+      if (!state.capitalBaseMonthlyV2) {
+        state.trades = state.trades.map(t => {
+          if (t.contrib == null) return t;
+          const month = t.date.slice(0, 7);
+          if (MONTHLY_CAPITAL_BASE[month] == null) return t;
+          const oldBasis = t.date >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
+          const newBasis = MONTHLY_CAPITAL_BASE[month];
+          return { ...t, contrib: Math.round(t.contrib * (oldBasis / newBasis) * 100) / 100 };
+        });
+        state.capitalBaseMonthlyV2 = true;
+        await save();
+      }
+
       // 一次性建立/升級：供應鏈資料模型（節點 + 公司關聯），改用完整版種子資料（supplyChainData.js）。
       // 種子資料建立後完全開放編輯，不會再被自動覆蓋；只在第一次（或從舊版簡化種子升級）時執行一次。
       if (!state.supplyChainSeedV2) {
