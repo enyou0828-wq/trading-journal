@@ -21,7 +21,9 @@ const db = getFirestore(fbApp);
   // 差別只在分母用哪個資金基準：
   //   - fixedCapitalBasis：固定兩段式基準（8/1 起 70 萬，之前 100 萬）。
   //     資金加權累計報酬曲線／總計永遠用這個，代表「以固定基準為底」的加權報酬指數，不是真實資產報酬率。
-  //   - monthlyCapitalBasis：MONTHLY_CAPITAL_BASE 表列的當月實際總資產，月份不在表列時退回固定基準。
+  //   - monthlyCapitalBasis（透過 buildMonthlyCapitalBasisMap）：MONTHLY_CAPITAL_BASE 表列的當月實際
+  //     總資產；表列之外的月份自動複利延伸＝上個月的底 + 上個月真實總損益，不用每個月手動加資料
+  //     （例如表列最後是 9 月 55 萬，10 月就自動算成 55 萬 + 9 月總損益，11 月再用 10 月的結果繼續延伸）。
   //     只用在各月份資金加權報酬（月度統計表／長條圖），代表當月真實報酬率。
   const CAPITAL_AUG_CUTOFF = '2026-08-01';
   const MONTHLY_CAPITAL_BASE = {
@@ -34,13 +36,44 @@ const db = getFirestore(fbApp);
   function fixedCapitalBasis(dateStr) {
     return dateStr >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
   }
-  function monthlyCapitalBasis(dateStr) {
-    const m = dateStr.slice(0, 7);
-    return MONTHLY_CAPITAL_BASE[m] != null ? MONTHLY_CAPITAL_BASE[m] : fixedCapitalBasis(dateStr);
+  function monthKey(dateStr) { return dateStr.slice(0, 7); }
+  function nextMonthKey(m) {
+    const [y, mo] = m.split('-').map(Number);
+    const d = new Date(y, mo, 1); // mo 是 1-indexed字串，new Date 用 0-indexed 月份，兩者相減剛好等於下個月
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  function buildMonthlyCapitalBasisMap(realizedTrades) {
+    const profitByMonth = {};
+    realizedTrades.forEach(t => {
+      if (t.profitWan == null) return;
+      const m = monthKey(t.date);
+      profitByMonth[m] = (profitByMonth[m] || 0) + t.profitWan;
+    });
+
+    const anchorMonths = Object.keys(MONTHLY_CAPITAL_BASE).sort();
+    if (!anchorMonths.length) return {};
+    const lastAnchor = anchorMonths[anchorMonths.length - 1];
+    const tradeMonths = Object.keys(profitByMonth).sort();
+    const latestMonth = tradeMonths.length ? tradeMonths[tradeMonths.length - 1] : lastAnchor;
+
+    const basisMap = { ...MONTHLY_CAPITAL_BASE };
+    let cursor = lastAnchor;
+    let basis = MONTHLY_CAPITAL_BASE[lastAnchor];
+    while (cursor < latestMonth) {
+      basis += (profitByMonth[cursor] || 0) * 10000;
+      cursor = nextMonthKey(cursor);
+      if (MONTHLY_CAPITAL_BASE[cursor] != null) basis = MONTHLY_CAPITAL_BASE[cursor]; // 手動指定過的月份優先
+      basisMap[cursor] = basis;
+    }
+    return basisMap;
   }
   // 損益（萬）換算成相對於某個資金基準（元）的百分比報酬
   function profitPct(profitWan, dateStr, basisFn) {
     return (profitWan * 10000 / basisFn(dateStr)) * 100;
+  }
+  function monthlyProfitPct(profitWan, dateStr, basisMap) {
+    const basis = basisMap[monthKey(dateStr)] != null ? basisMap[monthKey(dateStr)] : fixedCapitalBasis(dateStr);
+    return (profitWan * 10000 / basis) * 100;
   }
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
   const EQUITY_CURVE_START = '2026-06-01';
@@ -677,11 +710,12 @@ const db = getFirestore(fbApp);
     });
     // 5 月樣本數太少（只有 2 筆），數字容易失真誤導，月度明細表不顯示
     const months = Object.keys(byMonth).filter(m => m !== '2026-05').sort().reverse();
+    const basisMap = buildMonthlyCapitalBasisMap(allRealized);
 
     for (const m of months) {
       const s = computeStats(byMonth[m]);
       // 「資金加權報酬」這一欄直接用當月真實總資產當分母算真實報酬率，其餘欄位（勝率、次數等）不受影響
-      const realReturn = s.weighted.reduce((sum, t) => sum + profitPct(t.profitWan, t.date, monthlyCapitalBasis), 0);
+      const realReturn = s.weighted.reduce((sum, t) => sum + monthlyProfitPct(t.profitWan, t.date, basisMap), 0);
       const pnlClass = realReturn > 0 ? 'pnl-pos' : realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -856,11 +890,12 @@ const db = getFirestore(fbApp);
       el.innerHTML = '<p class="empty-state">尚無帶有損益（萬）的已實現紀錄，無法繪製月度統計。</p>';
       return;
     }
-    // 各月份長條圖跟月度統計表用同一套「當月真實總資產」當分母，見 monthlyCapitalBasis
+    // 各月份長條圖跟月度統計表用同一套「當月真實總資產」當分母，見 buildMonthlyCapitalBasisMap
+    const basisMap = buildMonthlyCapitalBasisMap(weighted);
     const byMonth = {};
     weighted.forEach(t => {
       const m = t.date.slice(0, 7); // YYYY-MM
-      byMonth[m] = (byMonth[m] || 0) + profitPct(t.profitWan, t.date, monthlyCapitalBasis);
+      byMonth[m] = (byMonth[m] || 0) + monthlyProfitPct(t.profitWan, t.date, basisMap);
     });
     const months = Object.keys(byMonth).sort();
     const otcMonthly = computeOtcMonthlyReturns();
