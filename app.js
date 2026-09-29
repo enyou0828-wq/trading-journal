@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
@@ -1745,12 +1745,37 @@ const db = getFirestore(fbApp);
   const loginStatus = document.getElementById('login-status');
   const userChip = document.getElementById('user-chip');
 
-  document.getElementById('btn-google-signin').addEventListener('click', () => {
+  // 彈窗登入（signInWithPopup）在瀏覽器把第三方儲存空間分割/封鎖時會失敗
+  // （常見於 Safari、開了嚴格第三方 cookie 封鎖的 Chrome 等），因為 Firebase 需要在
+  // 這個網站的網域跟 authDomain（*.firebaseapp.com，跟 GitHub Pages 不同網域）之間
+  // 共用一份暫存狀態。除了使用者自己關掉彈窗以外，失敗時改用整頁導向登入（signInWithRedirect）
+  // 當備援——導向登入只需要同一個分頁的儲存空間在導回時還在，比彈窗需要兩個視窗同時能存取
+  // 儲存空間更容易在這類設定下成功。
+  document.getElementById('btn-google-signin').addEventListener('click', async () => {
     loginStatus.textContent = '登入中…';
-    signInWithPopup(auth, new GoogleAuthProvider()).catch(e => {
-      console.error('signIn failed', e);
-      loginStatus.textContent = '登入失敗：' + (e.code || e.message);
-    });
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (e) {
+      console.error('signIn (popup) failed', e);
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+        loginStatus.textContent = '';
+        return;
+      }
+      loginStatus.textContent = '彈窗登入失敗，改用整頁導向登入…';
+      try {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+      } catch (e2) {
+        console.error('signIn (redirect) failed', e2);
+        loginStatus.textContent = '登入失敗：' + (e2.code || e2.message);
+      }
+    }
+  });
+
+  // 處理 signInWithRedirect 導回後的結果：成功的話 onAuthStateChanged 會自動接手，
+  // 這裡主要是要在導向登入本身失敗時把錯誤訊息顯示出來（否則會無聲失敗，卡在登入畫面）。
+  getRedirectResult(auth).catch(e => {
+    console.error('getRedirectResult failed', e);
+    loginStatus.textContent = '登入失敗：' + (e.code || e.message);
   });
 
   document.getElementById('btn-signout').addEventListener('click', () => signOut(auth));
