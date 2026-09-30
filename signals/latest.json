@@ -1,6 +1,6 @@
 {
   "scan_date": "2026-09-29",
-  "generated_at": "2026-09-30T01:50:01.528531+00:00",
+  "generated_at": "2026-09-30T06:50:28.996607+00:00",
   "sets": [
     {
       "key": "fast",
@@ -18,6 +18,7 @@
           "name": "萬達光電",
           "daily_change_pct": 10.0,
           "volume_multiple": 13.02,
+          "volume": 455903,
           "industry": "光電業",
           "sub_group": null
         },
@@ -26,6 +27,7 @@
           "name": "系統電",
           "daily_change_pct": 9.85,
           "volume_multiple": 12.79,
+          "volume": 12907890,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -34,6 +36,7 @@
           "name": "全譜",
           "daily_change_pct": 5.88,
           "volume_multiple": 7.68,
+          "volume": 58380,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -42,6 +45,7 @@
           "name": "無敵",
           "daily_change_pct": 9.77,
           "volume_multiple": 7.36,
+          "volume": 843746,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -50,6 +54,7 @@
           "name": "鈞寶",
           "daily_change_pct": 6.31,
           "volume_multiple": 5.69,
+          "volume": 7364788,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -58,6 +63,7 @@
           "name": "加百裕",
           "daily_change_pct": 5.39,
           "volume_multiple": 5.52,
+          "volume": 1058356,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -66,6 +72,7 @@
           "name": "樺漢",
           "daily_change_pct": 6.42,
           "volume_multiple": 5.37,
+          "volume": 3643742,
           "industry": "電腦及週邊設備業",
           "sub_group": "工業電腦"
         },
@@ -74,6 +81,7 @@
           "name": "泓格",
           "daily_change_pct": 7.02,
           "volume_multiple": 5.03,
+          "volume": 1014268,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -82,6 +90,7 @@
           "name": "廣積",
           "daily_change_pct": 7.35,
           "volume_multiple": 4.82,
+          "volume": 6037266,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -90,6 +99,7 @@
           "name": "海德威",
           "daily_change_pct": 7.77,
           "volume_multiple": 4.48,
+          "volume": 437882,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -98,6 +108,7 @@
           "name": "九豪",
           "daily_change_pct": 6.69,
           "volume_multiple": 4.42,
+          "volume": 6460940,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -106,6 +117,7 @@
           "name": "銘鈺",
           "daily_change_pct": 7.4,
           "volume_multiple": 4.37,
+          "volume": 326852,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -114,6 +126,7 @@
           "name": "正淩",
           "daily_change_pct": 8.42,
           "volume_multiple": 4.13,
+          "volume": 738201,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -122,6 +135,7 @@
           "name": "達興材料",
           "daily_change_pct": 9.9,
           "volume_multiple": 3.76,
+          "volume": 635167,
           "industry": "光電業",
           "sub_group": null
         },
@@ -130,6 +144,7 @@
           "name": "台亞",
           "daily_change_pct": 9.99,
           "volume_multiple": 3.65,
+          "volume": 15628464,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -138,6 +153,7 @@
           "name": "希華",
           "daily_change_pct": 5.63,
           "volume_multiple": 3.65,
+          "volume": 30199086,
           "industry": "電子零組件業",
           "sub_group": "石英元件·頻率控制元件"
         },
@@ -146,6 +162,7 @@
           "name": "雷科",
           "daily_change_pct": 10.0,
           "volume_multiple": 3.46,
+          "volume": 23196275,
           "industry": "電子零組件業",
           "sub_group": "半導體設備"
         },
@@ -154,6 +171,7 @@
           "name": "艾訊",
           "daily_change_pct": 5.02,
           "volume_multiple": 3.38,
+          "volume": 1736593,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -162,6 +180,7 @@
           "name": "芯鼎",
           "daily_change_pct": 8.42,
           "volume_multiple": 3.38,
+          "volume": 1257413,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -170,6 +189,7 @@
           "name": "瑞耘",
           "daily_change_pct": 9.64,
           "volume_multiple": 3.3,
+          "volume": 2259490,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -178,6 +198,7 @@
           "name": "州巧",
           "daily_change_pct": 9.85,
           "volume_multiple": 3.26,
+          "volume": 4142472,
           "industry": "光電業",
           "sub_group": null
         },
@@ -186,6 +207,7 @@
           "name": "安可",
           "daily_change_pct": 9.89,
           "volume_multiple": 3.06,
+          "volume": 3489345,
           "industry": "光電業",
           "sub_group": null
         },
@@ -194,6 +216,7 @@
           "name": "晶心科",
           "daily_change_pct": 9.96,
           "volume_multiple": 2.82,
+          "volume": 11054299,
           "industry": "半導體業",
           "sub_group": "IP／ASIC"
         },
@@ -202,6 +225,7 @@
           "name": "萬潤",
           "daily_change_pct": 9.62,
           "volume_multiple": 2.81,
+          "volume": 3498263,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -210,6 +234,7 @@
           "name": "嘉晶",
           "daily_change_pct": 7.81,
           "volume_multiple": 2.8,
+          "volume": 75400142,
           "industry": "半導體業",
           "sub_group": "上游材料"
         },
@@ -218,6 +243,7 @@
           "name": "友威科",
           "daily_change_pct": 8.82,
           "volume_multiple": 2.73,
+          "volume": 3318791,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -226,6 +252,7 @@
           "name": "宸曜",
           "daily_change_pct": 6.13,
           "volume_multiple": 2.71,
+          "volume": 497613,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -234,6 +261,7 @@
           "name": "柏騰",
           "daily_change_pct": 10.0,
           "volume_multiple": 2.65,
+          "volume": 5608941,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -242,6 +270,7 @@
           "name": "倍利科",
           "daily_change_pct": 6.09,
           "volume_multiple": 2.44,
+          "volume": 361243,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -250,6 +279,7 @@
           "name": "旭暉應材",
           "daily_change_pct": 6.94,
           "volume_multiple": 2.22,
+          "volume": 241170,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -258,6 +288,7 @@
           "name": "巨有科技",
           "daily_change_pct": 9.95,
           "volume_multiple": 2.09,
+          "volume": 2527034,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -266,6 +297,7 @@
           "name": "天擎",
           "daily_change_pct": 9.93,
           "volume_multiple": 2.05,
+          "volume": 208203,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -274,6 +306,7 @@
           "name": "聯穎",
           "daily_change_pct": 9.85,
           "volume_multiple": 1.93,
+          "volume": 3498604,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -282,6 +315,7 @@
           "name": "陽程",
           "daily_change_pct": 9.81,
           "volume_multiple": 1.88,
+          "volume": 4815318,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -290,6 +324,7 @@
           "name": "昇陽半導體",
           "daily_change_pct": 7.43,
           "volume_multiple": 1.79,
+          "volume": 18892813,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -298,6 +333,7 @@
           "name": "正達",
           "daily_change_pct": 6.32,
           "volume_multiple": 1.72,
+          "volume": 9373933,
           "industry": "光電業",
           "sub_group": "光學／觸控"
         },
@@ -306,6 +342,7 @@
           "name": "正文",
           "daily_change_pct": 6.77,
           "volume_multiple": 1.61,
+          "volume": 13404590,
           "industry": "通信網路業",
           "sub_group": null
         },
@@ -314,6 +351,7 @@
           "name": "九暘",
           "daily_change_pct": 5.82,
           "volume_multiple": 1.54,
+          "volume": 8763123,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -322,6 +360,7 @@
           "name": "美亞",
           "daily_change_pct": 9.95,
           "volume_multiple": 17.46,
+          "volume": 5753984,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -330,6 +369,7 @@
           "name": "新鋼",
           "daily_change_pct": 7.28,
           "volume_multiple": 10.3,
+          "volume": 12313640,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -338,6 +378,7 @@
           "name": "強新",
           "daily_change_pct": 9.98,
           "volume_multiple": 9.05,
+          "volume": 1133389,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -346,6 +387,7 @@
           "name": "台特化",
           "daily_change_pct": 9.05,
           "volume_multiple": 8.02,
+          "volume": 2803195,
           "industry": "化學工業",
           "sub_group": "上游材料"
         },
@@ -354,6 +396,7 @@
           "name": "基米-創",
           "daily_change_pct": 9.72,
           "volume_multiple": 5.55,
+          "volume": 816104,
           "industry": null,
           "sub_group": null
         },
@@ -362,6 +405,7 @@
           "name": "鑽石投資",
           "daily_change_pct": 9.87,
           "volume_multiple": 4.45,
+          "volume": 4821111,
           "industry": "其他業",
           "sub_group": null
         },
@@ -370,6 +414,7 @@
           "name": "泓瀚",
           "daily_change_pct": 5.95,
           "volume_multiple": 4.13,
+          "volume": 185874,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -378,6 +423,7 @@
           "name": "智伸科",
           "daily_change_pct": 9.79,
           "volume_multiple": 3.82,
+          "volume": 2692592,
           "industry": "汽車工業",
           "sub_group": null
         },
@@ -386,6 +432,7 @@
           "name": "直得",
           "daily_change_pct": 9.74,
           "volume_multiple": 3.71,
+          "volume": 2569668,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -394,6 +441,7 @@
           "name": "意藍",
           "daily_change_pct": 9.97,
           "volume_multiple": 3.5,
+          "volume": 2039484,
           "industry": "數位雲端",
           "sub_group": null
         },
@@ -402,6 +450,7 @@
           "name": "精確",
           "daily_change_pct": 9.92,
           "volume_multiple": 3.43,
+          "volume": 4087589,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -410,6 +459,7 @@
           "name": "晶呈科技",
           "daily_change_pct": 10.0,
           "volume_multiple": 2.85,
+          "volume": 1645472,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -418,6 +468,7 @@
           "name": "台塑化",
           "daily_change_pct": 8.14,
           "volume_multiple": 2.57,
+          "volume": 40587920,
           "industry": "油電燃氣業",
           "sub_group": "石化上游"
         },
@@ -426,6 +477,7 @@
           "name": "樂威科-KY",
           "daily_change_pct": 8.86,
           "volume_multiple": 2.53,
+          "volume": 52603,
           "industry": "其他業",
           "sub_group": null
         },
@@ -434,6 +486,7 @@
           "name": "國慶科技",
           "daily_change_pct": 7.85,
           "volume_multiple": 2.51,
+          "volume": 4078788,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -442,6 +495,7 @@
           "name": "鈦昇",
           "daily_change_pct": 9.78,
           "volume_multiple": 2.28,
+          "volume": 6347702,
           "industry": "電機機械",
           "sub_group": "PCB 設備·耗材"
         },
@@ -450,6 +504,7 @@
           "name": "碩網",
           "daily_change_pct": 9.93,
           "volume_multiple": 2.13,
+          "volume": 203746,
           "industry": "數位雲端",
           "sub_group": null
         },
@@ -458,6 +513,7 @@
           "name": "永光",
           "daily_change_pct": 5.05,
           "volume_multiple": 2.09,
+          "volume": 5053634,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -466,6 +522,7 @@
           "name": "邦泰",
           "daily_change_pct": 9.97,
           "volume_multiple": 1.94,
+          "volume": 265045,
           "industry": "其他業",
           "sub_group": null
         },
@@ -474,6 +531,7 @@
           "name": "大銀微系統",
           "daily_change_pct": 7.11,
           "volume_multiple": 1.66,
+          "volume": 2503523,
           "industry": "電機機械",
           "sub_group": "自動化／機械"
         },
@@ -482,6 +540,7 @@
           "name": "大東",
           "daily_change_pct": 16.4,
           "volume_multiple": 1.62,
+          "volume": 101129,
           "industry": "紡織纖維",
           "sub_group": null
         },
@@ -490,6 +549,7 @@
           "name": "裕慶-KY",
           "daily_change_pct": 9.93,
           "volume_multiple": 1.54,
+          "volume": 842520,
           "industry": "其他業",
           "sub_group": null
         }
@@ -510,6 +570,7 @@
           "name": "柏騰",
           "daily_change_pct": 10.0,
           "volume_multiple": null,
+          "volume": 5608941,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -518,6 +579,7 @@
           "name": "萬達光電",
           "daily_change_pct": 10.0,
           "volume_multiple": null,
+          "volume": 455903,
           "industry": "光電業",
           "sub_group": null
         },
@@ -526,6 +588,7 @@
           "name": "雷科",
           "daily_change_pct": 10.0,
           "volume_multiple": null,
+          "volume": 23196275,
           "industry": "電子零組件業",
           "sub_group": "半導體設備"
         },
@@ -534,6 +597,7 @@
           "name": "台亞",
           "daily_change_pct": 9.99,
           "volume_multiple": null,
+          "volume": 15628464,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -542,6 +606,7 @@
           "name": "GIS-KY",
           "daily_change_pct": 9.96,
           "volume_multiple": null,
+          "volume": 18926798,
           "industry": "光電業",
           "sub_group": null
         },
@@ -550,6 +615,7 @@
           "name": "晶心科",
           "daily_change_pct": 9.96,
           "volume_multiple": null,
+          "volume": 11054299,
           "industry": "半導體業",
           "sub_group": "IP／ASIC"
         },
@@ -558,6 +624,7 @@
           "name": "天擎",
           "daily_change_pct": 9.93,
           "volume_multiple": null,
+          "volume": 208203,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -566,6 +633,7 @@
           "name": "系統電",
           "daily_change_pct": 9.85,
           "volume_multiple": null,
+          "volume": 12907890,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -574,6 +642,7 @@
           "name": "鴻名",
           "daily_change_pct": 9.83,
           "volume_multiple": null,
+          "volume": 1253253,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -582,6 +651,7 @@
           "name": "陽程",
           "daily_change_pct": 9.81,
           "volume_multiple": null,
+          "volume": 4815318,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -590,6 +660,7 @@
           "name": "無敵",
           "daily_change_pct": 9.77,
           "volume_multiple": null,
+          "volume": 843746,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -598,6 +669,7 @@
           "name": "倚強科",
           "daily_change_pct": 9.61,
           "volume_multiple": null,
+          "volume": 1432360,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -606,6 +678,7 @@
           "name": "連展投控",
           "daily_change_pct": 8.95,
           "volume_multiple": null,
+          "volume": 423175,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -614,6 +687,7 @@
           "name": "友威科",
           "daily_change_pct": 8.82,
           "volume_multiple": null,
+          "volume": 3318791,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -622,6 +696,7 @@
           "name": "嘉晶",
           "daily_change_pct": 7.81,
           "volume_multiple": null,
+          "volume": 75400142,
           "industry": "半導體業",
           "sub_group": "上游材料"
         },
@@ -630,6 +705,7 @@
           "name": "昇陽半導體",
           "daily_change_pct": 7.43,
           "volume_multiple": null,
+          "volume": 18892813,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -638,6 +714,7 @@
           "name": "廣積",
           "daily_change_pct": 7.35,
           "volume_multiple": null,
+          "volume": 6037266,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -646,6 +723,7 @@
           "name": "鈞寶",
           "daily_change_pct": 6.31,
           "volume_multiple": null,
+          "volume": 7364788,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -654,6 +732,7 @@
           "name": "宸曜",
           "daily_change_pct": 6.13,
           "volume_multiple": null,
+          "volume": 497613,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -662,6 +741,7 @@
           "name": "倍利科",
           "daily_change_pct": 6.09,
           "volume_multiple": null,
+          "volume": 361243,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -670,6 +750,7 @@
           "name": "全譜",
           "daily_change_pct": 5.88,
           "volume_multiple": null,
+          "volume": 58380,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -678,6 +759,7 @@
           "name": "九暘",
           "daily_change_pct": 5.82,
           "volume_multiple": null,
+          "volume": 8763123,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -686,6 +768,7 @@
           "name": "艾訊",
           "daily_change_pct": 5.02,
           "volume_multiple": null,
+          "volume": 1736593,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -694,6 +777,7 @@
           "name": "偉詮電",
           "daily_change_pct": 4.83,
           "volume_multiple": null,
+          "volume": 12261097,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -702,6 +786,7 @@
           "name": "聯茂",
           "daily_change_pct": 4.2,
           "volume_multiple": null,
+          "volume": 27479007,
           "industry": "電子零組件業",
           "sub_group": "銅箔基板"
         },
@@ -710,6 +795,7 @@
           "name": "越峰",
           "daily_change_pct": 4.08,
           "volume_multiple": null,
+          "volume": 3623181,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -718,6 +804,7 @@
           "name": "廣閎科",
           "daily_change_pct": 4.06,
           "volume_multiple": null,
+          "volume": 3929488,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -726,6 +813,7 @@
           "name": "茂矽",
           "daily_change_pct": 3.94,
           "volume_multiple": null,
+          "volume": 27339538,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -734,6 +822,7 @@
           "name": "毅嘉",
           "daily_change_pct": 3.83,
           "volume_multiple": null,
+          "volume": 2274646,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -742,6 +831,7 @@
           "name": "天剛",
           "daily_change_pct": 3.76,
           "volume_multiple": null,
+          "volume": 290585,
           "industry": "資訊服務業",
           "sub_group": null
         },
@@ -750,6 +840,7 @@
           "name": "星雲",
           "daily_change_pct": 3.66,
           "volume_multiple": null,
+          "volume": 288315,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -758,6 +849,7 @@
           "name": "由田",
           "daily_change_pct": 3.49,
           "volume_multiple": null,
+          "volume": 5606347,
           "industry": "光電業",
           "sub_group": "PCB 設備·耗材"
         },
@@ -766,6 +858,7 @@
           "name": "神盾",
           "daily_change_pct": 3.31,
           "volume_multiple": null,
+          "volume": 1131743,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -774,6 +867,7 @@
           "name": "牧德",
           "daily_change_pct": 3.25,
           "volume_multiple": null,
+          "volume": 1814860,
           "industry": "光電業",
           "sub_group": null
         },
@@ -782,6 +876,7 @@
           "name": "群翊",
           "daily_change_pct": 3.21,
           "volume_multiple": null,
+          "volume": 586252,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -790,6 +885,7 @@
           "name": "泰藝",
           "daily_change_pct": 2.91,
           "volume_multiple": null,
+          "volume": 718771,
           "industry": "電子零組件業",
           "sub_group": "石英元件·頻率控制元件"
         },
@@ -798,6 +894,7 @@
           "name": "宏達電",
           "daily_change_pct": 2.87,
           "volume_multiple": null,
+          "volume": 8994708,
           "industry": "通信網路業",
           "sub_group": null
         },
@@ -806,6 +903,7 @@
           "name": "迅得",
           "daily_change_pct": 2.86,
           "volume_multiple": null,
+          "volume": 1008689,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -814,6 +912,7 @@
           "name": "志聖",
           "daily_change_pct": 2.84,
           "volume_multiple": null,
+          "volume": 889505,
           "industry": "電子零組件業",
           "sub_group": "PCB 設備·耗材"
         },
@@ -822,6 +921,7 @@
           "name": "晶技",
           "daily_change_pct": 2.71,
           "volume_multiple": null,
+          "volume": 34407830,
           "industry": "電子零組件業",
           "sub_group": "石英元件·頻率控制元件"
         },
@@ -830,6 +930,7 @@
           "name": "竑騰",
           "daily_change_pct": 2.64,
           "volume_multiple": null,
+          "volume": 189002,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -838,6 +939,7 @@
           "name": "佰鴻",
           "daily_change_pct": 2.63,
           "volume_multiple": null,
+          "volume": 10641422,
           "industry": "光電業",
           "sub_group": null
         },
@@ -846,6 +948,7 @@
           "name": "研揚",
           "daily_change_pct": 2.61,
           "volume_multiple": null,
+          "volume": 667432,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -854,6 +957,7 @@
           "name": "系微",
           "daily_change_pct": 2.55,
           "volume_multiple": null,
+          "volume": 621787,
           "industry": "資訊服務業",
           "sub_group": null
         },
@@ -862,6 +966,7 @@
           "name": "南電",
           "daily_change_pct": 2.42,
           "volume_multiple": null,
+          "volume": 9218794,
           "industry": "電子零組件業",
           "sub_group": "IC 載板"
         },
@@ -870,6 +975,7 @@
           "name": "智聯服務",
           "daily_change_pct": 2.39,
           "volume_multiple": null,
+          "volume": 29993,
           "industry": "資訊服務業",
           "sub_group": null
         },
@@ -878,6 +984,7 @@
           "name": "凌華",
           "daily_change_pct": 2.27,
           "volume_multiple": null,
+          "volume": 5049553,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -886,6 +993,7 @@
           "name": "德律",
           "daily_change_pct": 2.22,
           "volume_multiple": null,
+          "volume": 1413018,
           "industry": "其他電子業",
           "sub_group": "PCB 設備·耗材"
         },
@@ -894,6 +1002,7 @@
           "name": "合邦",
           "daily_change_pct": 2.2,
           "volume_multiple": null,
+          "volume": 125534,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -902,6 +1011,7 @@
           "name": "好德",
           "daily_change_pct": 2.19,
           "volume_multiple": null,
+          "volume": 1782298,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -910,6 +1020,7 @@
           "name": "豐藝",
           "daily_change_pct": 2.03,
           "volume_multiple": null,
+          "volume": 997103,
           "industry": "電子通路業",
           "sub_group": null
         },
@@ -918,6 +1029,7 @@
           "name": "晉泰",
           "daily_change_pct": 2.02,
           "volume_multiple": null,
+          "volume": 1156980,
           "industry": "資訊服務業",
           "sub_group": null
         },
@@ -926,6 +1038,7 @@
           "name": "新盛力",
           "daily_change_pct": 1.86,
           "volume_multiple": null,
+          "volume": 6721548,
           "industry": "電腦及週邊設備業",
           "sub_group": "電源／電池／連接"
         },
@@ -934,6 +1047,7 @@
           "name": "安勤",
           "daily_change_pct": 1.84,
           "volume_multiple": null,
+          "volume": 1093740,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -942,6 +1056,7 @@
           "name": "東捷",
           "daily_change_pct": 1.8,
           "volume_multiple": null,
+          "volume": 22141270,
           "industry": "光電業",
           "sub_group": "半導體設備"
         },
@@ -950,6 +1065,7 @@
           "name": "鈺太",
           "daily_change_pct": 1.73,
           "volume_multiple": null,
+          "volume": 384802,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -958,6 +1074,7 @@
           "name": "智原",
           "daily_change_pct": 1.69,
           "volume_multiple": null,
+          "volume": 7221057,
           "industry": "半導體業",
           "sub_group": "IP／ASIC"
         },
@@ -966,6 +1083,7 @@
           "name": "安普新",
           "daily_change_pct": 1.63,
           "volume_multiple": null,
+          "volume": 692999,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -974,6 +1092,7 @@
           "name": "翔名",
           "daily_change_pct": 1.62,
           "volume_multiple": null,
+          "volume": 234842,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -982,6 +1101,7 @@
           "name": "富驊",
           "daily_change_pct": 1.46,
           "volume_multiple": null,
+          "volume": 3235852,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -990,6 +1110,7 @@
           "name": "漢科",
           "daily_change_pct": 1.16,
           "volume_multiple": null,
+          "volume": 316424,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -998,6 +1119,7 @@
           "name": "意德士",
           "daily_change_pct": 1.13,
           "volume_multiple": null,
+          "volume": 73776,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -1006,6 +1128,7 @@
           "name": "聯策",
           "daily_change_pct": 1.12,
           "volume_multiple": null,
+          "volume": 206713,
           "industry": "其他電子業",
           "sub_group": null
         },
@@ -1014,6 +1137,7 @@
           "name": "研華",
           "daily_change_pct": 1.11,
           "volume_multiple": null,
+          "volume": 3797824,
           "industry": "電腦及週邊設備業",
           "sub_group": "工業電腦"
         },
@@ -1022,6 +1146,7 @@
           "name": "台林",
           "daily_change_pct": 1.07,
           "volume_multiple": null,
+          "volume": 15505,
           "industry": "通信網路業",
           "sub_group": null
         },
@@ -1030,6 +1155,7 @@
           "name": "京鼎",
           "daily_change_pct": 1.04,
           "volume_multiple": null,
+          "volume": 729896,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -1038,6 +1164,7 @@
           "name": "嘉彰",
           "daily_change_pct": 0.95,
           "volume_multiple": null,
+          "volume": 45000,
           "industry": "光電業",
           "sub_group": null
         },
@@ -1046,6 +1173,7 @@
           "name": "亞信",
           "daily_change_pct": 0.87,
           "volume_multiple": null,
+          "volume": 471880,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -1054,6 +1182,7 @@
           "name": "凱衛",
           "daily_change_pct": 0.85,
           "volume_multiple": null,
+          "volume": 31333,
           "industry": "資訊服務業",
           "sub_group": null
         },
@@ -1062,6 +1191,7 @@
           "name": "統振",
           "daily_change_pct": 0.83,
           "volume_multiple": null,
+          "volume": 196869,
           "industry": "通信網路業",
           "sub_group": null
         },
@@ -1070,6 +1200,7 @@
           "name": "德勝",
           "daily_change_pct": 0.6,
           "volume_multiple": null,
+          "volume": 89827,
           "industry": "通信網路業",
           "sub_group": null
         },
@@ -1078,6 +1209,7 @@
           "name": "致新",
           "daily_change_pct": 0.59,
           "volume_multiple": null,
+          "volume": 360523,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -1086,6 +1218,7 @@
           "name": "強茂",
           "daily_change_pct": 0.57,
           "volume_multiple": null,
+          "volume": 20652896,
           "industry": "半導體業",
           "sub_group": "分離式半導體"
         },
@@ -1094,6 +1227,7 @@
           "name": "千如",
           "daily_change_pct": 0.57,
           "volume_multiple": null,
+          "volume": 1446843,
           "industry": "電子零組件業",
           "sub_group": null
         },
@@ -1102,6 +1236,7 @@
           "name": "矽創",
           "daily_change_pct": 0.53,
           "volume_multiple": null,
+          "volume": 334696,
           "industry": "半導體業",
           "sub_group": null
         },
@@ -1110,6 +1245,7 @@
           "name": "敘豐",
           "daily_change_pct": 0.5,
           "volume_multiple": null,
+          "volume": 134741,
           "industry": "電子零組件業",
           "sub_group": "PCB 設備·耗材"
         },
@@ -1118,6 +1254,7 @@
           "name": "勝品",
           "daily_change_pct": 0.49,
           "volume_multiple": null,
+          "volume": 5180,
           "industry": "光電業",
           "sub_group": null
         },
@@ -1126,6 +1263,7 @@
           "name": "濱川",
           "daily_change_pct": 0.46,
           "volume_multiple": null,
+          "volume": 4375047,
           "industry": "電腦及週邊設備業",
           "sub_group": null
         },
@@ -1134,6 +1272,7 @@
           "name": "倍力",
           "daily_change_pct": 0.43,
           "volume_multiple": null,
+          "volume": 8213,
           "industry": "資訊服務業",
           "sub_group": null
         },
@@ -1142,6 +1281,7 @@
           "name": "合晶",
           "daily_change_pct": 0.41,
           "volume_multiple": null,
+          "volume": 66757689,
           "industry": "半導體業",
           "sub_group": "上游材料"
         },
@@ -1150,6 +1290,7 @@
           "name": "台勝科",
           "daily_change_pct": 0.33,
           "volume_multiple": null,
+          "volume": 7089443,
           "industry": "半導體業",
           "sub_group": "上游材料"
         },
@@ -1158,6 +1299,7 @@
           "name": "文曄",
           "daily_change_pct": 0.24,
           "volume_multiple": null,
+          "volume": 4569244,
           "industry": "電子通路業",
           "sub_group": null
         },
@@ -1166,6 +1308,7 @@
           "name": "友輝",
           "daily_change_pct": 0.19,
           "volume_multiple": null,
+          "volume": 15400,
           "industry": "光電業",
           "sub_group": null
         },
@@ -1174,6 +1317,7 @@
           "name": "漢磊",
           "daily_change_pct": 0.14,
           "volume_multiple": null,
+          "volume": 20586873,
           "industry": "半導體業",
           "sub_group": "晶圓代工"
         },
@@ -1182,6 +1326,7 @@
           "name": "意藍",
           "daily_change_pct": 9.97,
           "volume_multiple": null,
+          "volume": 2039484,
           "industry": "數位雲端",
           "sub_group": null
         },
@@ -1190,6 +1335,7 @@
           "name": "美亞",
           "daily_change_pct": 9.95,
           "volume_multiple": null,
+          "volume": 5753984,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1198,6 +1344,7 @@
           "name": "裕慶-KY",
           "daily_change_pct": 9.93,
           "volume_multiple": null,
+          "volume": 842520,
           "industry": "其他業",
           "sub_group": null
         },
@@ -1206,6 +1353,7 @@
           "name": "碩網",
           "daily_change_pct": 9.93,
           "volume_multiple": null,
+          "volume": 203746,
           "industry": "數位雲端",
           "sub_group": null
         },
@@ -1214,6 +1362,7 @@
           "name": "彰源",
           "daily_change_pct": 9.87,
           "volume_multiple": null,
+          "volume": 5239284,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1222,6 +1371,7 @@
           "name": "鈦昇",
           "daily_change_pct": 9.78,
           "volume_multiple": null,
+          "volume": 6347702,
           "industry": "電機機械",
           "sub_group": "PCB 設備·耗材"
         },
@@ -1230,6 +1380,7 @@
           "name": "大甲",
           "daily_change_pct": 9.76,
           "volume_multiple": null,
+          "volume": 2048186,
           "industry": "其他業",
           "sub_group": null
         },
@@ -1238,6 +1389,7 @@
           "name": "基米-創",
           "daily_change_pct": 9.72,
           "volume_multiple": null,
+          "volume": 816104,
           "industry": null,
           "sub_group": null
         },
@@ -1246,6 +1398,7 @@
           "name": "新鋼",
           "daily_change_pct": 7.28,
           "volume_multiple": null,
+          "volume": 12313640,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1254,6 +1407,7 @@
           "name": "邁達康",
           "daily_change_pct": 4.7,
           "volume_multiple": null,
+          "volume": 77699,
           "industry": "運動休閒",
           "sub_group": null
         },
@@ -1262,6 +1416,7 @@
           "name": "巨鎧精密-創",
           "daily_change_pct": 3.38,
           "volume_multiple": null,
+          "volume": 2038020,
           "industry": null,
           "sub_group": null
         },
@@ -1270,6 +1425,7 @@
           "name": "運錩",
           "daily_change_pct": 3.11,
           "volume_multiple": null,
+          "volume": 2256458,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1278,6 +1434,7 @@
           "name": "美琪瑪",
           "daily_change_pct": 3.1,
           "volume_multiple": null,
+          "volume": 915795,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -1286,6 +1443,7 @@
           "name": "盛餘",
           "daily_change_pct": 2.78,
           "volume_multiple": null,
+          "volume": 824545,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1294,6 +1452,7 @@
           "name": "龍鋒",
           "daily_change_pct": 2.74,
           "volume_multiple": null,
+          "volume": 64677,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -1302,6 +1461,7 @@
           "name": "允強",
           "daily_change_pct": 2.63,
           "volume_multiple": null,
+          "volume": 17704386,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1310,6 +1470,7 @@
           "name": "擎邦",
           "daily_change_pct": 2.58,
           "volume_multiple": null,
+          "volume": 2344532,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -1318,6 +1479,7 @@
           "name": "久陽",
           "daily_change_pct": 2.46,
           "volume_multiple": null,
+          "volume": 183233,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1326,6 +1488,7 @@
           "name": "鈊象",
           "daily_change_pct": 2.37,
           "volume_multiple": null,
+          "volume": 3493044,
           "industry": "文化創意業",
           "sub_group": null
         },
@@ -1334,6 +1497,7 @@
           "name": "兆聯實業",
           "daily_change_pct": 2.11,
           "volume_multiple": null,
+          "volume": 674422,
           "industry": "綠能環保",
           "sub_group": null
         },
@@ -1342,6 +1506,7 @@
           "name": "光聚晶電",
           "daily_change_pct": 2.02,
           "volume_multiple": null,
+          "volume": 204705,
           "industry": "文化創意業",
           "sub_group": null
         },
@@ -1350,6 +1515,7 @@
           "name": "睿生光電",
           "daily_change_pct": 1.97,
           "volume_multiple": null,
+          "volume": 2318339,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1358,6 +1524,7 @@
           "name": "德鴻",
           "daily_change_pct": 1.92,
           "volume_multiple": null,
+          "volume": 25417,
           "industry": "數位雲端",
           "sub_group": null
         },
@@ -1366,6 +1533,7 @@
           "name": "千興",
           "daily_change_pct": 1.91,
           "volume_multiple": null,
+          "volume": 2029531,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1374,6 +1542,7 @@
           "name": "景岳",
           "daily_change_pct": 1.84,
           "volume_multiple": null,
+          "volume": 102558,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1382,6 +1551,7 @@
           "name": "上品",
           "daily_change_pct": 1.78,
           "volume_multiple": null,
+          "volume": 2148058,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -1390,6 +1560,7 @@
           "name": "朋程",
           "daily_change_pct": 1.75,
           "volume_multiple": null,
+          "volume": 267449,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -1398,6 +1569,7 @@
           "name": "天品",
           "daily_change_pct": 1.61,
           "volume_multiple": null,
+          "volume": 7899784,
           "industry": "其他業",
           "sub_group": null
         },
@@ -1406,6 +1578,7 @@
           "name": "圓祥生技",
           "daily_change_pct": 1.45,
           "volume_multiple": null,
+          "volume": 326703,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1414,6 +1587,7 @@
           "name": "王品",
           "daily_change_pct": 1.29,
           "volume_multiple": null,
+          "volume": 427899,
           "industry": "觀光餐旅",
           "sub_group": null
         },
@@ -1422,6 +1596,7 @@
           "name": "合富-KY",
           "daily_change_pct": 1.26,
           "volume_multiple": null,
+          "volume": 98562,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1430,6 +1605,7 @@
           "name": "聚和",
           "daily_change_pct": 1.26,
           "volume_multiple": null,
+          "volume": 836997,
           "industry": "化學工業",
           "sub_group": null
         },
@@ -1438,6 +1614,7 @@
           "name": "威致",
           "daily_change_pct": 1.22,
           "volume_multiple": null,
+          "volume": 224787,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1446,6 +1623,7 @@
           "name": "國光生",
           "daily_change_pct": 1.12,
           "volume_multiple": null,
+          "volume": 1093940,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1454,6 +1632,7 @@
           "name": "鉅陞",
           "daily_change_pct": 0.95,
           "volume_multiple": null,
+          "volume": 159197,
           "industry": "建材營造業",
           "sub_group": null
         },
@@ -1462,6 +1641,7 @@
           "name": "海光",
           "daily_change_pct": 0.8,
           "volume_multiple": null,
+          "volume": 1265575,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1470,6 +1650,7 @@
           "name": "鐿鈦",
           "daily_change_pct": 0.75,
           "volume_multiple": null,
+          "volume": 23160,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1478,6 +1659,7 @@
           "name": "詩肯",
           "daily_change_pct": 0.71,
           "volume_multiple": null,
+          "volume": 21749,
           "industry": "居家生活",
           "sub_group": null
         },
@@ -1486,6 +1668,7 @@
           "name": "天能綠電",
           "daily_change_pct": 0.61,
           "volume_multiple": null,
+          "volume": 1126,
           "industry": "綠能環保",
           "sub_group": null
         },
@@ -1494,6 +1677,7 @@
           "name": "有益",
           "daily_change_pct": 0.5,
           "volume_multiple": null,
+          "volume": 149591,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1502,6 +1686,7 @@
           "name": "昇益",
           "daily_change_pct": 0.49,
           "volume_multiple": null,
+          "volume": 2000,
           "industry": "建材營造業",
           "sub_group": null
         },
@@ -1510,6 +1695,7 @@
           "name": "力肯",
           "daily_change_pct": 0.46,
           "volume_multiple": null,
+          "volume": 87255,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -1518,6 +1704,7 @@
           "name": "立盈",
           "daily_change_pct": 0.46,
           "volume_multiple": null,
+          "volume": 5150,
           "industry": "綠能環保",
           "sub_group": null
         },
@@ -1526,6 +1713,7 @@
           "name": "微矽電子-創",
           "daily_change_pct": 0.46,
           "volume_multiple": null,
+          "volume": 412662,
           "industry": null,
           "sub_group": null
         },
@@ -1534,6 +1722,7 @@
           "name": "春源",
           "daily_change_pct": 0.45,
           "volume_multiple": null,
+          "volume": 1729221,
           "industry": "鋼鐵工業",
           "sub_group": null
         },
@@ -1542,6 +1731,7 @@
           "name": "百德",
           "daily_change_pct": 0.39,
           "volume_multiple": null,
+          "volume": 237158,
           "industry": "電機機械",
           "sub_group": null
         },
@@ -1550,6 +1740,7 @@
           "name": "霹靂",
           "daily_change_pct": 0.35,
           "volume_multiple": null,
+          "volume": 28941,
           "industry": "文化創意業",
           "sub_group": null
         },
@@ -1558,6 +1749,7 @@
           "name": "聯發",
           "daily_change_pct": 0.31,
           "volume_multiple": null,
+          "volume": 98990,
           "industry": "紡織纖維",
           "sub_group": null
         },
@@ -1566,6 +1758,7 @@
           "name": "東和",
           "daily_change_pct": 0.29,
           "volume_multiple": null,
+          "volume": 109892,
           "industry": "紡織纖維",
           "sub_group": null
         },
@@ -1574,6 +1767,7 @@
           "name": "山林水",
           "daily_change_pct": 0.25,
           "volume_multiple": null,
+          "volume": 286371,
           "industry": "綠能環保",
           "sub_group": null
         },
@@ -1582,6 +1776,7 @@
           "name": "欣大健康",
           "daily_change_pct": 0.2,
           "volume_multiple": null,
+          "volume": 22420,
           "industry": "生技醫療業",
           "sub_group": null
         },
@@ -1590,6 +1785,7 @@
           "name": "生合",
           "daily_change_pct": 0.11,
           "volume_multiple": null,
+          "volume": 29947,
           "industry": "食品工業",
           "sub_group": null
         }

@@ -107,7 +107,7 @@ function renderSet(set) {
           <div class="card">
             <div class="card-top">
               <div><span class="code">${s.code}</span><span class="name">${s.name}</span></div>
-              <div class="multiple">${s.volume_multiple != null ? `量增 ${s.volume_multiple}x` : '連續創新高'}</div>
+              <div class="multiple">${s.volume != null ? Math.round(s.volume / 1000).toLocaleString('zh-TW') + '張' : '–'}</div>
             </div>
             <div class="row">
               <span style="color:${changeColor}">當日 ${changeText}</span>
