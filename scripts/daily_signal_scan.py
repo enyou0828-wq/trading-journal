@@ -25,8 +25,10 @@ import time
 import urllib.error
 import urllib.request
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+TAIPEI_TZ = timezone(timedelta(hours=8))
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HISTORY_CSV = REPO_ROOT / "data" / "price_history.csv"
@@ -75,10 +77,17 @@ BROWSER_USER_AGENT = (
 )
 FETCH_RETRIES = 3
 FETCH_BACKOFF_SECONDS = 4  # 每次重試間隔翻倍：4s, 8s, 16s
+MAX_STALE_DAYS = 6  # 抓到的最新交易日若比今天舊超過這麼多天，視為異常（見 main() 的防呆檢查）
 
 
 def fetch_json(url: str, referer: str) -> list:
-    """抓取 JSON，帶重試與可診斷的錯誤訊息（區分「被擋/回傳非 JSON」跟其他錯誤）。"""
+    """抓取 JSON，帶重試與可診斷的錯誤訊息（區分「被擋/回傳非 JSON」跟其他錯誤）。
+
+    每次都在網址加上帶時間戳的查詢參數破壞快取：GitHub Actions 的執行環境（Azure IP）
+    曾經連續好幾天抓到同一份舊資料，即使原始伺服器標頭是 no-store/no-cache，也可能是
+    中間某層（CDN、代理）用網址當快取 key，沒理會標頭——加隨機參數讓每次都是不同網址，
+    繞過這種以網址為主的快取。
+    """
     headers = {
         "User-Agent": BROWSER_USER_AGENT,
         "Accept": "application/json, text/plain, */*",
@@ -87,8 +96,10 @@ def fetch_json(url: str, referer: str) -> list:
     }
     last_error = None
     for attempt in range(1, FETCH_RETRIES + 1):
+        separator = "&" if "?" in url else "?"
+        cache_busted_url = f"{url}{separator}_={int(time.time() * 1000)}_{attempt}"
         try:
-            req = urllib.request.Request(url, headers=headers)
+            req = urllib.request.Request(cache_busted_url, headers=headers)
             with urllib.request.urlopen(req, timeout=30) as resp:
                 status = resp.status
                 body = resp.read()
@@ -381,6 +392,20 @@ def main() -> int:
         return 1
 
     today_date = today_rows[0]["date"]
+
+    # 防呆：如果抓回來的「最新交易日」離今天太多天，很可能是抓到舊快取資料（不是真的長假），
+    # 之前發生過連續好幾天都抓到同一份舊資料、腳本卻回報成功的狀況——與其靜默略過讓人幾天後
+    # 才發現，寧可讓這次執行直接失敗（GitHub Actions 會顯示紅色叉叉），逼自己去查。
+    fetched = datetime.strptime(today_date, "%Y-%m-%d").date()
+    stale_days = (datetime.now(TAIPEI_TZ).date() - fetched).days
+    if stale_days > MAX_STALE_DAYS:
+        print(
+            f"抓到的最新交易日是 {today_date}，距離今天已經 {stale_days} 天"
+            f"（門檻 {MAX_STALE_DAYS} 天），懷疑抓到舊的快取資料，中止（不寫入任何檔案）",
+            file=sys.stderr,
+        )
+        return 1
+
     history = load_history()
     already_have_today = any(r["date"] == today_date for r in history)
 
