@@ -242,13 +242,14 @@ def load_industries() -> dict[str, dict]:
 
 
 def build_entry(
-    code: str, name: str, daily_change_pct, volume_multiple, volume, companies: dict, industries: dict
+    code: str, name: str, close, daily_change_pct, volume_multiple, volume, companies: dict, industries: dict
 ) -> dict:
     official = industries.get(code)
     curated = companies.get(code)
     return {
         "code": code,
         "name": name,
+        "close": round(close, 2) if close is not None else None,
         "daily_change_pct": round(daily_change_pct, 2) if daily_change_pct is not None else None,
         "volume_multiple": round(volume_multiple, 2) if volume_multiple is not None else None,
         "volume": round(volume) if volume is not None else None,  # 當日成交股數
@@ -298,7 +299,8 @@ def compute_signals(
 
         if is_breakout and is_volume_surge and is_strong_enough:
             signals.append(build_entry(
-                code, today["name"], change, today["volume"] / prior_avg_vol, today["volume"], companies, industries
+                code, today["name"], today["close"], change, today["volume"] / prior_avg_vol, today["volume"],
+                companies, industries
             ))
 
     signals.sort(key=lambda s: priority_sort_key(s, s["volume_multiple"]))
@@ -336,7 +338,8 @@ def compute_consecutive_high_signals(
         if all_new_high:
             today = rows[-1]
             signals.append(build_entry(
-                code, today["name"], daily_change_pct(rows), None, today["volume"], companies, industries
+                code, today["name"], today["close"], daily_change_pct(rows), None, today["volume"],
+                companies, industries
             ))
 
     signals.sort(key=lambda s: priority_sort_key(s, s["daily_change_pct"] or 0))

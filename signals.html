@@ -110,6 +110,7 @@ function renderSet(set) {
               <div class="multiple">${s.volume != null ? Math.round(s.volume / 1000).toLocaleString('zh-TW') + '張' : '–'}</div>
             </div>
             <div class="row">
+              <span>收盤 ${s.close != null ? s.close : '–'}</span>
               <span style="color:${changeColor}">當日 ${changeText}</span>
               <span>${groupText}</span>
             </div>

@@ -388,6 +388,7 @@ const db = getFirestore(fbApp);
       return `
         <tr>
           <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
+          <td class="num">${s.close != null ? s.close : '–'}</td>
           <td class="num ${changeClass}">${changeText}</td>
           <td class="num">${s.volume != null ? Math.round(s.volume / 1000).toLocaleString('zh-TW') + '張' : '–'}</td>
           <td>${signalGroupHtml(s)}</td>
@@ -405,7 +406,7 @@ const db = getFirestore(fbApp);
           <table class="trade-table">
             <thead>
               <tr>
-                <th>股票</th><th class="num">當日漲幅</th><th class="num">成交量</th><th>族群</th>
+                <th>股票</th><th class="num">收盤價</th><th class="num">當日漲幅</th><th class="num">成交量</th><th>族群</th>
               </tr>
             </thead>
             <tbody>${signalRowsHtml(set.signals)}</tbody>

@@ -1,6 +1,6 @@
 {
   "scan_date": "2026-09-29",
-  "generated_at": "2026-09-30T06:50:28.996607+00:00",
+  "generated_at": "2026-09-30T07:01:27.537182+00:00",
   "sets": [
     {
       "key": "fast",
@@ -16,6 +16,7 @@
         {
           "code": "5220",
           "name": "萬達光電",
+          "close": 22.0,
           "daily_change_pct": 10.0,
           "volume_multiple": 13.02,
           "volume": 455903,
@@ -25,6 +26,7 @@
         {
           "code": "5309",
           "name": "系統電",
+          "close": 59.1,
           "daily_change_pct": 9.85,
           "volume_multiple": 12.79,
           "volume": 12907890,
@@ -34,6 +36,7 @@
         {
           "code": "6228",
           "name": "全譜",
+          "close": 19.8,
           "daily_change_pct": 5.88,
           "volume_multiple": 7.68,
           "volume": 58380,
@@ -43,6 +46,7 @@
         {
           "code": "8201",
           "name": "無敵",
+          "close": 14.6,
           "daily_change_pct": 9.77,
           "volume_multiple": 7.36,
           "volume": 843746,
@@ -52,6 +56,7 @@
         {
           "code": "6155",
           "name": "鈞寶",
+          "close": 64.0,
           "daily_change_pct": 6.31,
           "volume_multiple": 5.69,
           "volume": 7364788,
@@ -61,6 +66,7 @@
         {
           "code": "3323",
           "name": "加百裕",
+          "close": 29.35,
           "daily_change_pct": 5.39,
           "volume_multiple": 5.52,
           "volume": 1058356,
@@ -70,6 +76,7 @@
         {
           "code": "6414",
           "name": "樺漢",
+          "close": 398.0,
           "daily_change_pct": 6.42,
           "volume_multiple": 5.37,
           "volume": 3643742,
@@ -79,6 +86,7 @@
         {
           "code": "3577",
           "name": "泓格",
+          "close": 122.0,
           "daily_change_pct": 7.02,
           "volume_multiple": 5.03,
           "volume": 1014268,
@@ -88,6 +96,7 @@
         {
           "code": "8050",
           "name": "廣積",
+          "close": 65.7,
           "daily_change_pct": 7.35,
           "volume_multiple": 4.82,
           "volume": 6037266,
@@ -97,6 +106,7 @@
         {
           "code": "3268",
           "name": "海德威",
+          "close": 21.5,
           "daily_change_pct": 7.77,
           "volume_multiple": 4.48,
           "volume": 437882,
@@ -106,6 +116,7 @@
         {
           "code": "6127",
           "name": "九豪",
+          "close": 51.0,
           "daily_change_pct": 6.69,
           "volume_multiple": 4.42,
           "volume": 6460940,
@@ -115,6 +126,7 @@
         {
           "code": "4545",
           "name": "銘鈺",
+          "close": 35.55,
           "daily_change_pct": 7.4,
           "volume_multiple": 4.37,
           "volume": 326852,
@@ -124,6 +136,7 @@
         {
           "code": "8147",
           "name": "正淩",
+          "close": 148.0,
           "daily_change_pct": 8.42,
           "volume_multiple": 4.13,
           "volume": 738201,
@@ -133,6 +146,7 @@
         {
           "code": "5234",
           "name": "達興材料",
+          "close": 322.0,
           "daily_change_pct": 9.9,
           "volume_multiple": 3.76,
           "volume": 635167,
@@ -142,6 +156,7 @@
         {
           "code": "2340",
           "name": "台亞",
+          "close": 38.0,
           "daily_change_pct": 9.99,
           "volume_multiple": 3.65,
           "volume": 15628464,
@@ -151,6 +166,7 @@
         {
           "code": "2484",
           "name": "希華",
+          "close": 76.9,
           "daily_change_pct": 5.63,
           "volume_multiple": 3.65,
           "volume": 30199086,
@@ -160,6 +176,7 @@
         {
           "code": "6207",
           "name": "雷科",
+          "close": 137.5,
           "daily_change_pct": 10.0,
           "volume_multiple": 3.46,
           "volume": 23196275,
@@ -169,6 +186,7 @@
         {
           "code": "3088",
           "name": "艾訊",
+          "close": 136.0,
           "daily_change_pct": 5.02,
           "volume_multiple": 3.38,
           "volume": 1736593,
@@ -178,6 +196,7 @@
         {
           "code": "6695",
           "name": "芯鼎",
+          "close": 54.1,
           "daily_change_pct": 8.42,
           "volume_multiple": 3.38,
           "volume": 1257413,
@@ -187,6 +206,7 @@
         {
           "code": "6532",
           "name": "瑞耘",
+          "close": 108.0,
           "daily_change_pct": 9.64,
           "volume_multiple": 3.3,
           "volume": 2259490,
@@ -196,6 +216,7 @@
         {
           "code": "3543",
           "name": "州巧",
+          "close": 50.2,
           "daily_change_pct": 9.85,
           "volume_multiple": 3.26,
           "volume": 4142472,
@@ -205,6 +226,7 @@
         {
           "code": "3615",
           "name": "安可",
+          "close": 41.65,
           "daily_change_pct": 9.89,
           "volume_multiple": 3.06,
           "volume": 3489345,
@@ -214,6 +236,7 @@
         {
           "code": "6533",
           "name": "晶心科",
+          "close": 303.5,
           "daily_change_pct": 9.96,
           "volume_multiple": 2.82,
           "volume": 11054299,
@@ -223,6 +246,7 @@
         {
           "code": "6187",
           "name": "萬潤",
+          "close": 1310.0,
           "daily_change_pct": 9.62,
           "volume_multiple": 2.81,
           "volume": 3498263,
@@ -232,6 +256,7 @@
         {
           "code": "3016",
           "name": "嘉晶",
+          "close": 172.5,
           "daily_change_pct": 7.81,
           "volume_multiple": 2.8,
           "volume": 75400142,
@@ -241,6 +266,7 @@
         {
           "code": "3580",
           "name": "友威科",
+          "close": 111.0,
           "daily_change_pct": 8.82,
           "volume_multiple": 2.73,
           "volume": 3318791,
@@ -250,6 +276,7 @@
         {
           "code": "6922",
           "name": "宸曜",
+          "close": 225.0,
           "daily_change_pct": 6.13,
           "volume_multiple": 2.71,
           "volume": 497613,
@@ -259,6 +286,7 @@
         {
           "code": "3518",
           "name": "柏騰",
+          "close": 37.4,
           "daily_change_pct": 10.0,
           "volume_multiple": 2.65,
           "volume": 5608941,
@@ -268,6 +296,7 @@
         {
           "code": "7822",
           "name": "倍利科",
+          "close": 976.0,
           "daily_change_pct": 6.09,
           "volume_multiple": 2.44,
           "volume": 361243,
@@ -277,6 +306,7 @@
         {
           "code": "6698",
           "name": "旭暉應材",
+          "close": 33.9,
           "daily_change_pct": 6.94,
           "volume_multiple": 2.22,
           "volume": 241170,
@@ -286,6 +316,7 @@
         {
           "code": "8227",
           "name": "巨有科技",
+          "close": 337.0,
           "daily_change_pct": 9.95,
           "volume_multiple": 2.09,
           "volume": 2527034,
@@ -295,6 +326,7 @@
         {
           "code": "6708",
           "name": "天擎",
+          "close": 47.05,
           "daily_change_pct": 9.93,
           "volume_multiple": 2.05,
           "volume": 208203,
@@ -304,6 +336,7 @@
         {
           "code": "3550",
           "name": "聯穎",
+          "close": 26.2,
           "daily_change_pct": 9.85,
           "volume_multiple": 1.93,
           "volume": 3498604,
@@ -313,6 +346,7 @@
         {
           "code": "3498",
           "name": "陽程",
+          "close": 235.0,
           "daily_change_pct": 9.81,
           "volume_multiple": 1.88,
           "volume": 4815318,
@@ -322,6 +356,7 @@
         {
           "code": "8028",
           "name": "昇陽半導體",
+          "close": 289.0,
           "daily_change_pct": 7.43,
           "volume_multiple": 1.79,
           "volume": 18892813,
@@ -331,6 +366,7 @@
         {
           "code": "3149",
           "name": "正達",
+          "close": 67.3,
           "daily_change_pct": 6.32,
           "volume_multiple": 1.72,
           "volume": 9373933,
@@ -340,6 +376,7 @@
         {
           "code": "4906",
           "name": "正文",
+          "close": 40.2,
           "daily_change_pct": 6.77,
           "volume_multiple": 1.61,
           "volume": 13404590,
@@ -349,6 +386,7 @@
         {
           "code": "8040",
           "name": "九暘",
+          "close": 100.0,
           "daily_change_pct": 5.82,
           "volume_multiple": 1.54,
           "volume": 8763123,
@@ -358,6 +396,7 @@
         {
           "code": "2020",
           "name": "美亞",
+          "close": 24.3,
           "daily_change_pct": 9.95,
           "volume_multiple": 17.46,
           "volume": 5753984,
@@ -367,6 +406,7 @@
         {
           "code": "2032",
           "name": "新鋼",
+          "close": 19.9,
           "daily_change_pct": 7.28,
           "volume_multiple": 10.3,
           "volume": 12313640,
@@ -376,6 +416,7 @@
         {
           "code": "5013",
           "name": "強新",
+          "close": 35.25,
           "daily_change_pct": 9.98,
           "volume_multiple": 9.05,
           "volume": 1133389,
@@ -385,6 +426,7 @@
         {
           "code": "4772",
           "name": "台特化",
+          "close": 271.0,
           "daily_change_pct": 9.05,
           "volume_multiple": 8.02,
           "volume": 2803195,
@@ -394,6 +436,7 @@
         {
           "code": "4195",
           "name": "基米-創",
+          "close": 15.8,
           "daily_change_pct": 9.72,
           "volume_multiple": 5.55,
           "volume": 816104,
@@ -403,6 +446,7 @@
         {
           "code": "6901",
           "name": "鑽石投資",
+          "close": 17.25,
           "daily_change_pct": 9.87,
           "volume_multiple": 4.45,
           "volume": 4821111,
@@ -412,6 +456,7 @@
         {
           "code": "4741",
           "name": "泓瀚",
+          "close": 40.05,
           "daily_change_pct": 5.95,
           "volume_multiple": 4.13,
           "volume": 185874,
@@ -421,6 +466,7 @@
         {
           "code": "4551",
           "name": "智伸科",
+          "close": 179.5,
           "daily_change_pct": 9.79,
           "volume_multiple": 3.82,
           "volume": 2692592,
@@ -430,6 +476,7 @@
         {
           "code": "1597",
           "name": "直得",
+          "close": 146.5,
           "daily_change_pct": 9.74,
           "volume_multiple": 3.71,
           "volume": 2569668,
@@ -439,6 +486,7 @@
         {
           "code": "6925",
           "name": "意藍",
+          "close": 75.0,
           "daily_change_pct": 9.97,
           "volume_multiple": 3.5,
           "volume": 2039484,
@@ -448,6 +496,7 @@
         {
           "code": "3162",
           "name": "精確",
+          "close": 80.9,
           "daily_change_pct": 9.92,
           "volume_multiple": 3.43,
           "volume": 4087589,
@@ -457,6 +506,7 @@
         {
           "code": "4768",
           "name": "晶呈科技",
+          "close": 357.5,
           "daily_change_pct": 10.0,
           "volume_multiple": 2.85,
           "volume": 1645472,
@@ -466,6 +516,7 @@
         {
           "code": "6505",
           "name": "台塑化",
+          "close": 94.3,
           "daily_change_pct": 8.14,
           "volume_multiple": 2.57,
           "volume": 40587920,
@@ -475,6 +526,7 @@
         {
           "code": "4154",
           "name": "樂威科-KY",
+          "close": 12.9,
           "daily_change_pct": 8.86,
           "volume_multiple": 2.53,
           "volume": 52603,
@@ -484,6 +536,7 @@
         {
           "code": "1721",
           "name": "國慶科技",
+          "close": 26.1,
           "daily_change_pct": 7.85,
           "volume_multiple": 2.51,
           "volume": 4078788,
@@ -493,6 +546,7 @@
         {
           "code": "8027",
           "name": "鈦昇",
+          "close": 202.0,
           "daily_change_pct": 9.78,
           "volume_multiple": 2.28,
           "volume": 6347702,
@@ -502,6 +556,7 @@
         {
           "code": "7547",
           "name": "碩網",
+          "close": 65.3,
           "daily_change_pct": 9.93,
           "volume_multiple": 2.13,
           "volume": 203746,
@@ -511,6 +566,7 @@
         {
           "code": "1711",
           "name": "永光",
+          "close": 40.55,
           "daily_change_pct": 5.05,
           "volume_multiple": 2.09,
           "volume": 5053634,
@@ -520,6 +576,7 @@
         {
           "code": "8935",
           "name": "邦泰",
+          "close": 19.3,
           "daily_change_pct": 9.97,
           "volume_multiple": 1.94,
           "volume": 265045,
@@ -529,6 +586,7 @@
         {
           "code": "4576",
           "name": "大銀微系統",
+          "close": 241.0,
           "daily_change_pct": 7.11,
           "volume_multiple": 1.66,
           "volume": 2503523,
@@ -538,6 +596,7 @@
         {
           "code": "1441",
           "name": "大東",
+          "close": 10.15,
           "daily_change_pct": 16.4,
           "volume_multiple": 1.62,
           "volume": 101129,
@@ -547,6 +606,7 @@
         {
           "code": "6957",
           "name": "裕慶-KY",
+          "close": 337.5,
           "daily_change_pct": 9.93,
           "volume_multiple": 1.54,
           "volume": 842520,
@@ -568,6 +628,7 @@
         {
           "code": "3518",
           "name": "柏騰",
+          "close": 37.4,
           "daily_change_pct": 10.0,
           "volume_multiple": null,
           "volume": 5608941,
@@ -577,6 +638,7 @@
         {
           "code": "5220",
           "name": "萬達光電",
+          "close": 22.0,
           "daily_change_pct": 10.0,
           "volume_multiple": null,
           "volume": 455903,
@@ -586,6 +648,7 @@
         {
           "code": "6207",
           "name": "雷科",
+          "close": 137.5,
           "daily_change_pct": 10.0,
           "volume_multiple": null,
           "volume": 23196275,
@@ -595,6 +658,7 @@
         {
           "code": "2340",
           "name": "台亞",
+          "close": 38.0,
           "daily_change_pct": 9.99,
           "volume_multiple": null,
           "volume": 15628464,
@@ -604,6 +668,7 @@
         {
           "code": "6456",
           "name": "GIS-KY",
+          "close": 89.4,
           "daily_change_pct": 9.96,
           "volume_multiple": null,
           "volume": 18926798,
@@ -613,6 +678,7 @@
         {
           "code": "6533",
           "name": "晶心科",
+          "close": 303.5,
           "daily_change_pct": 9.96,
           "volume_multiple": null,
           "volume": 11054299,
@@ -622,6 +688,7 @@
         {
           "code": "6708",
           "name": "天擎",
+          "close": 47.05,
           "daily_change_pct": 9.93,
           "volume_multiple": null,
           "volume": 208203,
@@ -631,6 +698,7 @@
         {
           "code": "5309",
           "name": "系統電",
+          "close": 59.1,
           "daily_change_pct": 9.85,
           "volume_multiple": null,
           "volume": 12907890,
@@ -640,6 +708,7 @@
         {
           "code": "3021",
           "name": "鴻名",
+          "close": 29.6,
           "daily_change_pct": 9.83,
           "volume_multiple": null,
           "volume": 1253253,
@@ -649,6 +718,7 @@
         {
           "code": "3498",
           "name": "陽程",
+          "close": 235.0,
           "daily_change_pct": 9.81,
           "volume_multiple": null,
           "volume": 4815318,
@@ -658,6 +728,7 @@
         {
           "code": "8201",
           "name": "無敵",
+          "close": 14.6,
           "daily_change_pct": 9.77,
           "volume_multiple": null,
           "volume": 843746,
@@ -667,6 +738,7 @@
         {
           "code": "3219",
           "name": "倚強科",
+          "close": 125.5,
           "daily_change_pct": 9.61,
           "volume_multiple": null,
           "volume": 1432360,
@@ -676,6 +748,7 @@
         {
           "code": "3710",
           "name": "連展投控",
+          "close": 8.52,
           "daily_change_pct": 8.95,
           "volume_multiple": null,
           "volume": 423175,
@@ -685,6 +758,7 @@
         {
           "code": "3580",
           "name": "友威科",
+          "close": 111.0,
           "daily_change_pct": 8.82,
           "volume_multiple": null,
           "volume": 3318791,
@@ -694,6 +768,7 @@
         {
           "code": "3016",
           "name": "嘉晶",
+          "close": 172.5,
           "daily_change_pct": 7.81,
           "volume_multiple": null,
           "volume": 75400142,
@@ -703,6 +778,7 @@
         {
           "code": "8028",
           "name": "昇陽半導體",
+          "close": 289.0,
           "daily_change_pct": 7.43,
           "volume_multiple": null,
           "volume": 18892813,
@@ -712,6 +788,7 @@
         {
           "code": "8050",
           "name": "廣積",
+          "close": 65.7,
           "daily_change_pct": 7.35,
           "volume_multiple": null,
           "volume": 6037266,
@@ -721,6 +798,7 @@
         {
           "code": "6155",
           "name": "鈞寶",
+          "close": 64.0,
           "daily_change_pct": 6.31,
           "volume_multiple": null,
           "volume": 7364788,
@@ -730,6 +808,7 @@
         {
           "code": "6922",
           "name": "宸曜",
+          "close": 225.0,
           "daily_change_pct": 6.13,
           "volume_multiple": null,
           "volume": 497613,
@@ -739,6 +818,7 @@
         {
           "code": "7822",
           "name": "倍利科",
+          "close": 976.0,
           "daily_change_pct": 6.09,
           "volume_multiple": null,
           "volume": 361243,
@@ -748,6 +828,7 @@
         {
           "code": "6228",
           "name": "全譜",
+          "close": 19.8,
           "daily_change_pct": 5.88,
           "volume_multiple": null,
           "volume": 58380,
@@ -757,6 +838,7 @@
         {
           "code": "8040",
           "name": "九暘",
+          "close": 100.0,
           "daily_change_pct": 5.82,
           "volume_multiple": null,
           "volume": 8763123,
@@ -766,6 +848,7 @@
         {
           "code": "3088",
           "name": "艾訊",
+          "close": 136.0,
           "daily_change_pct": 5.02,
           "volume_multiple": null,
           "volume": 1736593,
@@ -775,6 +858,7 @@
         {
           "code": "2436",
           "name": "偉詮電",
+          "close": 75.9,
           "daily_change_pct": 4.83,
           "volume_multiple": null,
           "volume": 12261097,
@@ -784,6 +868,7 @@
         {
           "code": "6213",
           "name": "聯茂",
+          "close": 620.0,
           "daily_change_pct": 4.2,
           "volume_multiple": null,
           "volume": 27479007,
@@ -793,6 +878,7 @@
         {
           "code": "8121",
           "name": "越峰",
+          "close": 31.9,
           "daily_change_pct": 4.08,
           "volume_multiple": null,
           "volume": 3623181,
@@ -802,6 +888,7 @@
         {
           "code": "6693",
           "name": "廣閎科",
+          "close": 218.0,
           "daily_change_pct": 4.06,
           "volume_multiple": null,
           "volume": 3929488,
@@ -811,6 +898,7 @@
         {
           "code": "2342",
           "name": "茂矽",
+          "close": 50.1,
           "daily_change_pct": 3.94,
           "volume_multiple": null,
           "volume": 27339538,
@@ -820,6 +908,7 @@
         {
           "code": "2402",
           "name": "毅嘉",
+          "close": 56.9,
           "daily_change_pct": 3.83,
           "volume_multiple": null,
           "volume": 2274646,
@@ -829,6 +918,7 @@
         {
           "code": "5310",
           "name": "天剛",
+          "close": 29.0,
           "daily_change_pct": 3.76,
           "volume_multiple": null,
           "volume": 290585,
@@ -838,6 +928,7 @@
         {
           "code": "8047",
           "name": "星雲",
+          "close": 51.0,
           "daily_change_pct": 3.66,
           "volume_multiple": null,
           "volume": 288315,
@@ -847,6 +938,7 @@
         {
           "code": "3455",
           "name": "由田",
+          "close": 267.0,
           "daily_change_pct": 3.49,
           "volume_multiple": null,
           "volume": 5606347,
@@ -856,6 +948,7 @@
         {
           "code": "6462",
           "name": "神盾",
+          "close": 103.0,
           "daily_change_pct": 3.31,
           "volume_multiple": null,
           "volume": 1131743,
@@ -865,6 +958,7 @@
         {
           "code": "3563",
           "name": "牧德",
+          "close": 794.0,
           "daily_change_pct": 3.25,
           "volume_multiple": null,
           "volume": 1814860,
@@ -874,6 +968,7 @@
         {
           "code": "6664",
           "name": "群翊",
+          "close": 370.0,
           "daily_change_pct": 3.21,
           "volume_multiple": null,
           "volume": 586252,
@@ -883,6 +978,7 @@
         {
           "code": "8289",
           "name": "泰藝",
+          "close": 46.05,
           "daily_change_pct": 2.91,
           "volume_multiple": null,
           "volume": 718771,
@@ -892,6 +988,7 @@
         {
           "code": "2498",
           "name": "宏達電",
+          "close": 43.0,
           "daily_change_pct": 2.87,
           "volume_multiple": null,
           "volume": 8994708,
@@ -901,6 +998,7 @@
         {
           "code": "6438",
           "name": "迅得",
+          "close": 162.0,
           "daily_change_pct": 2.86,
           "volume_multiple": null,
           "volume": 1008689,
@@ -910,6 +1008,7 @@
         {
           "code": "2467",
           "name": "志聖",
+          "close": 544.0,
           "daily_change_pct": 2.84,
           "volume_multiple": null,
           "volume": 889505,
@@ -919,6 +1018,7 @@
         {
           "code": "3042",
           "name": "晶技",
+          "close": 208.5,
           "daily_change_pct": 2.71,
           "volume_multiple": null,
           "volume": 34407830,
@@ -928,6 +1028,7 @@
         {
           "code": "7751",
           "name": "竑騰",
+          "close": 1555.0,
           "daily_change_pct": 2.64,
           "volume_multiple": null,
           "volume": 189002,
@@ -937,6 +1038,7 @@
         {
           "code": "3031",
           "name": "佰鴻",
+          "close": 31.25,
           "daily_change_pct": 2.63,
           "volume_multiple": null,
           "volume": 10641422,
@@ -946,6 +1048,7 @@
         {
           "code": "6579",
           "name": "研揚",
+          "close": 157.5,
           "daily_change_pct": 2.61,
           "volume_multiple": null,
           "volume": 667432,
@@ -955,6 +1058,7 @@
         {
           "code": "6231",
           "name": "系微",
+          "close": 241.0,
           "daily_change_pct": 2.55,
           "volume_multiple": null,
           "volume": 621787,
@@ -964,6 +1068,7 @@
         {
           "code": "8046",
           "name": "南電",
+          "close": 1270.0,
           "daily_change_pct": 2.42,
           "volume_multiple": null,
           "volume": 9218794,
@@ -973,6 +1078,7 @@
         {
           "code": "6751",
           "name": "智聯服務",
+          "close": 44.95,
           "daily_change_pct": 2.39,
           "volume_multiple": null,
           "volume": 29993,
@@ -982,6 +1088,7 @@
         {
           "code": "6166",
           "name": "凌華",
+          "close": 135.0,
           "daily_change_pct": 2.27,
           "volume_multiple": null,
           "volume": 5049553,
@@ -991,6 +1098,7 @@
         {
           "code": "3030",
           "name": "德律",
+          "close": 276.0,
           "daily_change_pct": 2.22,
           "volume_multiple": null,
           "volume": 1413018,
@@ -1000,6 +1108,7 @@
         {
           "code": "6103",
           "name": "合邦",
+          "close": 41.8,
           "daily_change_pct": 2.2,
           "volume_multiple": null,
           "volume": 125534,
@@ -1009,6 +1118,7 @@
         {
           "code": "3114",
           "name": "好德",
+          "close": 35.0,
           "daily_change_pct": 2.19,
           "volume_multiple": null,
           "volume": 1782298,
@@ -1018,6 +1128,7 @@
         {
           "code": "6189",
           "name": "豐藝",
+          "close": 50.2,
           "daily_change_pct": 2.03,
           "volume_multiple": null,
           "volume": 997103,
@@ -1027,6 +1138,7 @@
         {
           "code": "6221",
           "name": "晉泰",
+          "close": 32.85,
           "daily_change_pct": 2.02,
           "volume_multiple": null,
           "volume": 1156980,
@@ -1036,6 +1148,7 @@
         {
           "code": "4931",
           "name": "新盛力",
+          "close": 246.0,
           "daily_change_pct": 1.86,
           "volume_multiple": null,
           "volume": 6721548,
@@ -1045,6 +1158,7 @@
         {
           "code": "3479",
           "name": "安勤",
+          "close": 138.5,
           "daily_change_pct": 1.84,
           "volume_multiple": null,
           "volume": 1093740,
@@ -1054,6 +1168,7 @@
         {
           "code": "8064",
           "name": "東捷",
+          "close": 141.5,
           "daily_change_pct": 1.8,
           "volume_multiple": null,
           "volume": 22141270,
@@ -1063,6 +1178,7 @@
         {
           "code": "6679",
           "name": "鈺太",
+          "close": 206.0,
           "daily_change_pct": 1.73,
           "volume_multiple": null,
           "volume": 384802,
@@ -1072,6 +1188,7 @@
         {
           "code": "3035",
           "name": "智原",
+          "close": 210.0,
           "daily_change_pct": 1.69,
           "volume_multiple": null,
           "volume": 7221057,
@@ -1081,6 +1198,7 @@
         {
           "code": "6743",
           "name": "安普新",
+          "close": 31.1,
           "daily_change_pct": 1.63,
           "volume_multiple": null,
           "volume": 692999,
@@ -1090,6 +1208,7 @@
         {
           "code": "8091",
           "name": "翔名",
+          "close": 220.0,
           "daily_change_pct": 1.62,
           "volume_multiple": null,
           "volume": 234842,
@@ -1099,6 +1218,7 @@
         {
           "code": "5465",
           "name": "富驊",
+          "close": 34.7,
           "daily_change_pct": 1.46,
           "volume_multiple": null,
           "volume": 3235852,
@@ -1108,6 +1228,7 @@
         {
           "code": "3402",
           "name": "漢科",
+          "close": 131.0,
           "daily_change_pct": 1.16,
           "volume_multiple": null,
           "volume": 316424,
@@ -1117,6 +1238,7 @@
         {
           "code": "7556",
           "name": "意德士",
+          "close": 267.5,
           "daily_change_pct": 1.13,
           "volume_multiple": null,
           "volume": 73776,
@@ -1126,6 +1248,7 @@
         {
           "code": "6658",
           "name": "聯策",
+          "close": 181.0,
           "daily_change_pct": 1.12,
           "volume_multiple": null,
           "volume": 206713,
@@ -1135,6 +1258,7 @@
         {
           "code": "2395",
           "name": "研華",
+          "close": 730.0,
           "daily_change_pct": 1.11,
           "volume_multiple": null,
           "volume": 3797824,
@@ -1144,6 +1268,7 @@
         {
           "code": "5353",
           "name": "台林",
+          "close": 28.45,
           "daily_change_pct": 1.07,
           "volume_multiple": null,
           "volume": 15505,
@@ -1153,6 +1278,7 @@
         {
           "code": "3413",
           "name": "京鼎",
+          "close": 291.0,
           "daily_change_pct": 1.04,
           "volume_multiple": null,
           "volume": 729896,
@@ -1162,6 +1288,7 @@
         {
           "code": "4942",
           "name": "嘉彰",
+          "close": 31.95,
           "daily_change_pct": 0.95,
           "volume_multiple": null,
           "volume": 45000,
@@ -1171,6 +1298,7 @@
         {
           "code": "3169",
           "name": "亞信",
+          "close": 115.5,
           "daily_change_pct": 0.87,
           "volume_multiple": null,
           "volume": 471880,
@@ -1180,6 +1308,7 @@
         {
           "code": "5201",
           "name": "凱衛",
+          "close": 29.55,
           "daily_change_pct": 0.85,
           "volume_multiple": null,
           "volume": 31333,
@@ -1189,6 +1318,7 @@
         {
           "code": "6170",
           "name": "統振",
+          "close": 48.8,
           "daily_change_pct": 0.83,
           "volume_multiple": null,
           "volume": 196869,
@@ -1198,6 +1328,7 @@
         {
           "code": "8048",
           "name": "德勝",
+          "close": 50.4,
           "daily_change_pct": 0.6,
           "volume_multiple": null,
           "volume": 89827,
@@ -1207,6 +1338,7 @@
         {
           "code": "8081",
           "name": "致新",
+          "close": 255.5,
           "daily_change_pct": 0.59,
           "volume_multiple": null,
           "volume": 360523,
@@ -1216,6 +1348,7 @@
         {
           "code": "2481",
           "name": "強茂",
+          "close": 175.5,
           "daily_change_pct": 0.57,
           "volume_multiple": null,
           "volume": 20652896,
@@ -1225,6 +1358,7 @@
         {
           "code": "3236",
           "name": "千如",
+          "close": 44.1,
           "daily_change_pct": 0.57,
           "volume_multiple": null,
           "volume": 1446843,
@@ -1234,6 +1368,7 @@
         {
           "code": "8016",
           "name": "矽創",
+          "close": 285.0,
           "daily_change_pct": 0.53,
           "volume_multiple": null,
           "volume": 334696,
@@ -1243,6 +1378,7 @@
         {
           "code": "3485",
           "name": "敘豐",
+          "close": 201.0,
           "daily_change_pct": 0.5,
           "volume_multiple": null,
           "volume": 134741,
@@ -1252,6 +1388,7 @@
         {
           "code": "6556",
           "name": "勝品",
+          "close": 61.9,
           "daily_change_pct": 0.49,
           "volume_multiple": null,
           "volume": 5180,
@@ -1261,6 +1398,7 @@
         {
           "code": "1569",
           "name": "濱川",
+          "close": 65.0,
           "daily_change_pct": 0.46,
           "volume_multiple": null,
           "volume": 4375047,
@@ -1270,6 +1408,7 @@
         {
           "code": "6874",
           "name": "倍力",
+          "close": 70.2,
           "daily_change_pct": 0.43,
           "volume_multiple": null,
           "volume": 8213,
@@ -1279,6 +1418,7 @@
         {
           "code": "6182",
           "name": "合晶",
+          "close": 121.0,
           "daily_change_pct": 0.41,
           "volume_multiple": null,
           "volume": 66757689,
@@ -1288,6 +1428,7 @@
         {
           "code": "3532",
           "name": "台勝科",
+          "close": 454.0,
           "daily_change_pct": 0.33,
           "volume_multiple": null,
           "volume": 7089443,
@@ -1297,6 +1438,7 @@
         {
           "code": "3036",
           "name": "文曄",
+          "close": 207.5,
           "daily_change_pct": 0.24,
           "volume_multiple": null,
           "volume": 4569244,
@@ -1306,6 +1448,7 @@
         {
           "code": "4933",
           "name": "友輝",
+          "close": 53.4,
           "daily_change_pct": 0.19,
           "volume_multiple": null,
           "volume": 15400,
@@ -1315,6 +1458,7 @@
         {
           "code": "3707",
           "name": "漢磊",
+          "close": 72.9,
           "daily_change_pct": 0.14,
           "volume_multiple": null,
           "volume": 20586873,
@@ -1324,6 +1468,7 @@
         {
           "code": "6925",
           "name": "意藍",
+          "close": 75.0,
           "daily_change_pct": 9.97,
           "volume_multiple": null,
           "volume": 2039484,
@@ -1333,6 +1478,7 @@
         {
           "code": "2020",
           "name": "美亞",
+          "close": 24.3,
           "daily_change_pct": 9.95,
           "volume_multiple": null,
           "volume": 5753984,
@@ -1342,6 +1488,7 @@
         {
           "code": "6957",
           "name": "裕慶-KY",
+          "close": 337.5,
           "daily_change_pct": 9.93,
           "volume_multiple": null,
           "volume": 842520,
@@ -1351,6 +1498,7 @@
         {
           "code": "7547",
           "name": "碩網",
+          "close": 65.3,
           "daily_change_pct": 9.93,
           "volume_multiple": null,
           "volume": 203746,
@@ -1360,6 +1508,7 @@
         {
           "code": "2030",
           "name": "彰源",
+          "close": 33.4,
           "daily_change_pct": 9.87,
           "volume_multiple": null,
           "volume": 5239284,
@@ -1369,6 +1518,7 @@
         {
           "code": "8027",
           "name": "鈦昇",
+          "close": 202.0,
           "daily_change_pct": 9.78,
           "volume_multiple": null,
           "volume": 6347702,
@@ -1378,6 +1528,7 @@
         {
           "code": "2221",
           "name": "大甲",
+          "close": 180.0,
           "daily_change_pct": 9.76,
           "volume_multiple": null,
           "volume": 2048186,
@@ -1387,6 +1538,7 @@
         {
           "code": "4195",
           "name": "基米-創",
+          "close": 15.8,
           "daily_change_pct": 9.72,
           "volume_multiple": null,
           "volume": 816104,
@@ -1396,6 +1548,7 @@
         {
           "code": "2032",
           "name": "新鋼",
+          "close": 19.9,
           "daily_change_pct": 7.28,
           "volume_multiple": null,
           "volume": 12313640,
@@ -1405,6 +1558,7 @@
         {
           "code": "9960",
           "name": "邁達康",
+          "close": 41.2,
           "daily_change_pct": 4.7,
           "volume_multiple": null,
           "volume": 77699,
@@ -1414,6 +1568,7 @@
         {
           "code": "2254",
           "name": "巨鎧精密-創",
+          "close": 91.8,
           "daily_change_pct": 3.38,
           "volume_multiple": null,
           "volume": 2038020,
@@ -1423,6 +1578,7 @@
         {
           "code": "2069",
           "name": "運錩",
+          "close": 26.5,
           "daily_change_pct": 3.11,
           "volume_multiple": null,
           "volume": 2256458,
@@ -1432,6 +1588,7 @@
         {
           "code": "4721",
           "name": "美琪瑪",
+          "close": 79.8,
           "daily_change_pct": 3.1,
           "volume_multiple": null,
           "volume": 915795,
@@ -1441,6 +1598,7 @@
         {
           "code": "2029",
           "name": "盛餘",
+          "close": 22.15,
           "daily_change_pct": 2.78,
           "volume_multiple": null,
           "volume": 824545,
@@ -1450,6 +1608,7 @@
         {
           "code": "3226",
           "name": "龍鋒",
+          "close": 60.1,
           "daily_change_pct": 2.74,
           "volume_multiple": null,
           "volume": 64677,
@@ -1459,6 +1618,7 @@
         {
           "code": "2034",
           "name": "允強",
+          "close": 23.4,
           "daily_change_pct": 2.63,
           "volume_multiple": null,
           "volume": 17704386,
@@ -1468,6 +1628,7 @@
         {
           "code": "6122",
           "name": "擎邦",
+          "close": 59.7,
           "daily_change_pct": 2.58,
           "volume_multiple": null,
           "volume": 2344532,
@@ -1477,6 +1638,7 @@
         {
           "code": "5011",
           "name": "久陽",
+          "close": 18.75,
           "daily_change_pct": 2.46,
           "volume_multiple": null,
           "volume": 183233,
@@ -1486,6 +1648,7 @@
         {
           "code": "3293",
           "name": "鈊象",
+          "close": 779.0,
           "daily_change_pct": 2.37,
           "volume_multiple": null,
           "volume": 3493044,
@@ -1495,6 +1658,7 @@
         {
           "code": "6944",
           "name": "兆聯實業",
+          "close": 776.0,
           "daily_change_pct": 2.11,
           "volume_multiple": null,
           "volume": 674422,
@@ -1504,6 +1668,7 @@
         {
           "code": "6111",
           "name": "光聚晶電",
+          "close": 37.8,
           "daily_change_pct": 2.02,
           "volume_multiple": null,
           "volume": 204705,
@@ -1513,6 +1678,7 @@
         {
           "code": "6861",
           "name": "睿生光電",
+          "close": 285.0,
           "daily_change_pct": 1.97,
           "volume_multiple": null,
           "volume": 2318339,
@@ -1522,6 +1688,7 @@
         {
           "code": "6910",
           "name": "德鴻",
+          "close": 26.5,
           "daily_change_pct": 1.92,
           "volume_multiple": null,
           "volume": 25417,
@@ -1531,6 +1698,7 @@
         {
           "code": "2025",
           "name": "千興",
+          "close": 13.35,
           "daily_change_pct": 1.91,
           "volume_multiple": null,
           "volume": 2029531,
@@ -1540,6 +1708,7 @@
         {
           "code": "3164",
           "name": "景岳",
+          "close": 16.6,
           "daily_change_pct": 1.84,
           "volume_multiple": null,
           "volume": 102558,
@@ -1549,6 +1718,7 @@
         {
           "code": "4770",
           "name": "上品",
+          "close": 286.5,
           "daily_change_pct": 1.78,
           "volume_multiple": null,
           "volume": 2148058,
@@ -1558,6 +1728,7 @@
         {
           "code": "8255",
           "name": "朋程",
+          "close": 145.0,
           "daily_change_pct": 1.75,
           "volume_multiple": null,
           "volume": 267449,
@@ -1567,6 +1738,7 @@
         {
           "code": "6199",
           "name": "天品",
+          "close": 126.0,
           "daily_change_pct": 1.61,
           "volume_multiple": null,
           "volume": 7899784,
@@ -1576,6 +1748,7 @@
         {
           "code": "6945",
           "name": "圓祥生技",
+          "close": 140.0,
           "daily_change_pct": 1.45,
           "volume_multiple": null,
           "volume": 326703,
@@ -1585,6 +1758,7 @@
         {
           "code": "2727",
           "name": "王品",
+          "close": 235.0,
           "daily_change_pct": 1.29,
           "volume_multiple": null,
           "volume": 427899,
@@ -1594,6 +1768,7 @@
         {
           "code": "4745",
           "name": "合富-KY",
+          "close": 12.1,
           "daily_change_pct": 1.26,
           "volume_multiple": null,
           "volume": 98562,
@@ -1603,6 +1778,7 @@
         {
           "code": "6509",
           "name": "聚和",
+          "close": 48.15,
           "daily_change_pct": 1.26,
           "volume_multiple": null,
           "volume": 836997,
@@ -1612,6 +1788,7 @@
         {
           "code": "2028",
           "name": "威致",
+          "close": 16.6,
           "daily_change_pct": 1.22,
           "volume_multiple": null,
           "volume": 224787,
@@ -1621,6 +1798,7 @@
         {
           "code": "4142",
           "name": "國光生",
+          "close": 18.1,
           "daily_change_pct": 1.12,
           "volume_multiple": null,
           "volume": 1093940,
@@ -1630,6 +1808,7 @@
         {
           "code": "5529",
           "name": "鉅陞",
+          "close": 26.5,
           "daily_change_pct": 0.95,
           "volume_multiple": null,
           "volume": 159197,
@@ -1639,6 +1818,7 @@
         {
           "code": "2038",
           "name": "海光",
+          "close": 12.65,
           "daily_change_pct": 0.8,
           "volume_multiple": null,
           "volume": 1265575,
@@ -1648,6 +1828,7 @@
         {
           "code": "4163",
           "name": "鐿鈦",
+          "close": 135.0,
           "daily_change_pct": 0.75,
           "volume_multiple": null,
           "volume": 23160,
@@ -1657,6 +1838,7 @@
         {
           "code": "6195",
           "name": "詩肯",
+          "close": 28.3,
           "daily_change_pct": 0.71,
           "volume_multiple": null,
           "volume": 21749,
@@ -1666,6 +1848,7 @@
         {
           "code": "7842",
           "name": "天能綠電",
+          "close": 98.6,
           "daily_change_pct": 0.61,
           "volume_multiple": null,
           "volume": 1126,
@@ -1675,6 +1858,7 @@
         {
           "code": "9962",
           "name": "有益",
+          "close": 10.15,
           "daily_change_pct": 0.5,
           "volume_multiple": null,
           "volume": 149591,
@@ -1684,6 +1868,7 @@
         {
           "code": "5455",
           "name": "昇益",
+          "close": 30.7,
           "daily_change_pct": 0.49,
           "volume_multiple": null,
           "volume": 2000,
@@ -1693,6 +1878,7 @@
         {
           "code": "1570",
           "name": "力肯",
+          "close": 33.0,
           "daily_change_pct": 0.46,
           "volume_multiple": null,
           "volume": 87255,
@@ -1702,6 +1888,7 @@
         {
           "code": "7820",
           "name": "立盈",
+          "close": 108.5,
           "daily_change_pct": 0.46,
           "volume_multiple": null,
           "volume": 5150,
@@ -1711,6 +1898,7 @@
         {
           "code": "8162",
           "name": "微矽電子-創",
+          "close": 65.4,
           "daily_change_pct": 0.46,
           "volume_multiple": null,
           "volume": 412662,
@@ -1720,6 +1908,7 @@
         {
           "code": "2010",
           "name": "春源",
+          "close": 22.45,
           "daily_change_pct": 0.45,
           "volume_multiple": null,
           "volume": 1729221,
@@ -1729,6 +1918,7 @@
         {
           "code": "4563",
           "name": "百德",
+          "close": 51.4,
           "daily_change_pct": 0.39,
           "volume_multiple": null,
           "volume": 237158,
@@ -1738,6 +1928,7 @@
         {
           "code": "8450",
           "name": "霹靂",
+          "close": 14.4,
           "daily_change_pct": 0.35,
           "volume_multiple": null,
           "volume": 28941,
@@ -1747,6 +1938,7 @@
         {
           "code": "1459",
           "name": "聯發",
+          "close": 16.0,
           "daily_change_pct": 0.31,
           "volume_multiple": null,
           "volume": 98990,
@@ -1756,6 +1948,7 @@
         {
           "code": "1414",
           "name": "東和",
+          "close": 17.5,
           "daily_change_pct": 0.29,
           "volume_multiple": null,
           "volume": 109892,
@@ -1765,6 +1958,7 @@
         {
           "code": "8473",
           "name": "山林水",
+          "close": 39.5,
           "daily_change_pct": 0.25,
           "volume_multiple": null,
           "volume": 286371,
@@ -1774,6 +1968,7 @@
         {
           "code": "4198",
           "name": "欣大健康",
+          "close": 49.9,
           "daily_change_pct": 0.2,
           "volume_multiple": null,
           "volume": 22420,
@@ -1783,6 +1978,7 @@
         {
           "code": "1295",
           "name": "生合",
+          "close": 47.15,
           "daily_change_pct": 0.11,
           "volume_multiple": null,
           "volume": 29947,
