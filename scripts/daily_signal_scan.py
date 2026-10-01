@@ -18,6 +18,7 @@ supply-chain-map/companies.csv 手動查證過的細分族群（僅涵蓋部分�
 GROUP_ROTATION_THRESHOLD_PCT / GROUP_ROTATION_MIN_FRACTION / GROUP_ROTATION_MIN_STOCKS。
 """
 import csv
+import http.client
 import json
 import re
 import sys
@@ -106,7 +107,11 @@ def fetch_json(url: str, referer: str) -> list:
         except urllib.error.HTTPError as e:
             status = e.code
             body = e.read()
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException) as e:
+            # http.client.HTTPException 涵蓋 IncompleteRead 這類「連線建立成功、
+            # 但資料傳輸到一半就斷掉」的狀況——實際發生過一次：Content-Length 說有
+            # 4.6MB，結果只收到 45 萬 bytes 就斷線。這種跟逾時/連不上是同一類暫時性
+            # 網路問題，所以跟它們一起重試，而不是讓整支腳本直接噴例外中止。
             last_error = f"連線失敗（第 {attempt} 次）：{e}"
             print(last_error, file=sys.stderr)
             if attempt < FETCH_RETRIES:
