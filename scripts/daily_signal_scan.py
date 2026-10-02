@@ -10,6 +10,16 @@ supply-chain-map/companies.csv 手動查證過的細分族群（僅涵蓋部分�
 另外用 companies.csv 現成的細分族群（光通訊、被動元件、PCB…）偵測「族群同步噴出」：
 同一族群裡今天有多檔股票同時大漲，判定該族群今天在輪動（見 compute_group_rotation）。
 
+準確性原則（2026-10-02 重寫）：寧可少顯示，也不要顯示失真的資料。具體處理兩種
+過去會被靜默吃掉的情況：
+  1. TWSE 跟 TPEx 公告的「最新交易日」可能不同步（其中一邊還沒發布完）——不再用單一
+     today_date 去判斷「今天」，而是用兩個市場各自實際抓到的日期分開處理；不同步時
+     signals.json 會把兩個日期都標出來，而不是假裝兩邊資料是同一天。
+  2. 個股資料中間有缺（停牌/臨時抓取失敗/新上市前的空白）會讓「過去 N 日」的視窗悄悄
+     位移，算出的新高/漲跌幅其實涵蓋了比預期更長的區間——現在會拿「所有股票實際出現過的
+     交易日」建出一份交易日曆，驗證視窗內日期跟日曆完全連續對應，兜不起來就跳過這檔
+     （當作資料不足，不勉強算出一個可能失真的訊號）。
+
 執行後更新：
   - data/price_history.csv   累積的每日收盤/成交量歷史（自動裁到最近 max(lookback)*3 天）
   - signals/latest.json      當天每組條件各自篩出的訊號（"sets" 陣列）＋族群輪動結果（"group_rotation"）
@@ -246,8 +256,53 @@ def load_industries() -> dict[str, dict]:
         return {row["code"].strip(): row for row in reader if row.get("code", "").strip()}
 
 
+def build_trading_calendar(by_code: dict[str, list[dict]]) -> tuple[list[str], dict[str, int]]:
+    """用『所有股票實際出現過的交易日』的聯集建出一份交易日曆，用來驗證任何一檔股票的
+    連續 N 天視窗有沒有被停牌/漏抓資料悄悄挖掉其中幾天。回傳 (排序後的日期列表, 日期->索引)。
+    """
+    dates = set()
+    for rows in by_code.values():
+        for r in rows:
+            dates.add(r["date"])
+    calendar = sorted(dates)
+    return calendar, {d: i for i, d in enumerate(calendar)}
+
+
+def calendar_window_dates(calendar: list[str], date_index: dict[str, int], end_date: str, length: int):
+    """回傳以 end_date 結尾、往前數 length 個交易日（依交易日曆）的日期列表；
+    end_date 不在日曆裡、或日曆長度不夠，回傳 None。"""
+    idx = date_index.get(end_date)
+    if idx is None or idx - length + 1 < 0:
+        return None
+    return calendar[idx - length + 1: idx + 1]
+
+
+def rows_match_calendar(rows_window: list[dict], expected_dates) -> bool:
+    return expected_dates is not None and [r["date"] for r in rows_window] == expected_dates
+
+
+def daily_change_pct(rows: list[dict], calendar: list[str], date_index: dict[str, int]):
+    """今天收盤相對『日曆上緊接在前一個交易日』收盤的漲跌幅（%）。
+
+    刻意不用 rows[-2]（陣列上的前一筆）直接當作「昨天」——如果這檔股票中間有停牌
+    或漏抓資料，rows[-2] 實際上可能是好幾天前的收盤，拿來算「當日漲幅」會嚴重失真
+    （例如停牌恢復交易，一比較就是個假的巨幅漲跌）。改成明確比對交易日曆，兜不起來
+    就回傳 None（顯示「–」），比顯示一個算錯的數字更符合「必須真實」。
+    """
+    if len(rows) < 2:
+        return None
+    today = rows[-1]
+    expected = calendar_window_dates(calendar, date_index, today["date"], 2)
+    if not rows_match_calendar(rows[-2:], expected):
+        return None
+    prev_close = rows[-2]["close"]
+    if not prev_close:
+        return None
+    return (today["close"] / prev_close - 1) * 100
+
+
 def build_entry(
-    code: str, name: str, close, daily_change_pct, volume_multiple, volume, companies: dict, industries: dict
+    code: str, name: str, close, daily_change_pct_value, volume_multiple, volume, companies: dict, industries: dict
 ) -> dict:
     official = industries.get(code)
     curated = companies.get(code)
@@ -255,7 +310,7 @@ def build_entry(
         "code": code,
         "name": name,
         "close": round(close, 2) if close is not None else None,
-        "daily_change_pct": round(daily_change_pct, 2) if daily_change_pct is not None else None,
+        "daily_change_pct": round(daily_change_pct_value, 2) if daily_change_pct_value is not None else None,
         "volume_multiple": round(volume_multiple, 2) if volume_multiple is not None else None,
         "volume": round(volume) if volume is not None else None,  # 當日成交股數
         "industry": official["industry"] if official else None,
@@ -263,19 +318,11 @@ def build_entry(
     }
 
 
-def daily_change_pct(rows: list[dict]) -> float | None:
-    """今天收盤相對昨天收盤的漲跌幅（%）。rows 需已按日期排序。"""
-    if len(rows) < 2:
-        return None
-    prev_close = rows[-2]["close"]
-    if not prev_close:
-        return None
-    return (rows[-1]["close"] / prev_close - 1) * 100
-
-
 def compute_signals(
     by_code: dict[str, list[dict]],
-    today_date: str,
+    expected_date_by_market: dict[str, str],
+    calendar: list[str],
+    date_index: dict[str, int],
     lookback: int,
     volume_multiplier: float,
     companies: dict[str, dict],
@@ -286,20 +333,26 @@ def compute_signals(
     signals = []
     warmup = False
     for code, rows in by_code.items():
-        if rows[-1]["date"] != today_date:
-            continue  # 今天没有這檔的資料（新上市/資料缺漏），跳過
+        expected_today = expected_date_by_market.get(rows[-1]["market"])
+        if expected_today is None or rows[-1]["date"] != expected_today:
+            continue  # 這檔所屬的市場今天沒有新資料，或這檔本身今天沒更新，跳過
         if len(rows) < lookback + 1:
             warmup = True
             continue  # 歷史還不夠長，跳過（暖機期）
 
-        prior = rows[-(lookback + 1):-1]
-        today = rows[-1]
+        window_dates = calendar_window_dates(calendar, date_index, rows[-1]["date"], lookback + 1)
+        window_rows = rows[-(lookback + 1):]
+        if not rows_match_calendar(window_rows, window_dates):
+            continue  # 這段期間內有缺資料（停牌/漏抓），視窗其實位移了，寧可跳過不算
+
+        prior = window_rows[:-1]
+        today = window_rows[-1]
         prior_high = max(r["close"] for r in prior)
         prior_avg_vol = sum(r["volume"] for r in prior) / len(prior)
 
         is_breakout = today["close"] > prior_high
         is_volume_surge = prior_avg_vol > 0 and today["volume"] >= volume_multiplier * prior_avg_vol
-        change = daily_change_pct(rows)
+        change = daily_change_pct(rows, calendar, date_index)
         is_strong_enough = min_daily_change_pct is None or (change is not None and change >= min_daily_change_pct)
 
         if is_breakout and is_volume_surge and is_strong_enough:
@@ -314,7 +367,9 @@ def compute_signals(
 
 def compute_consecutive_high_signals(
     by_code: dict[str, list[dict]],
-    today_date: str,
+    expected_date_by_market: dict[str, str],
+    calendar: list[str],
+    date_index: dict[str, int],
     lookback: int,
     consecutive_days: int,
     companies: dict[str, dict],
@@ -325,13 +380,18 @@ def compute_consecutive_high_signals(
     warmup = False
     needed = lookback + consecutive_days
     for code, rows in by_code.items():
-        if rows[-1]["date"] != today_date:
+        expected_today = expected_date_by_market.get(rows[-1]["market"])
+        if expected_today is None or rows[-1]["date"] != expected_today:
             continue
         if len(rows) < needed:
             warmup = True
             continue
 
+        window_dates = calendar_window_dates(calendar, date_index, rows[-1]["date"], needed)
         window = rows[-needed:]
+        if not rows_match_calendar(window, window_dates):
+            continue  # 這段期間內有缺資料，視窗位移了，跳過不算
+
         all_new_high = True
         for offset in range(consecutive_days):
             day = window[lookback + offset]
@@ -343,8 +403,8 @@ def compute_consecutive_high_signals(
         if all_new_high:
             today = rows[-1]
             signals.append(build_entry(
-                code, today["name"], today["close"], daily_change_pct(rows), None, today["volume"],
-                companies, industries
+                code, today["name"], today["close"], daily_change_pct(rows, calendar, date_index), None,
+                today["volume"], companies, industries
             ))
 
     signals.sort(key=lambda s: priority_sort_key(s, s["daily_change_pct"] or 0))
@@ -353,14 +413,22 @@ def compute_consecutive_high_signals(
 
 def compute_group_rotation(
     by_code: dict[str, list[dict]],
-    today_date: str,
+    expected_date_by_market: dict[str, str],
+    calendar: list[str],
+    date_index: dict[str, int],
     companies: dict[str, dict],
     threshold_pct: float = GROUP_ROTATION_THRESHOLD_PCT,
     min_fraction: float = GROUP_ROTATION_MIN_FRACTION,
     min_stocks: int = GROUP_ROTATION_MIN_STOCKS,
 ) -> list[dict]:
     """companies.csv 現成的細分族群裡，今天漲幅達 threshold_pct 的家數超過該族群總家數的
-    min_fraction（且至少 min_stocks 檔），判定該族群今天在輪動。"""
+    min_fraction（且至少 min_stocks 檔），判定該族群今天在輪動。
+
+    分母（total_in_group）只算「今天這個市場確實有新資料」的家數，不是 companies.csv
+    裡整個族群的掛牌家數——如果族群裡有股票今天剛好沒資料（例如所屬市場還沒發布），
+    用整個掛牌家數當分母會讓比例失真（分母偏大，看起來比實際更不像輪動；或反過來
+    分子分母都用到不同天的資料，比例本身就沒意義）。只用「今天真的能判斷的家數」。
+    """
     codes_by_group: dict[str, list[str]] = defaultdict(list)
     for code, info in companies.items():
         group = info.get("族群")
@@ -369,20 +437,25 @@ def compute_group_rotation(
 
     results = []
     for group, codes in codes_by_group.items():
+        reportable = []  # 今天確實有新資料可以判斷的股票
         triggered = []
         for code in codes:
             rows = by_code.get(code)
-            if not rows or rows[-1]["date"] != today_date:
+            if not rows:
                 continue
-            change = daily_change_pct(rows)
+            expected_today = expected_date_by_market.get(rows[-1]["market"])
+            if expected_today is None or rows[-1]["date"] != expected_today:
+                continue
+            reportable.append(code)
+            change = daily_change_pct(rows, calendar, date_index)
             if change is not None and change >= threshold_pct:
                 triggered.append({"code": code, "name": rows[-1]["name"], "daily_change_pct": round(change, 2)})
 
-        if len(triggered) > len(codes) * min_fraction and len(triggered) >= min_stocks:
+        if len(reportable) >= min_stocks and len(triggered) > len(reportable) * min_fraction and len(triggered) >= min_stocks:
             triggered.sort(key=lambda s: s["daily_change_pct"], reverse=True)
             results.append({
                 "group": group,
-                "total_in_group": len(codes),
+                "total_in_group": len(reportable),
                 "triggered_count": len(triggered),
                 "stocks": triggered,
             })
@@ -393,38 +466,66 @@ def compute_group_rotation(
 
 def main() -> int:
     try:
-        today_rows = fetch_twse_rows() + fetch_tpex_rows()
+        twse_rows = fetch_twse_rows()
     except (urllib.error.URLError, RuntimeError, json.JSONDecodeError) as e:
-        print(f"抓取資料失敗，中止（不寫入任何檔案）：{e}", file=sys.stderr)
+        print(f"抓 TWSE（上市）資料失敗，中止（不寫入任何檔案）：{e}", file=sys.stderr)
         return 1
 
-    if not today_rows:
-        print("抓到的資料是空的，中止", file=sys.stderr)
+    try:
+        tpex_rows = fetch_tpex_rows()
+    except (urllib.error.URLError, RuntimeError, json.JSONDecodeError) as e:
+        print(f"抓 TPEx（上櫃）資料失敗，中止（不寫入任何檔案）：{e}", file=sys.stderr)
         return 1
 
-    today_date = today_rows[0]["date"]
-
-    # 防呆：如果抓回來的「最新交易日」離今天太多天，很可能是抓到舊快取資料（不是真的長假），
-    # 之前發生過連續好幾天都抓到同一份舊資料、腳本卻回報成功的狀況——與其靜默略過讓人幾天後
-    # 才發現，寧可讓這次執行直接失敗（GitHub Actions 會顯示紅色叉叉），逼自己去查。
-    fetched = datetime.strptime(today_date, "%Y-%m-%d").date()
-    stale_days = (datetime.now(TAIPEI_TZ).date() - fetched).days
-    if stale_days > MAX_STALE_DAYS:
+    # 兩個市場正常是同一天一起開市、一起休市，不會只有一邊完全沒資料；
+    # 如果真的發生，比較可能是抓取異常（例如某一邊被擋下只回空陣列），而不是真的市場狀況，
+    # 寧可整次中止，也不要用「只有一半市場」的資料假裝是完整的一天。
+    if not twse_rows or not tpex_rows:
         print(
-            f"抓到的最新交易日是 {today_date}，距離今天已經 {stale_days} 天"
-            f"（門檻 {MAX_STALE_DAYS} 天），懷疑抓到舊的快取資料，中止（不寫入任何檔案）",
+            f"其中一個市場抓到空資料（TWSE {len(twse_rows)} 檔／TPEx {len(tpex_rows)} 檔）"
+            f"——兩個市場應該同時有／沒有資料，這種落差比較像抓取異常，中止（不寫入任何檔案）",
             file=sys.stderr,
         )
         return 1
 
-    history = load_history()
-    already_have_today = any(r["date"] == today_date for r in history)
+    twse_date = max(r["date"] for r in twse_rows)
+    tpex_date = max(r["date"] for r in tpex_rows)
 
-    if already_have_today:
-        print(f"{today_date} 的資料已經在歷史裡了，跳過重複寫入，直接用現有歷史算訊號")
-        combined = history
-    else:
-        combined = history + today_rows
+    # 防呆：如果抓回來的「最新交易日」離今天太多天，很可能是抓到舊快取資料（不是真的長假），
+    # 之前發生過連續好幾天都抓到同一份舊資料、腳本卻回報成功的狀況——與其靜默略過讓人幾天後
+    # 才發現，寧可讓這次執行直接失敗（GitHub Actions 會顯示紅色叉叉），逼自己去查。
+    # 兩個市場分開檢查：允許其中一邊比另一邊晚發布個一兩天（正常的發布時間差），但只要
+    # 任何一邊落後太多天，就當作異常中止。
+    today_local = datetime.now(TAIPEI_TZ).date()
+    twse_stale_days = (today_local - datetime.strptime(twse_date, "%Y-%m-%d").date()).days
+    tpex_stale_days = (today_local - datetime.strptime(tpex_date, "%Y-%m-%d").date()).days
+    if twse_stale_days > MAX_STALE_DAYS or tpex_stale_days > MAX_STALE_DAYS:
+        print(
+            f"資料太舊：TWSE 最新 {twse_date}（距今 {twse_stale_days} 天）、"
+            f"TPEx 最新 {tpex_date}（距今 {tpex_stale_days} 天），門檻 {MAX_STALE_DAYS} 天，"
+            f"懷疑抓到舊的快取資料，中止（不寫入任何檔案）",
+            file=sys.stderr,
+        )
+        return 1
+
+    markets_in_sync = twse_date == tpex_date
+    scan_date = max(twse_date, tpex_date)
+    if not markets_in_sync:
+        print(
+            f"兩個市場資料日期不同步：TWSE 最新 {twse_date}，TPEx 最新 {tpex_date}"
+            f"——這次訊號會各自用自己市場的最新日期計算，不會假裝兩邊是同一天",
+            file=sys.stderr,
+        )
+
+    history = load_history()
+    # 用 (code, date) 判斷哪些是真的新資料，而不是用單一「今天日期」整批判斷——
+    # 這樣就算兩個市場其中一邊這次才補上（例如備援排程追上了白天漏掉的那個市場），
+    # 也能正確併入，不會因為另一個市場「今天」已經有資料就整批跳過。
+    existing_keys = {(r["code"], r["date"]) for r in history}
+    new_rows = [r for r in (twse_rows + tpex_rows) if (r["code"], r["date"]) not in existing_keys]
+    if not new_rows:
+        print(f"TWSE {twse_date}／TPEx {tpex_date} 的資料都已經在歷史裡了，跳過重複寫入，直接用現有歷史算訊號")
+    combined = history + new_rows
 
     # 依股票分組，裁掉太舊的資料避免歷史檔無限成長
     by_code: dict[str, list[dict]] = defaultdict(list)
@@ -437,6 +538,16 @@ def main() -> int:
 
     save_history(trimmed)
 
+    # 重新用裁切後的資料分組（跟存檔內容一致），並建出交易日曆供缺資料檢查用
+    by_code = defaultdict(list)
+    for r in trimmed:
+        by_code[r["code"]].append(r)
+    for rows in by_code.values():
+        rows.sort(key=lambda r: r["date"])
+    calendar, date_index = build_trading_calendar(by_code)
+
+    expected_date_by_market = {"TWSE": twse_date, "TPEx": tpex_date}
+
     companies = load_companies()
     industries = load_industries()
 
@@ -445,7 +556,8 @@ def main() -> int:
         set_type = spec.get("type", "breakout_volume")
         if set_type == "breakout_volume":
             signals, warmup = compute_signals(
-                by_code, today_date, spec["lookback"], spec["volume_multiplier"], companies, industries,
+                by_code, expected_date_by_market, calendar, date_index,
+                spec["lookback"], spec["volume_multiplier"], companies, industries,
                 min_daily_change_pct=spec.get("min_daily_change_pct"),
             )
             params = {"breakout_lookback_days": spec["lookback"], "volume_multiplier": spec["volume_multiplier"]}
@@ -453,7 +565,8 @@ def main() -> int:
                 params["min_daily_change_pct"] = spec["min_daily_change_pct"]
         elif set_type == "consecutive_high":
             signals, warmup = compute_consecutive_high_signals(
-                by_code, today_date, spec["lookback"], spec["consecutive_days"], companies, industries
+                by_code, expected_date_by_market, calendar, date_index,
+                spec["lookback"], spec["consecutive_days"], companies, industries
             )
             params = {"lookback_days": spec["lookback"], "consecutive_days": spec["consecutive_days"]}
         else:
@@ -469,12 +582,15 @@ def main() -> int:
         })
         print(f"[{spec['key']}] 篩出 {len(signals)} 檔訊號" + ("（部分股票仍在暖機期）" if warmup else ""))
 
-    rotating_groups = compute_group_rotation(by_code, today_date, companies)
+    rotating_groups = compute_group_rotation(by_code, expected_date_by_market, calendar, date_index, companies)
     print(f"[group_rotation] {len(rotating_groups)} 個族群同步噴出")
 
     SIGNALS_JSON.parent.mkdir(parents=True, exist_ok=True)
     output = {
-        "scan_date": today_date,
+        "scan_date": scan_date,
+        "twse_date": twse_date,
+        "tpex_date": tpex_date,
+        "markets_in_sync": markets_in_sync,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "sets": sets_output,
         "group_rotation": {
@@ -489,7 +605,7 @@ def main() -> int:
     with open(SIGNALS_JSON, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"完成：{today_date}，共 {len(by_code)} 檔有資料")
+    print(f"完成：TWSE {twse_date}／TPEx {tpex_date}，共 {len(by_code)} 檔有資料")
     return 0
 
 

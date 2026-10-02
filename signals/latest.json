@@ -1,6 +1,9 @@
 {
   "scan_date": "2026-10-01",
-  "generated_at": "2026-10-02T02:57:23.519234+00:00",
+  "twse_date": "2026-10-01",
+  "tpex_date": "2026-10-01",
+  "markets_in_sync": true,
+  "generated_at": "2026-10-02T06:28:45.771537+00:00",
   "sets": [
     {
       "key": "fast",
@@ -733,7 +736,7 @@
         "consecutive_days": 2
       },
       "warmup": true,
-      "signal_count": 221,
+      "signal_count": 218,
       "signals": [
         {
           "code": "6485",
@@ -1403,16 +1406,6 @@
           "volume_multiple": null,
           "volume": 57451895,
           "industry": "半導體業",
-          "sub_group": null
-        },
-        {
-          "code": "3332",
-          "name": "幸康",
-          "close": 64.9,
-          "daily_change_pct": 1.88,
-          "volume_multiple": null,
-          "volume": 56454,
-          "industry": "電子零組件業",
           "sub_group": null
         },
         {
@@ -2256,16 +2249,6 @@
           "sub_group": null
         },
         {
-          "code": "5205",
-          "name": "中茂",
-          "close": 20.75,
-          "daily_change_pct": 9.79,
-          "volume_multiple": null,
-          "volume": 8245,
-          "industry": "綠能環保",
-          "sub_group": null
-        },
-        {
           "code": "7730",
           "name": "暉盛-創",
           "close": 194.5,
@@ -2733,16 +2716,6 @@
           "volume_multiple": null,
           "volume": 46001,
           "industry": "運動休閒",
-          "sub_group": null
-        },
-        {
-          "code": "2926",
-          "name": "誠品生活",
-          "close": 30.3,
-          "daily_change_pct": 0.33,
-          "volume_multiple": null,
-          "volume": 3290,
-          "industry": "文化創意業",
           "sub_group": null
         },
         {

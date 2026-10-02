@@ -456,7 +456,10 @@ const db = getFirestore(fbApp);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
 
-      metaEl.textContent = `資料日期 ${data.scan_date}　更新於 ${new Date(data.generated_at).toLocaleString('zh-TW')}`;
+      const dateText = data.markets_in_sync === false
+        ? `上市 ${data.twse_date}／上櫃 ${data.tpex_date}（尚未同步，其中一邊還沒發布最新資料）`
+        : `資料日期 ${data.scan_date}`;
+      metaEl.textContent = `${dateText}　更新於 ${new Date(data.generated_at).toLocaleString('zh-TW')}`;
       const groups = data.group_rotation ? data.group_rotation.groups : [];
       setsEl.innerHTML = data.sets.map(signalSetHtml).join('') + groupRotationSetHtml(groups);
     } catch (e) {
