@@ -264,6 +264,16 @@ body {
 .signal-sets-grid .table-wrap { overflow-x: auto; }
 .signal-set-warmup { padding: 10px 14px; font-size: 12.5px; }
 
+.watchlist-due-banner {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--series-1);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  margin: 0 0 16px;
+}
+
 @media (max-width: 900px) {
   .signal-sets-grid { grid-template-columns: 1fr; }
 }

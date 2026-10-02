@@ -38,6 +38,7 @@
       <button class="tab" data-tab="review" role="tab" aria-selected="false">月度回顧</button>
       <button class="tab" data-tab="chain" role="tab" aria-selected="false">供應鏈</button>
       <button class="tab" data-tab="signals" role="tab" aria-selected="false">訊號</button>
+      <button class="tab" data-tab="watchlist" role="tab" aria-selected="false">觀察清單</button>
     </nav>
     <div class="topbar-actions">
       <span class="sync-status" id="sync-status">已同步</span>
@@ -261,6 +262,44 @@
       </div>
       <p id="signals-meta" style="color:var(--text-muted);font-size:13px;margin:-8px 0 16px;"></p>
       <div class="signal-sets-grid" id="signals-sets"></div>
+    </section>
+
+    <!-- ===== WATCHLIST TAB ===== -->
+    <section class="panel" id="panel-watchlist">
+      <div class="panel-head">
+        <h1>觀察清單</h1>
+      </div>
+
+      <p class="watchlist-due-banner" id="watchlist-due-banner" hidden></p>
+
+      <div class="chart-card">
+        <form id="watchlist-form" class="form-row">
+          <label>股票代號 <input type="text" id="wl-code" placeholder="2330" required></label>
+          <label>股票名稱 <input type="text" id="wl-name" placeholder="台積電"></label>
+          <label>備註 <input type="text" id="wl-note" placeholder="觀察原因、關注點位..."></label>
+          <button type="submit" class="btn primary" style="align-self:flex-end;">＋ 加入觀察</button>
+        </form>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head"><h2>觀察中</h2></div>
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead>
+              <tr>
+                <th>股票</th>
+                <th>備註</th>
+                <th>加入日期</th>
+                <th>提醒日期</th>
+                <th>狀態</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="watchlist-tbody"></tbody>
+          </table>
+          <p class="empty-state" id="watchlist-empty">還沒有觀察中的標的，上面加入第一筆吧。</p>
+        </div>
+      </div>
     </section>
 
   </main>

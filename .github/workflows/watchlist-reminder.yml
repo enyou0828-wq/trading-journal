@@ -1,0 +1,25 @@
+name: Watchlist Reminder
+
+on:
+  schedule:
+    # 每天台北時間 8:30（UTC 00:30）。這個不像盤後掃描有資料發布延遲的問題，
+    # 單純是把前一天加進觀察清單、隔天到期的項目推播出去，所以每天（含假日）都跑。
+    - cron: "30 0 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install firebase-admin
+
+      - name: Send due watchlist reminders
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: python3 scripts/send_watchlist_reminders.py

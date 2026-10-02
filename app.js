@@ -1,8 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getMessaging, isSupported as isMessagingSupported, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
+import { VAPID_KEY } from "./push-config.js";
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -141,7 +143,7 @@ const db = getFirestore(fbApp);
   }
 
   // ---------- state ----------
-  let state = { trades: [], diary: [], monthlyReviews: [] };
+  let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], fcmTokens: [] };
   let currentUser = null;
 
   const syncStatusEl = document.getElementById('sync-status');
@@ -303,6 +305,9 @@ const db = getFirestore(fbApp);
         state.markColorMigrated = true;
         await save();
       }
+
+      if (!Array.isArray(state.watchlist)) state.watchlist = [];
+      if (!Array.isArray(state.fcmTokens)) state.fcmTokens = [];
     } catch (e) {
       console.error('loadFromCloud failed', e);
       setSyncStatus('讀取失敗');
@@ -354,6 +359,7 @@ const db = getFirestore(fbApp);
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainTree(); renderChainDetail(); }
       if (target === 'signals') renderSignals();
+      if (target === 'watchlist') renderWatchlist();
     });
   });
 
@@ -457,6 +463,129 @@ const db = getFirestore(fbApp);
       metaEl.textContent = '';
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;
       signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
+    }
+  }
+
+  // ================= WATCHLIST =================
+  // 日期一律用「台北時間的日曆日」字串（YYYY-MM-DD）處理，不用 Date 物件的本地時區，
+  // 避免使用者裝置時區跟台北不同時，「隔天」算錯（例如半夜用 UTC-5 的裝置打開網頁）。
+  function taipeiDateStr(d = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(d);
+  }
+  function addDays(dateStr, days) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + days);
+    return dt.toISOString().slice(0, 10);
+  }
+
+  async function addWatchlistItem(code, name, note) {
+    const today = taipeiDateStr();
+    state.watchlist.push({
+      id: uid(),
+      code: code.trim(),
+      name: (name || '').trim(),
+      note: (note || '').trim(),
+      createdDate: today,
+      reminderDate: addDays(today, 1),
+      notified: false,
+    });
+    await save();
+    renderWatchlist();
+  }
+
+  function sortedWatchlist() {
+    return [...state.watchlist].sort((a, b) => (a.createdDate < b.createdDate ? 1 : a.createdDate > b.createdDate ? -1 : 0));
+  }
+
+  function watchlistRowHtml(item, todayStr) {
+    const statusText = item.notified ? '已提醒' : (item.reminderDate <= todayStr ? '今日提醒' : '待提醒');
+    const statusClass = item.notified ? 'pnl-zero' : (item.reminderDate <= todayStr ? 'pnl-pos' : 'pnl-zero');
+    return `
+      <tr>
+        <td><strong>${escapeHtml(item.code)}</strong> ${item.name ? `<span style="color:var(--text-muted)">${escapeHtml(item.name)}</span>` : ''}</td>
+        <td>${item.note ? escapeHtml(item.note) : '–'}</td>
+        <td class="num">${item.createdDate}</td>
+        <td class="num">${item.reminderDate}</td>
+        <td class="${statusClass}">${statusText}</td>
+        <td><button class="icon-btn btn-del-watch" data-id="${item.id}" title="刪除">✕</button></td>
+      </tr>
+    `;
+  }
+
+  function renderWatchlist() {
+    const tbody = document.getElementById('watchlist-tbody');
+    const empty = document.getElementById('watchlist-empty');
+    const banner = document.getElementById('watchlist-due-banner');
+    const todayStr = taipeiDateStr();
+    const items = sortedWatchlist();
+
+    tbody.innerHTML = items.map(item => watchlistRowHtml(item, todayStr)).join('');
+    empty.style.display = items.length ? 'none' : '';
+
+    tbody.querySelectorAll('.btn-del-watch').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        state.watchlist = state.watchlist.filter(w => w.id !== btn.dataset.id);
+        await save();
+        renderWatchlist();
+      });
+    });
+
+    const dueToday = items.filter(w => !w.notified && w.reminderDate <= todayStr);
+    if (dueToday.length) {
+      banner.hidden = false;
+      banner.textContent = `今天該複查：${dueToday.map(w => w.code + (w.name ? ' ' + w.name : '')).join('、')}`;
+    } else {
+      banner.hidden = true;
+    }
+  }
+
+  document.getElementById('watchlist-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const codeInput = document.getElementById('wl-code');
+    const code = codeInput.value.trim();
+    if (!code) return;
+    await addWatchlistItem(code, document.getElementById('wl-name').value, document.getElementById('wl-note').value);
+    e.target.reset();
+    codeInput.focus();
+  });
+
+  // ---- 推播通知（Firebase Cloud Messaging）----
+  // 整個網站是純前端 + GitHub Pages，沒有自己的伺服器；用 FCM 讓瀏覽器就算沒開著頁面
+  // 也能收到「隔天 8:30」的提醒，實際送出的排程在 scripts/send_watchlist_reminders.py，
+  // 由 .github/workflows/watchlist-reminder.yml 每天台北時間 8:30 觸發。
+  // 這裡只負責：跟使用者要通知權限、拿到這台裝置的 FCM token、把 token 存回 Firestore
+  // 讓排程腳本知道要推給誰。
+  let messaging = null;
+
+  async function setupPushNotifications() {
+    if (!VAPID_KEY || VAPID_KEY.startsWith('PASTE_')) return; // 還沒在 push-config.js 填入 VAPID key，先略過
+    if (!('serviceWorker' in navigator) || typeof Notification === 'undefined') return;
+    try {
+      if (!(await isMessagingSupported())) return; // 部分瀏覽器（如較舊的 Safari）不支援 Web Push，略過不影響其他功能
+      if (!messaging) messaging = getMessaging(fbApp);
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+      const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+      if (token && !state.fcmTokens.includes(token)) {
+        state.fcmTokens.push(token);
+        await save();
+      }
+
+      // 頁面開在前景時收到的推播不會自動跳系統通知（瀏覽器行為如此），這裡手動補上，
+      // 否則使用者正在用網頁時反而看不到提醒。
+      onMessage(messaging, (payload) => {
+        const { title, body } = payload.notification || {};
+        if (Notification.permission === 'granted') {
+          new Notification(title || '觀察清單提醒', { body: body || '', icon: './icon-192.png' });
+        }
+        renderWatchlist();
+      });
+    } catch (e) {
+      console.error('推播通知設定失敗（不影響其他功能）', e);
     }
   }
 
@@ -1776,6 +1905,7 @@ const db = getFirestore(fbApp);
       appRoot.hidden = false;
       userChip.textContent = user.displayName || user.email || '';
       await loadFromCloud(user.uid);
+      setupPushNotifications(); // 不 await：推播是附加功能，失敗也不該擋住主要畫面載入
     } else {
       currentUser = null;
       loginGate.style.display = 'flex';
