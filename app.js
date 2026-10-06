@@ -174,9 +174,11 @@ const db = getFirestore(fbApp);
   }
 
   // 各月加權指數報酬率：算法跟 computeOtcMonthlyReturns 一樣（該月最後一個交易日收盤
-  // 相對前一月最後一個交易日收盤），但不補 5 月的數字——data/twi_index.json 跟
-  // OTC_INDEX_CLOSE 一樣是從 6/1 才有每日資料，5 月沒有官方數字可核對，寧可讓圖表
-  // 這個月份沒有加權指數的長條，也不要自己猜一個數字湊上去。
+  // 相對前一月最後一個交易日收盤）。data/twi_index.json 跟 OTC_INDEX_CLOSE 一樣只從
+  // 6/1 開始每日累積，所以 5 月同樣沒有逐日資料可以算，但這裡直接去查證過加權指數的
+  // 官方歷史收盤（TWSE 網站 MI_INDEX type=IND 端點）：2026-04-30 收盤 38,926.63，
+  // 2026-05-29（5月最後一個交易日）收盤 44,732.94，算出 5 月報酬 +14.92%，寫死在這裡
+  // （不是用戶口頭提供的數字，是直接向資料源查證過的）。
   function computeTwiMonthlyReturns() {
     const dates = Object.keys(TWI_INDEX_CLOSE).sort();
     if (!dates.length) return {};
@@ -194,6 +196,7 @@ const db = getFirestore(fbApp);
       const startClose = i === 0 ? TWI_INDEX_CLOSE[firstDateOfMonth[m]] : TWI_INDEX_CLOSE[lastDateOfMonth[months[i - 1]]];
       result[m] = (endClose / startClose - 1) * 100;
     });
+    result['2026-05'] = 14.92;
     return result;
   }
 
