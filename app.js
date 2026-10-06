@@ -173,6 +173,30 @@ const db = getFirestore(fbApp);
     return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
   }
 
+  // 各月加權指數報酬率：算法跟 computeOtcMonthlyReturns 一樣（該月最後一個交易日收盤
+  // 相對前一月最後一個交易日收盤），但不補 5 月的數字——data/twi_index.json 跟
+  // OTC_INDEX_CLOSE 一樣是從 6/1 才有每日資料，5 月沒有官方數字可核對，寧可讓圖表
+  // 這個月份沒有加權指數的長條，也不要自己猜一個數字湊上去。
+  function computeTwiMonthlyReturns() {
+    const dates = Object.keys(TWI_INDEX_CLOSE).sort();
+    if (!dates.length) return {};
+    const lastDateOfMonth = {};
+    const firstDateOfMonth = {};
+    dates.forEach(d => {
+      const m = d.slice(0, 7);
+      if (!firstDateOfMonth[m]) firstDateOfMonth[m] = d;
+      lastDateOfMonth[m] = d;
+    });
+    const months = Object.keys(lastDateOfMonth).sort();
+    const result = {};
+    months.forEach((m, i) => {
+      const endClose = TWI_INDEX_CLOSE[lastDateOfMonth[m]];
+      const startClose = i === 0 ? TWI_INDEX_CLOSE[firstDateOfMonth[m]] : TWI_INDEX_CLOSE[lastDateOfMonth[months[i - 1]]];
+      result[m] = (endClose / startClose - 1) * 100;
+    });
+    return result;
+  }
+
   // ---------- state ----------
   let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], fcmTokens: [] };
   let currentUser = null;
@@ -1104,11 +1128,12 @@ const db = getFirestore(fbApp);
     });
     const months = Object.keys(byMonth).sort();
     const otcMonthly = computeOtcMonthlyReturns();
-    const data = months.map(m => ({ name: m.replace('-', '/'), value: byMonth[m], otc: otcMonthly[m] }));
+    const twiMonthly = computeTwiMonthlyReturns();
+    const data = months.map(m => ({ name: m.replace('-', '/'), value: byMonth[m], otc: otcMonthly[m], twi: twiMonthly[m] }));
 
     const W = 900, H = 240, PAD = { top: 16, right: 16, bottom: 40, left: 56 };
     const innerW = W - PAD.left - PAD.right, innerH = H - PAD.top - PAD.bottom;
-    const values = data.flatMap(d => d.otc != null ? [d.value, d.otc] : [d.value]);
+    const values = data.flatMap(d => [d.value, d.otc, d.twi].filter(v => v != null));
     let min = Math.min(0, ...values), max = Math.max(0, ...values);
     if (min === max) { max += 1; }
     const padV = (max - min) * 0.15 || 1;
@@ -1118,9 +1143,9 @@ const db = getFirestore(fbApp);
 
     const n = data.length;
     const gap = 20;
-    const groupW = Math.min(70, (innerW - gap * (n - 1)) / n);
+    const groupW = Math.min(90, (innerW - gap * (n - 1)) / n);
     const barGap = 4;
-    const barW = (groupW - barGap) / 2;
+    const barW = (groupW - barGap * 2) / 3;
     const totalW = groupW * n + gap * (n - 1);
     const startX = PAD.left + (innerW - totalW) / 2;
 
@@ -1156,6 +1181,17 @@ const db = getFirestore(fbApp);
         labels += `<text x="${(ox + barW / 2).toFixed(1)}" y="${oValY.toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--series-3)">${fmtPct(d.otc, 1)}</text>`;
       }
 
+      if (d.twi != null) {
+        const wx = gx + (barW + barGap) * 2;
+        const twiY = Math.min(y(d.twi), zeroY);
+        const twiH = Math.max(2, Math.abs(y(d.twi) - zeroY));
+        const wTop = d.twi >= 0 ? 4 : 0;
+        const wBot = d.twi < 0 ? 4 : 0;
+        bars += `<path class="bar" data-i="${i}" data-type="twi" d="${roundedBarPath(wx, twiY, barW, twiH, wTop, wBot)}" fill="var(--series-2)" style="cursor:pointer"/>`;
+        const wValY = d.twi >= 0 ? twiY - 6 : twiY + twiH + 14;
+        labels += `<text x="${(wx + barW / 2).toFixed(1)}" y="${wValY.toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--series-2)">${fmtPct(d.twi, 1)}</text>`;
+      }
+
       labels += `<text x="${(gx + groupW / 2).toFixed(1)}" y="${H - PAD.bottom + 18}" text-anchor="middle" font-size="12" fill="var(--text-secondary)">${d.name}</text>`;
     });
 
@@ -1163,6 +1199,7 @@ const db = getFirestore(fbApp);
       <div class="legend" style="margin-bottom:6px;">
         <div class="legend-item"><span class="legend-swatch" style="background:var(--good)"></span>個人資金加權報酬</div>
         <div class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>櫃買指數當月報酬</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-2)"></span>加權指數當月報酬</div>
       </div>
     `;
 
@@ -1183,9 +1220,11 @@ const db = getFirestore(fbApp);
     wrap.querySelectorAll('.bar').forEach(bar => {
       bar.addEventListener('mouseenter', () => {
         const d = data[+bar.dataset.i];
-        const isOtc = bar.dataset.type === 'otc';
-        tooltip.innerHTML = isOtc
+        const type = bar.dataset.type;
+        tooltip.innerHTML = type === 'otc'
           ? `<div class="tt-title">${d.name}</div><div>櫃買指數當月報酬 ${fmtPct(d.otc, 2)}</div>`
+          : type === 'twi'
+          ? `<div class="tt-title">${d.name}</div><div>加權指數當月報酬 ${fmtPct(d.twi, 2)}</div>`
           : `<div class="tt-title">${d.name}</div><div>個人資金加權報酬 ${fmtPct(d.value, 2)}</div>`;
         tooltip.style.opacity = '1';
         bar.style.opacity = '0.8';
