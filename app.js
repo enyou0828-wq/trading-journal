@@ -139,6 +139,13 @@ const db = getFirestore(fbApp);
       const idx = Math.floor((p.ts - binStart) / binMs);
       bins.set(idx, p);
     });
+    // 保證序列的第一個點（基準日，數學上一定是 0%）不會被同一個 bin 裡較晚的日期蓋掉——
+    // bin 的分界是跟著 binStart（個人曲線第一筆交易的日期）對齊，不是跟著這條線自己的
+    // 起始日期對齊，兩者的「第一個 3 天區間」常常沒有剛好卡在起始日那天，導致起始日
+    // 跟隔壁一兩天被分進同一桶，桶內「取最後一筆」的規則就會讓起始日的 0% 被洗掉，
+    // 畫出來變成「第一個點不在 0%」。這裡強制把第一個 bin 覆寫回序列自己的起點。
+    const firstIdx = Math.floor((raw[0].ts - binStart) / binMs);
+    bins.set(firstIdx, raw[0]);
     return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
   }
 
@@ -170,6 +177,10 @@ const db = getFirestore(fbApp);
       const idx = Math.floor((p.ts - binStart) / binMs);
       bins.set(idx, p);
     });
+    // 同 computeOtcSeries：強制第一個 bin 回到序列自己的起點，避免起始日的 0% 被同一桶內
+    // 較晚的日期蓋掉。
+    const firstIdx = Math.floor((raw[0].ts - binStart) / binMs);
+    bins.set(firstIdx, raw[0]);
     return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
   }
 
