@@ -142,6 +142,37 @@ const db = getFirestore(fbApp);
     return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
   }
 
+  // 加權指數（TAIEX／TWI，臺灣證券交易所發行量加權股價指數）每日收盤，作為資金加權報酬曲線的
+  // 第二條對照線（櫃買指數是第一條）。歷史資料存在 data/twi_index.json（{"YYYY-MM-DD": 收盤指數}），
+  // 由 .github/workflows/daily-twi-update.yml 每個交易日自動呼叫 TWSE 網站補上最新一筆、
+  // commit 回這個檔案——跟 OTC_INDEX_CLOSE 同一套機制，app.js 只在頁面載入時 fetch 這份 JSON。
+  const TWI_INDEX_CLOSE = {};
+  let twiDataLoaded = false;
+  async function ensureTwiData() {
+    if (twiDataLoaded) return;
+    try {
+      const res = await fetch('data/twi_index.json', { cache: 'no-store' });
+      if (res.ok) Object.assign(TWI_INDEX_CLOSE, await res.json());
+    } catch (e) { /* 讀取失敗就不畫對照線，不影響個人紀錄本身的統計 */ }
+    twiDataLoaded = true;
+  }
+
+  function computeTwiSeries(binStart, binDays, startDate) {
+    let dates = Object.keys(TWI_INDEX_CLOSE).sort();
+    if (startDate) dates = dates.filter(d => d >= startDate);
+    if (!dates.length) return [];
+    const base = TWI_INDEX_CLOSE[dates[0]];
+    const raw = dates.map(d => ({ date: d, ts: parseDateTs(d), value: (TWI_INDEX_CLOSE[d] / base - 1) * 100 }));
+    if (!binDays) return raw;
+    const binMs = binDays * 24 * 60 * 60 * 1000;
+    const bins = new Map();
+    raw.forEach(p => {
+      const idx = Math.floor((p.ts - binStart) / binMs);
+      bins.set(idx, p);
+    });
+    return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
+  }
+
   // ---------- state ----------
   let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], fcmTokens: [] };
   let currentUser = null;
@@ -818,6 +849,7 @@ const db = getFirestore(fbApp);
 
   async function renderStats() {
     await ensureOtcData();
+    await ensureTwiData();
     const allRealized = sortedTrades().filter(t => t.returnPct != null);
     const s = computeStats(allRealized);
 
@@ -912,6 +944,8 @@ const db = getFirestore(fbApp);
 
     const otcSeries = computeOtcSeries(binStart, BIN_DAYS);
     const otcBinsByIdx = new Map(otcSeries.map(p => [Math.round((p.binTs - binStart) / binMs), p]));
+    const twiSeries = computeTwiSeries(binStart, BIN_DAYS);
+    const twiBinsByIdx = new Map(twiSeries.map(p => [Math.round((p.binTs - binStart) / binMs), p]));
 
     const W = 900, H = 280, PAD = { top: 16, right: 16, bottom: 36, left: 56 };
     const innerW = W - PAD.left - PAD.right, innerH = H - PAD.top - PAD.bottom;
@@ -921,9 +955,9 @@ const db = getFirestore(fbApp);
 
     // 用「原始交易」的日期範圍當作 X 軸範圍（而非合併後的區間點），
     // 這樣月初/月中標記線才不會因為合併時取區間內最後一筆而被誤判裁掉
-    // 同時涵蓋櫃買指數對照線的日期範圍（可能比交易紀錄更早開始，例如 6/1）
-    const tMin = Math.min(raw[0].ts, otcSeries.length ? otcSeries[0].ts : raw[0].ts);
-    const tMax = Math.max(raw[raw.length - 1].ts, otcSeries.length ? otcSeries[otcSeries.length - 1].ts : raw[raw.length - 1].ts);
+    // 同時涵蓋櫃買指數／加權指數對照線的日期範圍（可能比交易紀錄更早開始，例如 6/1）
+    const tMin = Math.min(raw[0].ts, otcSeries.length ? otcSeries[0].ts : raw[0].ts, twiSeries.length ? twiSeries[0].ts : raw[0].ts);
+    const tMax = Math.max(raw[raw.length - 1].ts, otcSeries.length ? otcSeries[otcSeries.length - 1].ts : raw[raw.length - 1].ts, twiSeries.length ? twiSeries[twiSeries.length - 1].ts : raw[raw.length - 1].ts);
     const tSpan = tMax - tMin || 1; // 同一天的資料時避免除以 0
 
     const x = (ts) => PAD.left + ((ts - tMin) / tSpan) * innerW;
@@ -956,7 +990,7 @@ const db = getFirestore(fbApp);
         [[new Date(y, mo, 1).getTime(), 1], [new Date(y, mo, 15).getTime(), 15]].forEach(([ts, day]) => {
           if (ts < tMin || ts > tMax) return;
           const idx = Math.floor((ts - binStart) / binMs);
-          const point = bins.get(idx) || otcBinsByIdx.get(idx); // 個人紀錄沒有該區間資料時，改用櫃買指數的資料點定位
+          const point = bins.get(idx) || otcBinsByIdx.get(idx) || twiBinsByIdx.get(idx); // 個人紀錄沒有該區間資料時，改用對照指數的資料點定位
           if (!point || usedBins.has(idx)) return; // 該 6 天區間內兩邊都沒有資料，或已被同月另一個標記用掉，就不標示
           usedBins.add(idx);
           // 用 idx 直接算區間時間，不要用 point.binTs——bins（個人資料）裡存的物件沒有 binTs 這個欄位
@@ -976,10 +1010,14 @@ const db = getFirestore(fbApp);
     const otcLinePath = otcSeries.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.binTs).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
     const otcDots = otcSeries.map((p, i) => `<circle class="otc-dot" data-i="${i}" cx="${x(p.binTs).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="2.5" fill="var(--series-3)" stroke="var(--surface-1)" stroke-width="1.5" style="cursor:pointer"/>`).join('');
 
-    const legend = otcSeries.length ? `
+    const twiLinePath = twiSeries.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.binTs).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
+    const twiDots = twiSeries.map((p, i) => `<circle class="twi-dot" data-i="${i}" cx="${x(p.binTs).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="2.5" fill="var(--series-2)" stroke="var(--surface-1)" stroke-width="1.5" style="cursor:pointer"/>`).join('');
+
+    const legend = (otcSeries.length || twiSeries.length) ? `
       <div class="legend" style="margin-bottom:6px;">
         <div class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>個人資金加權報酬</div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>櫃買指數（${otcSeries.length ? otcSeries[0].date : ''} 起，基準 0%，資料經核對）</div>
+        ${otcSeries.length ? `<div class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>櫃買指數（${otcSeries[0].date} 起，基準 0%，資料經核對）</div>` : ''}
+        ${twiSeries.length ? `<div class="legend-item"><span class="legend-swatch" style="background:var(--series-2)"></span>加權指數（${twiSeries[0].date} 起，基準 0%，資料經核對）</div>` : ''}
       </div>
     ` : '';
 
@@ -990,9 +1028,11 @@ const db = getFirestore(fbApp);
         <line x1="${PAD.left}" y1="${zeroY.toFixed(1)}" x2="${W - PAD.right}" y2="${zeroY.toFixed(1)}" stroke="var(--baseline)" stroke-width="1.5"/>
         <path d="${areaPath}" fill="var(--series-1)" opacity="0.10" stroke="none"/>
         ${otcLinePath ? `<path d="${otcLinePath}" fill="none" stroke="var(--series-3)" stroke-width="2" stroke-dasharray="5,4" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+        ${twiLinePath ? `<path d="${twiLinePath}" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-dasharray="2,3" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
         <path d="${linePath}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
         ${dots}
         ${otcDots}
+        ${twiDots}
         ${axisLabels}
       </svg>
     `;
@@ -1021,6 +1061,20 @@ const db = getFirestore(fbApp);
       dot.addEventListener('mouseenter', () => {
         const p = otcSeries[+dot.dataset.i];
         tooltip.innerHTML = `<div class="tt-title">${p.date}</div><div>櫃買指數 ${fmtPct(p.value, 2)}</div>`;
+        tooltip.style.opacity = '1';
+        dot.setAttribute('r', '4.5');
+      });
+      dot.addEventListener('mousemove', (e) => {
+        const rect = wrap.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+      });
+      dot.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; dot.setAttribute('r', '2.5'); });
+    });
+    wrap.querySelectorAll('.twi-dot').forEach(dot => {
+      dot.addEventListener('mouseenter', () => {
+        const p = twiSeries[+dot.dataset.i];
+        tooltip.innerHTML = `<div class="tt-title">${p.date}</div><div>加權指數 ${fmtPct(p.value, 2)}</div>`;
         tooltip.style.opacity = '1';
         dot.setAttribute('r', '4.5');
       });
