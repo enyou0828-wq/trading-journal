@@ -114,20 +114,30 @@ def main() -> int:
         print("今天沒有資料（可能是非交易日），略過。")
         return 0
 
-    row = rows[0]
-    date = parse_index_date(row["Date"])
-    close = float(str(row["Close"]).replace(",", ""))
-
+    # 這個端點原本的行為是「只回傳當天這一筆」，但後來觀察到它改成一次回傳最近幾個
+    # 交易日（依日期由舊到新排列）——如果還是像以前只取 rows[0]，抓到的會是這批資料裡
+    # 最舊的一筆，日期永遠卡在同一天，不會往前進（這個 bug 實際發生過：連續好幾天
+    # 都回報「2026-10-01 已經是最新」，但當時其實已經是 10/6）。改成把回傳的每一筆都
+    # 當作可能的新資料處理，不管端點這次回傳一筆還是好幾筆都能正確更新到最新。
     data = load_existing()
-    existing = data.get(date)
-    if existing is not None and abs(existing - close) < 1e-9:
-        print(f"{date} 的資料已經是最新（{close}），沒有變更。")
+    changed = []
+    for row in rows:
+        date = parse_index_date(row["Date"])
+        close = float(str(row["Close"]).replace(",", ""))
+        existing = data.get(date)
+        if existing is not None and abs(existing - close) < 1e-9:
+            continue
+        data[date] = close
+        changed.append((date, close, existing))
+
+    if not changed:
+        print(f"抓到的 {len(rows)} 筆資料都已經是最新的，沒有變更。")
         return 0
 
-    data[date] = close
     save(data)
-    verb = "更新" if existing is not None else "新增"
-    print(f"{verb} {date}: {close}" + (f"（原本是 {existing}）" if existing is not None else ""))
+    for date, close, existing in changed:
+        verb = "更新" if existing is not None else "新增"
+        print(f"{verb} {date}: {close}" + (f"（原本是 {existing}）" if existing is not None else ""))
     return 0
 
 
