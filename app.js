@@ -889,8 +889,10 @@ const db = getFirestore(fbApp);
     const allRealized = sortedTrades().filter(t => t.returnPct != null);
     const s = computeStats(allRealized);
 
-    document.getElementById('stat-total-pnl').textContent = fmtWan(s.totalProfitWan, 2);
-    document.getElementById('stat-total-pnl').style.color = s.totalProfitWan > 0 ? 'var(--good)' : s.totalProfitWan < 0 ? 'var(--critical)' : '';
+    document.getElementById('stat-total-pnl').textContent = fmtPct(s.totalWeighted, 2);
+    document.getElementById('stat-total-pnl').style.color = s.totalWeighted > 0 ? 'var(--good)' : s.totalWeighted < 0 ? 'var(--critical)' : '';
+    document.getElementById('stat-total-profit-wan').textContent = fmtWan(s.totalProfitWan, 2);
+    document.getElementById('stat-total-profit-wan').style.color = s.totalProfitWan > 0 ? 'var(--good)' : s.totalProfitWan < 0 ? 'var(--critical)' : '';
     document.getElementById('stat-winrate').textContent = s.realized.length ? s.winRate.toFixed(1) + '%' : '–';
     document.getElementById('stat-count').textContent = s.realized.length;
     document.getElementById('stat-count-sub').textContent = `${s.wins.length} 勝 / ${s.losses.length} 敗`;
@@ -1576,13 +1578,18 @@ const db = getFirestore(fbApp);
     const el = document.getElementById('review-stats-snapshot');
     const row = review.statsSnapshot;
     if (!row) { el.innerHTML = ''; return; }
-    const pnlClass = row.totalProfitWan > 0 ? 'pnl-pos' : row.totalProfitWan < 0 ? 'pnl-neg' : 'pnl-zero';
+    const pctClass = row.realReturn > 0 ? 'pnl-pos' : row.realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
+    const wanClass = row.totalProfitWan > 0 ? 'pnl-pos' : row.totalProfitWan < 0 ? 'pnl-neg' : 'pnl-zero';
     const winPct = row.realizedCount ? (row.wins / row.realizedCount) * 100 : 0;
     el.innerHTML = `
       <div class="stat-grid">
         <div class="stat-tile">
-          <span class="stat-label">總報酬</span>
-          <span class="stat-value ${pnlClass}">${fmtWan(row.totalProfitWan, 2)}</span>
+          <span class="stat-label">總報酬率</span>
+          <span class="stat-value ${pctClass}">${fmtPct(row.realReturn, 2)}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">總損益</span>
+          <span class="stat-value ${wanClass}">${fmtWan(row.totalProfitWan, 2)}</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">勝率</span>
