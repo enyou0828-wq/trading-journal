@@ -377,6 +377,8 @@ const db = getFirestore(fbApp);
 
       if (!Array.isArray(state.watchlist)) state.watchlist = [];
       if (!Array.isArray(state.fcmTokens)) state.fcmTokens = [];
+
+      if (ensureMonthlyStatsSnapshots()) await save();
     } catch (e) {
       console.error('loadFromCloud failed', e);
       setSyncStatus('讀取失敗');
@@ -917,6 +919,40 @@ const db = getFirestore(fbApp);
   }
 
   // ---- monthly stats breakdown table ----
+  // 算出某個月份的統計列，給「月度統計明細」即時表格跟「月度回顧」的凍結快照共用，
+  // 確保兩邊算法永遠一致。pf 是 Infinity 時存成 null（而不是 JS 的 Infinity），避免存進
+  // Firestore/JSON 時出現序列化邊界問題；顯示時 null 一律當「∞」處理。
+  function computeMonthRow(m, byMonth, basisMap) {
+    const s = computeStats(byMonth[m]);
+    const realReturn = s.weighted.reduce((sum, t) => sum + monthlyProfitPct(t.profitWan, t.date, basisMap), 0);
+    return {
+      month: m,
+      realReturn,
+      winRate: s.winRate,
+      realizedCount: s.realized.length,
+      wins: s.wins.length,
+      losses: s.losses.length,
+      avgWin: s.avgWin,
+      avgLoss: s.avgLoss,
+      pf: s.pf === Infinity ? null : s.pf,
+      maxWin: s.maxWin,
+      maxLoss: s.maxLoss,
+    };
+  }
+
+  function monthRowHtml(row, { withMonth = true } = {}) {
+    const pnlClass = row.realReturn > 0 ? 'pnl-pos' : row.realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
+    return `
+      ${withMonth ? `<td><strong>${row.month.replace('-', '/')}</strong></td>` : ''}
+      <td class="num ${pnlClass}">${fmtPct(row.realReturn, 2)}</td>
+      <td class="num">${row.winRate.toFixed(1)}%</td>
+      <td class="num">${row.realizedCount}（${row.wins}勝${row.losses}敗）</td>
+      <td class="num">${fmtPct(row.avgWin, 2)} / ${fmtPct(row.avgLoss, 2)}</td>
+      <td class="num">${row.pf == null ? '∞' : row.pf.toFixed(2)}</td>
+      <td class="num">${fmtPct(row.maxWin, 2)} / ${fmtPct(row.maxLoss, 2)}</td>
+    `;
+  }
+
   function renderMonthlyStatsTable(allRealized) {
     const tbody = document.getElementById('monthly-stats-tbody');
     const empty = document.getElementById('monthly-stats-empty');
@@ -934,22 +970,47 @@ const db = getFirestore(fbApp);
     const basisMap = buildMonthlyCapitalBasisMap(allRealized);
 
     for (const m of months) {
-      const s = computeStats(byMonth[m]);
-      // 「資金加權報酬」這一欄直接用當月真實總資產當分母算真實報酬率，其餘欄位（勝率、次數等）不受影響
-      const realReturn = s.weighted.reduce((sum, t) => sum + monthlyProfitPct(t.profitWan, t.date, basisMap), 0);
-      const pnlClass = realReturn > 0 ? 'pnl-pos' : realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${m.replace('-', '/')}</strong></td>
-        <td class="num ${pnlClass}">${fmtPct(realReturn, 2)}</td>
-        <td class="num">${s.winRate.toFixed(1)}%</td>
-        <td class="num">${s.realized.length}（${s.wins.length}勝${s.losses.length}敗）</td>
-        <td class="num">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</td>
-        <td class="num">${s.pf === Infinity ? '∞' : s.pf.toFixed(2)}</td>
-        <td class="num">${fmtPct(s.maxWin, 2)} / ${fmtPct(s.maxLoss, 2)}</td>
-      `;
+      tr.innerHTML = monthRowHtml(computeMonthRow(m, byMonth, basisMap));
       tbody.appendChild(tr);
     }
+  }
+
+  // ---- 月度回顧：月底自動凍結當月統計快照 ----
+  // 每次載入都檢查一次（不是一次性 migration）：任何「已經結束的月份」（今天的月份 > 該月）
+  // 只要有已實現交易、而且還沒凍結過統計快照，就算一次並永久存進該月的回顧紀錄裡
+  // （review.statsSnapshot）。凍結後不會再重算——就算之後回頭編輯/刪除那個月的交易，
+  // 這張表也不會跟著變動，是「月底當下」的永久歷史記錄，跟統計分析分頁即時計算的
+  // 月度統計明細是兩回事（刻意的設計，使用者要的是凍結快照，不是即時鏡像）。
+  // 該月份如果還沒有月度回顧紀錄，會自動建一筆空的（只有統計表，單筆交易/反思留空）
+  // 讓這張表有地方可以放。
+  function ensureMonthlyStatsSnapshots() {
+    const allRealized = state.trades.filter(t => t.returnPct != null);
+    if (!allRealized.length) return false;
+
+    const byMonth = {};
+    allRealized.forEach(t => {
+      const m = t.date.slice(0, 7);
+      (byMonth[m] = byMonth[m] || []).push(t);
+    });
+    const basisMap = buildMonthlyCapitalBasisMap(allRealized);
+    const thisMonth = taipeiDateStr().slice(0, 7);
+
+    let changed = false;
+    for (const m of Object.keys(byMonth)) {
+      if (m >= thisMonth) continue; // 當月還沒結束，不凍結
+      if (m === '2026-05') continue; // 跟月度統計明細表同一條規則：樣本太少不列入
+      let review = findReview(m);
+      if (!review) {
+        review = { month: m, entries: [], reflections: [] };
+        state.monthlyReviews.push(review);
+        changed = true;
+      }
+      if (review.statsSnapshot) continue; // 已經凍結過
+      review.statsSnapshot = computeMonthRow(m, byMonth, basisMap);
+      changed = true;
+    }
+    return changed;
   }
 
   // ---- weighted cumulative return curve (SVG line chart) ----
@@ -1503,8 +1564,30 @@ const db = getFirestore(fbApp);
 
     const review = findReview(reviewSelectedMonth);
     document.getElementById('review-month-title').textContent = `${monthLabel(review.month)}月度回顧`;
+    renderReviewStatsSnapshot(review);
     renderReviewEntries(review);
     renderReviewReflections(review);
+  }
+
+  function renderReviewStatsSnapshot(review) {
+    const el = document.getElementById('review-stats-snapshot');
+    if (!review.statsSnapshot) { el.innerHTML = ''; return; }
+    el.innerHTML = `
+      <div class="chart-card">
+        <div class="chart-head"><h2>當月統計（月底凍結，之後不會再變動）</h2></div>
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead>
+              <tr>
+                <th>月份</th><th>資金加權報酬</th><th>勝率</th><th>已實現次數</th>
+                <th>平均獲利 / 虧損</th><th>獲利因子</th><th>最大獲利 / 虧損</th>
+              </tr>
+            </thead>
+            <tbody><tr>${monthRowHtml(review.statsSnapshot)}</tr></tbody>
+          </table>
+        </div>
+      </div>
+    `;
   }
 
   function renderReviewEntries(review) {
