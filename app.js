@@ -1571,20 +1571,38 @@ const db = getFirestore(fbApp);
 
   function renderReviewStatsSnapshot(review) {
     const el = document.getElementById('review-stats-snapshot');
-    if (!review.statsSnapshot) { el.innerHTML = ''; return; }
+    const row = review.statsSnapshot;
+    if (!row) { el.innerHTML = ''; return; }
+    const pnlClass = row.realReturn > 0 ? 'pnl-pos' : row.realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
+    const winPct = row.realizedCount ? (row.wins / row.realizedCount) * 100 : 0;
     el.innerHTML = `
-      <div class="chart-card">
-        <div class="chart-head"><h2>當月統計（月底凍結，之後不會再變動）</h2></div>
-        <div class="table-wrap">
-          <table class="trade-table">
-            <thead>
-              <tr>
-                <th>月份</th><th>資金加權報酬</th><th>勝率</th><th>已實現次數</th>
-                <th>平均獲利 / 虧損</th><th>獲利因子</th><th>最大獲利 / 虧損</th>
-              </tr>
-            </thead>
-            <tbody><tr>${monthRowHtml(review.statsSnapshot)}</tr></tbody>
-          </table>
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-label">總報酬</span>
+          <span class="stat-value ${pnlClass}">${fmtPct(row.realReturn, 2)}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">勝率</span>
+          <span class="stat-value">${row.winRate.toFixed(1)}%</span>
+          <div class="winloss-bar"><div class="win" style="width:${winPct}%"></div><div class="loss" style="width:${100 - winPct}%"></div></div>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">已實現次數</span>
+          <span class="stat-value">${row.realizedCount}</span>
+          <span class="stat-sub">${row.wins} 勝 / ${row.losses} 敗</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">平均獲利 / 平均虧損</span>
+          <span class="stat-value">${fmtPct(row.avgWin, 2)} / ${fmtPct(row.avgLoss, 2)}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">獲利因子</span>
+          <span class="stat-value">${row.pf == null ? '∞' : row.pf.toFixed(2)}</span>
+          <span class="stat-sub">總獲利% ÷ 總虧損%</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">最大單筆獲利 / 虧損</span>
+          <span class="stat-value">${fmtPct(row.maxWin, 2)} / ${fmtPct(row.maxLoss, 2)}</span>
         </div>
       </div>
     `;
