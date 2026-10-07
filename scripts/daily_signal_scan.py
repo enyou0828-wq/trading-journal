@@ -56,7 +56,10 @@ SIGNAL_SETS = [
         "key": "fast", "label": "短線（5日新高＋量增1.5倍＋當日漲幅5%以上）", "type": "breakout_volume",
         "lookback": 5, "volume_multiplier": 1.5, "min_daily_change_pct": 5.0,
     },
-    {"key": "streak", "label": "連續2天創5日新高", "type": "consecutive_high", "lookback": 5, "consecutive_days": 2},
+    {
+        "key": "streak", "label": "連續2天創5日新高＋近2日平均斜率5%以上", "type": "consecutive_high",
+        "lookback": 5, "consecutive_days": 2, "avg_slope_days": 2, "min_avg_slope_pct": 5.0,
+    },
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
 
@@ -281,24 +284,29 @@ def rows_match_calendar(rows_window: list[dict], expected_dates) -> bool:
     return expected_dates is not None and [r["date"] for r in rows_window] == expected_dates
 
 
-def daily_change_pct(rows: list[dict], calendar: list[str], date_index: dict[str, int]):
-    """今天收盤相對『日曆上緊接在前一個交易日』收盤的漲跌幅（%）。
+def calendar_change_pct(rows: list[dict], calendar: list[str], date_index: dict[str, int], days_back: int = 1):
+    """今天收盤相對『日曆上回溯 days_back 個交易日』收盤的漲跌幅（%）。
 
-    刻意不用 rows[-2]（陣列上的前一筆）直接當作「昨天」——如果這檔股票中間有停牌
-    或漏抓資料，rows[-2] 實際上可能是好幾天前的收盤，拿來算「當日漲幅」會嚴重失真
-    （例如停牌恢復交易，一比較就是個假的巨幅漲跌）。改成明確比對交易日曆，兜不起來
+    刻意不用 rows[-(days_back+1)]（陣列上的前幾筆）直接當作「回溯 N 天」——如果這檔股票
+    中間有停牌或漏抓資料，陣列上的前幾筆實際上可能是好幾天前的收盤，拿來算漲跌幅會嚴重
+    失真（例如停牌恢復交易，一比較就是個假的巨幅漲跌）。改成明確比對交易日曆，兜不起來
     就回傳 None（顯示「–」），比顯示一個算錯的數字更符合「必須真實」。
     """
-    if len(rows) < 2:
+    if len(rows) < days_back + 1:
         return None
     today = rows[-1]
-    expected = calendar_window_dates(calendar, date_index, today["date"], 2)
-    if not rows_match_calendar(rows[-2:], expected):
+    window = rows[-(days_back + 1):]
+    expected = calendar_window_dates(calendar, date_index, today["date"], days_back + 1)
+    if not rows_match_calendar(window, expected):
         return None
-    prev_close = rows[-2]["close"]
-    if not prev_close:
+    start_close = window[0]["close"]
+    if not start_close:
         return None
-    return (today["close"] / prev_close - 1) * 100
+    return (today["close"] / start_close - 1) * 100
+
+
+def daily_change_pct(rows: list[dict], calendar: list[str], date_index: dict[str, int]):
+    return calendar_change_pct(rows, calendar, date_index, days_back=1)
 
 
 def build_entry(
@@ -374,8 +382,15 @@ def compute_consecutive_high_signals(
     consecutive_days: int,
     companies: dict[str, dict],
     industries: dict[str, dict],
+    avg_slope_days: int | None = None,
+    min_avg_slope_pct: float | None = None,
 ) -> tuple[list[dict], bool]:
-    """連續 consecutive_days 天，每一天收盤都各自創下當天的 N 日新高（不看量）。"""
+    """連續 consecutive_days 天，每一天收盤都各自創下當天的 N 日新高（不看量）。
+
+    可選再加一個力道門檻：近 avg_slope_days 天的「平均斜率」（最近 N 天總漲幅 ÷ N，
+    不是逐日漲幅的平均）要達到 min_avg_slope_pct 以上，用來濾掉那種「技術上連兩天
+    創新高，但其實是緩慢爬升、沒什麼動能」的訊號。
+    """
     signals = []
     warmup = False
     needed = lookback + consecutive_days
@@ -400,12 +415,21 @@ def compute_consecutive_high_signals(
                 all_new_high = False
                 break
 
-        if all_new_high:
-            today = rows[-1]
-            signals.append(build_entry(
-                code, today["name"], today["close"], daily_change_pct(rows, calendar, date_index), None,
-                today["volume"], companies, industries
-            ))
+        if not all_new_high:
+            continue
+
+        avg_slope = None
+        if min_avg_slope_pct is not None:
+            total_change = calendar_change_pct(rows, calendar, date_index, days_back=avg_slope_days)
+            avg_slope = total_change / avg_slope_days if total_change is not None else None
+            if avg_slope is None or avg_slope < min_avg_slope_pct:
+                continue  # 近 N 日平均斜率不到門檻（或中間有缺資料算不出來），跳過不算
+
+        today = rows[-1]
+        signals.append(build_entry(
+            code, today["name"], today["close"], daily_change_pct(rows, calendar, date_index), None,
+            today["volume"], companies, industries
+        ))
 
     signals.sort(key=lambda s: priority_sort_key(s, s["daily_change_pct"] or 0))
     return signals, warmup
@@ -566,9 +590,13 @@ def main() -> int:
         elif set_type == "consecutive_high":
             signals, warmup = compute_consecutive_high_signals(
                 by_code, expected_date_by_market, calendar, date_index,
-                spec["lookback"], spec["consecutive_days"], companies, industries
+                spec["lookback"], spec["consecutive_days"], companies, industries,
+                avg_slope_days=spec.get("avg_slope_days"), min_avg_slope_pct=spec.get("min_avg_slope_pct"),
             )
             params = {"lookback_days": spec["lookback"], "consecutive_days": spec["consecutive_days"]}
+            if spec.get("min_avg_slope_pct") is not None:
+                params["avg_slope_days"] = spec["avg_slope_days"]
+                params["min_avg_slope_pct"] = spec["min_avg_slope_pct"]
         else:
             raise ValueError(f"未知的 signal set type：{set_type}")
 
