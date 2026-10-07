@@ -462,9 +462,6 @@ const db = getFirestore(fbApp);
   }
 
   function signalSetHtml(set) {
-    const warmupHtml = set.warmup
-      ? `<p class="empty-state signal-set-warmup">部分股票累積歷史還不到門檻天數，暖機期尚未結束，訊號會隨每天累積資料陸續補齊。</p>`
-      : '';
     const bodyHtml = set.signals.length
       ? `<div class="table-wrap">
           <table class="trade-table">
@@ -480,7 +477,6 @@ const db = getFirestore(fbApp);
     return `
       <div class="chart-card">
         <div class="chart-head"><h2>${escapeHtml(set.label)}</h2></div>
-        ${warmupHtml}
         ${bodyHtml}
       </div>
     `;

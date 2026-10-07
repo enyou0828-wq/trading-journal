@@ -262,7 +262,6 @@ body {
   gap: 16px; align-items: start;
 }
 .signal-sets-grid .table-wrap { overflow-x: auto; }
-.signal-set-warmup { padding: 10px 14px; font-size: 12.5px; }
 
 .watchlist-due-banner {
   background: var(--surface-1);
