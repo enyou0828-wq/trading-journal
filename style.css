@@ -120,7 +120,7 @@ body {
   flex-wrap: wrap;
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; }
-.brand-mark { color: var(--series-1); }
+.brand-mark { width: 24px; height: 24px; border-radius: 6px; display: block; }
 
 .tabs { display: flex; gap: 4px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 4px; }
 .tab {
