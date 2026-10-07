@@ -813,7 +813,7 @@ const db = getFirestore(fbApp);
     document.getElementById('f-calc-price').value = t && t.price != null ? t.price : '';
     document.getElementById('f-calc-shares').value = '';
     document.getElementById('f-action').value = t ? t.action : '買進';
-    document.getElementById('f-strategy').value = t ? t.strategy : '族群效應';
+    document.getElementById('f-strategy').value = t ? t.strategy : '';
     document.getElementById('f-position-pct').value = t && t.positionPct != null ? t.positionPct : '';
     document.getElementById('f-return-pct').value = t && t.returnPct != null ? t.returnPct : '';
     document.getElementById('f-profit-wan').value = t && t.profitWan != null ? t.profitWan : '';
