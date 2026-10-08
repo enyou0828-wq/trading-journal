@@ -428,7 +428,7 @@ const db = getFirestore(fbApp);
       document.getElementById('panel-' + target).classList.add('active');
       if (target === 'stats') renderStats();
       if (target === 'review') renderMonthlyReview();
-      if (target === 'chain') { renderChainTree(); renderChainDetail(); }
+      if (target === 'chain') { renderChainResults(); renderChainDetail(); }
       if (target === 'signals') renderSignals();
       if (target === 'watchlist') renderWatchlist();
     });
@@ -1872,11 +1872,6 @@ const db = getFirestore(fbApp);
   function scNode(id) { return state.supplyChainNodes.find(n => n.id === id); }
   function scChildren(id) { return state.supplyChainNodes.filter(n => (n.parentIds || []).includes(id)); }
   function scRoots() { return state.supplyChainNodes.filter(n => !n.parentIds || n.parentIds.length === 0); }
-  function scDepth(id) {
-    let depth = 0, node = scNode(id), guard = 0;
-    while (node && node.parentIds && node.parentIds[0] && guard++ < 20) { depth++; node = scNode(node.parentIds[0]); }
-    return depth;
-  }
   // 含自己在內的所有下層節點 id（沿 parentIds 反向展開，支援多重上層/DAG）
   function scDescendantIds(id) {
     const result = new Set([id]);
@@ -1904,58 +1899,140 @@ const db = getFirestore(fbApp);
     return sortedTrades().filter(t => set.has(t.symbol));
   }
 
-  let chainExpanded = new Set();
-  let chainSelectedNodeId = null;
-  let chainSelectedSymbol = null;
+  let chainQuery = '';
+  let chainSelection = null; // { kind: 'node' | 'sector' | 'symbol', id, label }
 
-  function renderChainTree() {
-    const el = document.getElementById('chain-tree');
-    if (!el) return;
-    el.innerHTML = '';
-    const roots = scRoots();
-    if (!roots.length) {
-      el.innerHTML = '<p class="empty-state">尚無供應鏈節點，點右上角「編輯供應鏈」新增。</p>';
-      return;
+  const CHAIN_KIND_LABEL = { node: '供應鏈', sector: '族群', symbol: '標的' };
+
+  // 搜尋同時涵蓋三種來源：供應鏈節點、交易紀錄裡自己打的族群標籤、個股（代號或名稱）。
+  // 這三套命名在這個 App 裡本來就不是同一套（例如供應鏈節點叫「光通訊」、交易紀錄可能打「CPO」），
+  // 所以不做名稱對應轉換，三種各自列出來讓使用者自己挑，避免猜錯對應關係反而找不到東西。
+  function chainSearchMatches(query) {
+    const q = query.trim().toLowerCase();
+    const matches = [];
+
+    // 沒輸入關鍵字時列出最上層的供應鏈節點當瀏覽入口，不然這一區會整片空白
+    if (!q) {
+      scRoots().forEach(n => matches.push({ kind: 'node', id: n.id, label: n.name }));
+      return matches;
     }
-    const renderNode = (node, depth) => {
-      const children = scChildren(node.id);
-      const hasChildren = children.length > 0;
-      const isExpanded = chainExpanded.has(node.id);
-      const linkCount = scLinksForNode(node.id).length;
-      const row = document.createElement('div');
-      row.className = 'chain-row' + (chainSelectedNodeId === node.id && !chainSelectedSymbol ? ' active' : '');
-      row.style.paddingLeft = (depth * 18 + 10) + 'px';
-      row.innerHTML = `
-        <span class="chain-toggle">${hasChildren ? (isExpanded ? '▾' : '▸') : ''}</span>
-        <span class="chain-row-name">${escapeHtml(node.name)}</span>
-        ${linkCount ? `<span class="chain-row-count">${linkCount}</span>` : ''}
-      `;
-      if (hasChildren) {
-        row.querySelector('.chain-toggle').addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (isExpanded) chainExpanded.delete(node.id); else chainExpanded.add(node.id);
-          renderChainTree();
-        });
+
+    state.supplyChainNodes.forEach(n => {
+      if ((n.name || '').toLowerCase().includes(q)) matches.push({ kind: 'node', id: n.id, label: n.name });
+    });
+
+    [...new Set(state.trades.map(t => (t.sector || '').trim()).filter(Boolean))].sort().forEach(sec => {
+      if (sec.toLowerCase().includes(q)) matches.push({ kind: 'sector', id: sec, label: sec });
+    });
+
+    const symbolNames = new Map();
+    state.trades.forEach(t => { if (t.symbol) symbolNames.set(t.symbol, t.name || symbolNames.get(t.symbol) || ''); });
+    state.companyLinks.forEach(l => { if (l.symbol && !symbolNames.get(l.symbol)) symbolNames.set(l.symbol, l.name || ''); });
+    [...symbolNames.keys()].sort().forEach(sym => {
+      const name = symbolNames.get(sym) || '';
+      if (sym.toLowerCase().includes(q) || name.toLowerCase().includes(q)) {
+        matches.push({ kind: 'symbol', id: sym, label: `${sym} ${name}`.trim() });
       }
-      row.addEventListener('click', () => {
-        chainSelectedNodeId = node.id;
-        chainSelectedSymbol = null;
-        renderChainTree();
-        renderChainDetail();
-      });
-      el.appendChild(row);
-      if (hasChildren && isExpanded) children.forEach(c => renderNode(c, depth + 1));
-    };
-    roots.forEach(r => renderNode(r, 0));
+    });
+
+    return matches;
   }
 
-  function chainStatTiles(s) {
+  function chainTradesFor(sel) {
+    if (!sel) return [];
+    if (sel.kind === 'symbol') return sortedTrades().filter(t => t.symbol === sel.id);
+    if (sel.kind === 'sector') return sortedTrades().filter(t => (t.sector || '').trim() === sel.id);
+    return scTradesForSymbols([...new Set(scLinksForNode(sel.id).map(l => l.symbol))]);
+  }
+
+  // 跟「統計分析」分頁頂部同一組統計卡片，直接吃 computeStats() 的結果
+  function statTilesHtml(s) {
+    const pctClass = s.totalWeighted > 0 ? 'pnl-pos' : s.totalWeighted < 0 ? 'pnl-neg' : 'pnl-zero';
+    const wanClass = s.totalProfitWan > 0 ? 'pnl-pos' : s.totalProfitWan < 0 ? 'pnl-neg' : 'pnl-zero';
+    const winPct = s.realized.length ? (s.wins.length / s.realized.length) * 100 : 0;
     return `
-      <div class="stat-grid" style="margin:16px 0;">
-        <div class="stat-tile"><span class="stat-label">已實現次數</span><span class="stat-value">${s.realized.length}</span></div>
-        <div class="stat-tile"><span class="stat-label">勝率</span><span class="stat-value">${s.realized.length ? s.winRate.toFixed(1) + '%' : '–'}</span></div>
-        <div class="stat-tile"><span class="stat-label">平均獲利 / 虧損</span><span class="stat-value">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</span></div>
-        <div class="stat-tile"><span class="stat-label">損益 (萬)</span><span class="stat-value">${fmtWan(s.totalProfitWan, 2)}</span></div>
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-label">總報酬率</span>
+          <span class="stat-value ${pctClass}">${fmtPct(s.totalWeighted, 2)}</span>
+          <span class="stat-sub">Σ（報酬率 × 資金佔比）</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">總損益</span>
+          <span class="stat-value ${wanClass}">${fmtWan(s.totalProfitWan, 2)}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">勝率</span>
+          <span class="stat-value">${s.realized.length ? s.winRate.toFixed(1) + '%' : '–'}</span>
+          <div class="winloss-bar"><div class="win" style="width:${winPct}%"></div><div class="loss" style="width:${100 - winPct}%"></div></div>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">已實現次數</span>
+          <span class="stat-value">${s.realized.length}</span>
+          <span class="stat-sub">${s.wins.length} 勝 / ${s.losses.length} 敗</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">平均獲利 / 平均虧損</span>
+          <span class="stat-value">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">獲利因子</span>
+          <span class="stat-value">${s.pf === Infinity ? '∞' : s.realized.length ? s.pf.toFixed(2) : '–'}</span>
+          <span class="stat-sub">總獲利% ÷ 總虧損%</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">最大單筆獲利 / 虧損</span>
+          <span class="stat-value">${fmtPct(s.maxWin, 2)} / ${fmtPct(s.maxLoss, 2)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderChainResults() {
+    const el = document.getElementById('chain-results');
+    if (!el) return;
+    const matches = chainSearchMatches(chainQuery);
+    if (!matches.length) {
+      el.innerHTML = '<p class="empty-state" style="padding:12px 0;">找不到符合的族群或標的。</p>';
+      return;
+    }
+    const shown = matches.slice(0, 40);
+    el.innerHTML = shown.map((m, i) => {
+      const isActive = chainSelection && chainSelection.kind === m.kind && chainSelection.id === m.id;
+      return `
+        <button type="button" class="chain-chip${isActive ? ' active' : ''}" data-i="${i}">
+          <span class="chain-chip-kind">${CHAIN_KIND_LABEL[m.kind]}</span>${escapeHtml(m.label)}
+        </button>
+      `;
+    }).join('');
+    el.querySelectorAll('.chain-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        chainSelection = shown[+btn.dataset.i];
+        renderChainResults();
+        renderChainDetail();
+      });
+    });
+  }
+
+  function chainTradeTableHtml(trades) {
+    return `
+      <div class="table-wrap">
+        <table class="trade-table">
+          <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>損益 (萬)</th><th>報酬率</th></tr></thead>
+          <tbody>${trades.map(t => {
+            const c = displayProfitWan(t);
+            const cClass = c == null ? 'pnl-zero' : c > 0 ? 'pnl-pos' : c < 0 ? 'pnl-neg' : 'pnl-zero';
+            const rClass = t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero';
+            return `
+              <tr>
+                <td class="num">${t.date}</td>
+                <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
+                <td>${escapeHtml(t.strategy)}</td>
+                <td class="num ${cClass}">${fmtWan(c, 2)}</td>
+                <td class="num ${rClass}">${fmtPct(t.returnPct, 2)}</td>
+              </tr>`;
+          }).join('')}</tbody>
+        </table>
       </div>
     `;
   }
@@ -1964,61 +2041,71 @@ const db = getFirestore(fbApp);
     const el = document.getElementById('chain-detail');
     if (!el) return;
 
-    if (chainSelectedSymbol) {
-      const symbol = chainSelectedSymbol;
-      const trades = sortedTrades().filter(t => t.symbol === symbol);
-      const realized = trades.filter(t => t.returnPct != null);
-      const s = computeStats(realized);
+    if (!chainSelection) {
+      el.innerHTML = '<p class="empty-state">搜尋或點選上方的族群／標的，查看它的統計與明細。</p>';
+      return;
+    }
+
+    if (chainSelection.kind === 'symbol') {
+      const symbol = chainSelection.id;
+      const trades = chainTradesFor(chainSelection);
+      const s = computeStats(trades.filter(t => t.returnPct != null));
       const nodeLinks = scNodesForSymbol(symbol);
       const name = trades[0]?.name || nodeLinks.find(l => l.name)?.name || '';
       const sector = (trades.find(t => t.sector)?.sector) || '–';
       el.innerHTML = `
-        <div class="chain-detail-head">
-          <button type="button" class="btn ghost" id="chain-back-btn">‹ 返回節點</button>
-          <h2>${escapeHtml(symbol)} ${escapeHtml(name)}</h2>
-        </div>
+        <div class="chain-detail-head"><h2>${escapeHtml(symbol)} ${escapeHtml(name)}</h2></div>
         <div class="chain-detail-meta">
           <div><span class="chain-meta-label">所屬族群</span>${escapeHtml(sector)}</div>
           <div><span class="chain-meta-label">所屬供應鏈</span>${nodeLinks.length ? nodeLinks.map(l => `${escapeHtml(l.node.name)}${l.role ? `（${escapeHtml(l.role)}）` : ''}`).join('、') : '尚未建立供應鏈資料'}</div>
         </div>
-        ${chainStatTiles(s)}
+        ${statTilesHtml(s)}
         <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
-        <div class="table-wrap">
-          <table class="trade-table">
-            <thead><tr><th>日期</th><th>操作</th><th>策略</th><th>損益 (萬)</th><th>報酬率</th></tr></thead>
-            <tbody>${trades.map(t => { const c = displayProfitWan(t); const cClass = c == null ? 'pnl-zero' : c > 0 ? 'pnl-pos' : c < 0 ? 'pnl-neg' : 'pnl-zero'; return `
-              <tr>
-                <td class="num">${t.date}</td>
-                <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
-                <td>${escapeHtml(t.strategy)}</td>
-                <td class="num ${cClass}">${fmtWan(c, 2)}</td>
-                <td class="num ${t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero'}">${fmtPct(t.returnPct, 2)}</td>
-              </tr>`; }).join('')}</tbody>
-          </table>
-        </div>
+        ${chainTradeTableHtml(trades)}
       `;
-      document.getElementById('chain-back-btn').addEventListener('click', () => {
-        chainSelectedSymbol = null;
-        renderChainTree();
-        renderChainDetail();
+      return;
+    }
+
+    if (chainSelection.kind === 'sector') {
+      const trades = chainTradesFor(chainSelection);
+      const s = computeStats(trades.filter(t => t.returnPct != null));
+      const symbols = [...new Set(trades.map(t => t.symbol))];
+      el.innerHTML = `
+        <div class="chain-detail-head"><h2>${escapeHtml(chainSelection.label)}</h2></div>
+        ${statTilesHtml(s)}
+        <h3 class="chain-companies-title">相關標的（${symbols.length}）</h3>
+        <div class="chain-company-list">
+          ${symbols.map(sym => {
+            const name = trades.find(t => t.symbol === sym)?.name || '';
+            return `<div class="chain-company-row" data-symbol="${escapeHtml(sym)}"><strong>${escapeHtml(sym)}</strong> ${escapeHtml(name)}</div>`;
+          }).join('')}
+        </div>
+        <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
+        ${chainTradeTableHtml(trades)}
+      `;
+      el.querySelectorAll('.chain-company-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const sym = row.dataset.symbol;
+          const name = trades.find(t => t.symbol === sym)?.name || '';
+          chainSelection = { kind: 'symbol', id: sym, label: `${sym} ${name}`.trim() };
+          renderChainResults();
+          renderChainDetail();
+        });
       });
       return;
     }
 
-    if (!chainSelectedNodeId || !scNode(chainSelectedNodeId)) {
-      el.innerHTML = '<p class="empty-state">點選左側的供應鏈節點查看詳細資料。</p>';
-      return;
-    }
-    const node = scNode(chainSelectedNodeId);
+    // kind === 'node'
+    const node = scNode(chainSelection.id);
+    if (!node) { chainSelection = null; renderChainDetail(); return; }
     const links = scLinksForNode(node.id);
     const symbols = [...new Set(links.map(l => l.symbol))];
-    const trades = scTradesForSymbols(symbols);
-    const realized = trades.filter(t => t.returnPct != null);
-    const s = computeStats(realized);
+    const trades = chainTradesFor(chainSelection);
+    const s = computeStats(trades.filter(t => t.returnPct != null));
 
     el.innerHTML = `
       <div class="chain-detail-head"><h2>${escapeHtml(node.name)}</h2></div>
-      ${chainStatTiles(s)}
+      ${statTilesHtml(s)}
       <h3 class="chain-companies-title">相關公司（${symbols.length}）</h3>
       <div class="chain-company-list">
         ${symbols.length ? symbols.map(sym => {
@@ -2027,14 +2114,24 @@ const db = getFirestore(fbApp);
           return `<div class="chain-company-row" data-symbol="${escapeHtml(sym)}"><strong>${escapeHtml(sym)}</strong> ${escapeHtml(name)} ${link.role ? `<span class="chain-role-tag">${escapeHtml(link.role)}</span>` : ''}</div>`;
         }).join('') : '<p class="empty-state">此節點（含子節點）尚未關聯任何公司，可到「編輯供應鏈」新增。</p>'}
       </div>
+      <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
+      ${chainTradeTableHtml(trades)}
     `;
     el.querySelectorAll('.chain-company-row').forEach(row => {
       row.addEventListener('click', () => {
-        chainSelectedSymbol = row.dataset.symbol;
+        const sym = row.dataset.symbol;
+        const name = links.find(l => l.symbol === sym)?.name || state.trades.find(t => t.symbol === sym)?.name || '';
+        chainSelection = { kind: 'symbol', id: sym, label: `${sym} ${name}`.trim() };
+        renderChainResults();
         renderChainDetail();
       });
     });
   }
+
+  document.getElementById('chain-search').addEventListener('input', (e) => {
+    chainQuery = e.target.value;
+    renderChainResults();
+  });
 
   // ================= MODALS shared =================
   function closeModals() {
