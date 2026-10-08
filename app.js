@@ -1910,12 +1910,7 @@ const db = getFirestore(fbApp);
   function chainSearchMatches(query) {
     const q = query.trim().toLowerCase();
     const matches = [];
-
-    // 沒輸入關鍵字時列出最上層的供應鏈節點當瀏覽入口，不然這一區會整片空白
-    if (!q) {
-      scRoots().forEach(n => matches.push({ kind: 'node', id: n.id, label: n.name }));
-      return matches;
-    }
+    if (!q) return matches; // 沒輸入關鍵字就不顯示任何建議，保持空白
 
     state.supplyChainNodes.forEach(n => {
       if ((n.name || '').toLowerCase().includes(q)) matches.push({ kind: 'node', id: n.id, label: n.name });
@@ -1993,7 +1988,7 @@ const db = getFirestore(fbApp);
     if (!el) return;
     const matches = chainSearchMatches(chainQuery);
     if (!matches.length) {
-      el.innerHTML = '<p class="empty-state" style="padding:12px 0;">找不到符合的族群或標的。</p>';
+      el.innerHTML = chainQuery.trim() ? '<p class="empty-state" style="padding:12px 0;">找不到符合的族群或標的。</p>' : '';
       return;
     }
     const shown = matches.slice(0, 40);
