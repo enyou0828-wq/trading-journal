@@ -2127,7 +2127,9 @@ const db = getFirestore(fbApp);
 
   document.getElementById('chain-search').addEventListener('input', (e) => {
     chainQuery = e.target.value;
+    if (!chainQuery.trim()) chainSelection = null; // 清空搜尋欄時，下面選到的結果也一併收起來
     renderChainResults();
+    renderChainDetail();
   });
 
   // ================= MODALS shared =================
