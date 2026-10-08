@@ -2037,9 +2037,11 @@ const db = getFirestore(fbApp);
     if (!el) return;
 
     if (!chainSelection) {
-      el.innerHTML = '<p class="empty-state">搜尋或點選上方的族群／標的，查看它的統計與明細。</p>';
+      el.hidden = true;
+      el.innerHTML = '';
       return;
     }
+    el.hidden = false;
 
     if (chainSelection.kind === 'symbol') {
       const symbol = chainSelection.id;
