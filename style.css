@@ -330,10 +330,6 @@ body {
   cursor: pointer; font-size: 13.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .chain-company-row:hover { background: var(--gridline); }
-.chain-role-tag {
-  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
-  background: rgba(42,120,214,0.14); color: var(--series-1);
-}
 
 .chain-edit { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
 .chain-edit .form-row { flex-wrap: wrap; align-items: flex-end; }

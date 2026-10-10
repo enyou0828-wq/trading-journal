@@ -1869,52 +1869,27 @@ const db = getFirestore(fbApp);
   // ================= SUPPLY CHAIN =================
   // 節點/公司關聯查詢輔助函式：一律從 state.supplyChainNodes / state.companyLinks 現查，不快取，
   // 因為編輯區隨時可能新增/刪除節點，快取容易跟畫面不同步。
+  // （供應鏈節點搜尋/瀏覽功能已移除，這裡只留 scNode/scNodesForSymbol 給「所屬供應鏈」
+  // 這個資訊顯示用，不再提供節點本身的搜尋或瀏覽入口。）
   function scNode(id) { return state.supplyChainNodes.find(n => n.id === id); }
-  function scChildren(id) { return state.supplyChainNodes.filter(n => (n.parentIds || []).includes(id)); }
-  function scRoots() { return state.supplyChainNodes.filter(n => !n.parentIds || n.parentIds.length === 0); }
-  // 含自己在內的所有下層節點 id（沿 parentIds 反向展開，支援多重上層/DAG）
-  function scDescendantIds(id) {
-    const result = new Set([id]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      state.supplyChainNodes.forEach(n => {
-        if (!result.has(n.id) && (n.parentIds || []).some(p => result.has(p))) { result.add(n.id); changed = true; }
-      });
-    }
-    return result;
-  }
-  function scLinksForNode(nodeId) {
-    const ids = scDescendantIds(nodeId);
-    return state.companyLinks.filter(l => ids.has(l.nodeId));
-  }
   function scNodesForSymbol(symbol) {
     return state.companyLinks
       .filter(l => l.symbol === symbol)
       .map(l => ({ ...l, node: scNode(l.nodeId) }))
       .filter(l => l.node);
   }
-  function scTradesForSymbols(symbols) {
-    const set = new Set(symbols);
-    return sortedTrades().filter(t => set.has(t.symbol));
-  }
 
   let chainQuery = '';
-  let chainSelection = null; // { kind: 'node' | 'sector' | 'symbol', id, label }
+  let chainSelection = null; // { kind: 'sector' | 'symbol', id, label }
 
-  const CHAIN_KIND_LABEL = { node: '供應鏈', sector: '族群', symbol: '標的' };
+  const CHAIN_KIND_LABEL = { sector: '族群', symbol: '標的' };
 
-  // 搜尋同時涵蓋三種來源：供應鏈節點、交易紀錄裡自己打的族群標籤、個股（代號或名稱）。
-  // 這三套命名在這個 App 裡本來就不是同一套（例如供應鏈節點叫「光通訊」、交易紀錄可能打「CPO」），
-  // 所以不做名稱對應轉換，三種各自列出來讓使用者自己挑，避免猜錯對應關係反而找不到東西。
+  // 搜尋只比對「交易紀錄」裡使用者自己輸入過的資料：族群標籤、股票代號／名稱——
+  // 不搜供應鏈節點（AI、半導體…那套是另外維護的分類體系，不是使用者在交易紀錄裡打的）。
   function chainSearchMatches(query) {
     const q = query.trim().toLowerCase();
     const matches = [];
     if (!q) return matches; // 沒輸入關鍵字就不顯示任何建議，保持空白
-
-    state.supplyChainNodes.forEach(n => {
-      if ((n.name || '').toLowerCase().includes(q)) matches.push({ kind: 'node', id: n.id, label: n.name });
-    });
 
     [...new Set(state.trades.map(t => (t.sector || '').trim()).filter(Boolean))].sort().forEach(sec => {
       if (sec.toLowerCase().includes(q)) matches.push({ kind: 'sector', id: sec, label: sec });
@@ -1922,7 +1897,6 @@ const db = getFirestore(fbApp);
 
     const symbolNames = new Map();
     state.trades.forEach(t => { if (t.symbol) symbolNames.set(t.symbol, t.name || symbolNames.get(t.symbol) || ''); });
-    state.companyLinks.forEach(l => { if (l.symbol && !symbolNames.get(l.symbol)) symbolNames.set(l.symbol, l.name || ''); });
     [...symbolNames.keys()].sort().forEach(sym => {
       const name = symbolNames.get(sym) || '';
       if (sym.toLowerCase().includes(q) || name.toLowerCase().includes(q)) {
@@ -1936,8 +1910,7 @@ const db = getFirestore(fbApp);
   function chainTradesFor(sel) {
     if (!sel) return [];
     if (sel.kind === 'symbol') return sortedTrades().filter(t => t.symbol === sel.id);
-    if (sel.kind === 'sector') return sortedTrades().filter(t => (t.sector || '').trim() === sel.id);
-    return scTradesForSymbols([...new Set(scLinksForNode(sel.id).map(l => l.symbol))]);
+    return sortedTrades().filter(t => (t.sector || '').trim() === sel.id);
   }
 
   // 跟「統計分析」分頁頂部同一組統計卡片，直接吃 computeStats() 的結果
@@ -2089,40 +2062,6 @@ const db = getFirestore(fbApp);
           renderChainDetail();
         });
       });
-      return;
-    }
-
-    // kind === 'node'
-    const node = scNode(chainSelection.id);
-    if (!node) { chainSelection = null; renderChainDetail(); return; }
-    const links = scLinksForNode(node.id);
-    const symbols = [...new Set(links.map(l => l.symbol))];
-    const trades = chainTradesFor(chainSelection);
-    const s = computeStats(trades.filter(t => t.returnPct != null));
-
-    el.innerHTML = `
-      <div class="chain-detail-head"><h2>${escapeHtml(node.name)}</h2></div>
-      ${statTilesHtml(s)}
-      <h3 class="chain-companies-title">相關公司（${symbols.length}）</h3>
-      <div class="chain-company-list">
-        ${symbols.length ? symbols.map(sym => {
-          const link = links.find(l => l.symbol === sym);
-          const name = link.name || state.trades.find(t => t.symbol === sym)?.name || '';
-          return `<div class="chain-company-row" data-symbol="${escapeHtml(sym)}"><strong>${escapeHtml(sym)}</strong> ${escapeHtml(name)} ${link.role ? `<span class="chain-role-tag">${escapeHtml(link.role)}</span>` : ''}</div>`;
-        }).join('') : '<p class="empty-state">此節點（含子節點）尚未關聯任何公司，可到「編輯供應鏈」新增。</p>'}
-      </div>
-      <h3 class="chain-companies-title">交易紀錄（${trades.length}）</h3>
-      ${chainTradeTableHtml(trades)}
-    `;
-    el.querySelectorAll('.chain-company-row').forEach(row => {
-      row.addEventListener('click', () => {
-        const sym = row.dataset.symbol;
-        const name = links.find(l => l.symbol === sym)?.name || state.trades.find(t => t.symbol === sym)?.name || '';
-        chainSelection = { kind: 'symbol', id: sym, label: `${sym} ${name}`.trim() };
-        renderChainResults();
-        renderChainDetail();
-      });
-    });
   }
 
   document.getElementById('chain-search').addEventListener('input', (e) => {
