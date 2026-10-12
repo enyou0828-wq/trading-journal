@@ -53,12 +53,12 @@ TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes
 # 同時算多組篩選條件，各自獨立產出訊號清單。之後要加/改組合，直接改這個 list。
 SIGNAL_SETS = [
     {
-        "key": "fast", "label": "短線（5日新高＋量增1.5倍＋當日漲幅5%以上）", "type": "breakout_volume",
-        "lookback": 5, "volume_multiplier": 1.5, "min_daily_change_pct": 5.0,
+        "key": "fast", "label": "創20日新高＋量增2倍＋當日漲幅5%以上", "type": "breakout_volume",
+        "lookback": 20, "volume_multiplier": 2.0, "min_daily_change_pct": 5.0,
     },
     {
-        "key": "streak", "label": "連續2天創5日新高＋近2日平均斜率5%以上", "type": "consecutive_high",
-        "lookback": 5, "consecutive_days": 2, "avg_slope_days": 2, "min_avg_slope_pct": 5.0,
+        "key": "streak", "label": "近3日收盤站上5日扣抵值＋近3日平均率3%以上", "type": "deduction_uptrend",
+        "lookback": 8, "consecutive_days": 3, "deduct_days": 5, "avg_slope_days": 3, "min_avg_slope_pct": 3.0,
     },
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
@@ -435,6 +435,70 @@ def compute_consecutive_high_signals(
     return signals, warmup
 
 
+def compute_deduction_uptrend_signals(
+    by_code: dict[str, list[dict]],
+    expected_date_by_market: dict[str, str],
+    calendar: list[str],
+    date_index: dict[str, int],
+    consecutive_days: int,
+    deduct_days: int,
+    companies: dict[str, dict],
+    industries: dict[str, dict],
+    avg_slope_days: int | None = None,
+    min_avg_slope_pct: float | None = None,
+) -> tuple[list[dict], bool]:
+    """近 consecutive_days 天，每一天收盤都要「站上扣抵值」：今天收盤 > deduct_days 個
+    交易日前的收盤。扣抵值是技術分析常講的詞——deduct_days 日均線往前走一天，窗口裡最舊
+    的那筆收盤價就會被「扣除」；今天收盤只要大於那筆即將被扣掉的舊收盤，均線明天還會
+    延續上揚（反之今天收盤 < 扣抵值，代表均線明天會轉折向下，即使今天價格是漲的）。
+    連續 consecutive_days 天都站上各自對應的扣抵值，代表這條均線至少已經上揚好幾天。
+
+    可選再加平均斜率門檻，算法跟 compute_consecutive_high_signals 的 avg_slope 完全一樣
+    （近 N 日總漲幅 ÷ N，不是逐日漲幅的平均），濾掉技術上站上扣抵值、但漲勢很弱的訊號。
+    """
+    signals = []
+    warmup = False
+    needed = consecutive_days + deduct_days
+    for code, rows in by_code.items():
+        expected_today = expected_date_by_market.get(rows[-1]["market"])
+        if expected_today is None or rows[-1]["date"] != expected_today:
+            continue
+        if len(rows) < needed:
+            warmup = True
+            continue
+
+        window_dates = calendar_window_dates(calendar, date_index, rows[-1]["date"], needed)
+        window = rows[-needed:]
+        if not rows_match_calendar(window, window_dates):
+            continue  # 這段期間內有缺資料，視窗位移了，跳過不算
+
+        all_above_deduction = True
+        for offset in range(consecutive_days):
+            idx = deduct_days + offset
+            if window[idx]["close"] <= window[idx - deduct_days]["close"]:
+                all_above_deduction = False
+                break
+
+        if not all_above_deduction:
+            continue
+
+        avg_slope = None
+        if min_avg_slope_pct is not None:
+            total_change = calendar_change_pct(rows, calendar, date_index, days_back=avg_slope_days)
+            avg_slope = total_change / avg_slope_days if total_change is not None else None
+            if avg_slope is None or avg_slope < min_avg_slope_pct:
+                continue  # 近 N 日平均斜率不到門檻（或中間有缺資料算不出來），跳過不算
+
+        today = rows[-1]
+        signals.append(build_entry(
+            code, today["name"], today["close"], daily_change_pct(rows, calendar, date_index), None,
+            today["volume"], companies, industries
+        ))
+
+    signals.sort(key=lambda s: priority_sort_key(s, s["daily_change_pct"] or 0))
+    return signals, warmup
+
+
 def compute_group_rotation(
     by_code: dict[str, list[dict]],
     expected_date_by_market: dict[str, str],
@@ -594,6 +658,16 @@ def main() -> int:
                 avg_slope_days=spec.get("avg_slope_days"), min_avg_slope_pct=spec.get("min_avg_slope_pct"),
             )
             params = {"lookback_days": spec["lookback"], "consecutive_days": spec["consecutive_days"]}
+            if spec.get("min_avg_slope_pct") is not None:
+                params["avg_slope_days"] = spec["avg_slope_days"]
+                params["min_avg_slope_pct"] = spec["min_avg_slope_pct"]
+        elif set_type == "deduction_uptrend":
+            signals, warmup = compute_deduction_uptrend_signals(
+                by_code, expected_date_by_market, calendar, date_index,
+                spec["consecutive_days"], spec["deduct_days"], companies, industries,
+                avg_slope_days=spec.get("avg_slope_days"), min_avg_slope_pct=spec.get("min_avg_slope_pct"),
+            )
+            params = {"consecutive_days": spec["consecutive_days"], "deduct_days": spec["deduct_days"]}
             if spec.get("min_avg_slope_pct") is not None:
                 params["avg_slope_days"] = spec["avg_slope_days"]
                 params["min_avg_slope_pct"] = spec["min_avg_slope_pct"]

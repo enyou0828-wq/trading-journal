@@ -14,6 +14,7 @@
 """
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
@@ -86,7 +87,16 @@ def main() -> int:
     target_trading_days = int(sys.argv[1]) if len(sys.argv) > 1 else 25
 
     existing = load_history()
-    existing_dates = {r["date"] for r in existing}
+    # 用「這天有幾檔股票的資料」判斷要不要跳過，而不是只看這天存不存在——daily_signal_scan.py
+    # 的 save_history() 是每檔股票各自獨立裁切（rows[-HISTORY_KEEP_DAYS:]），裁切視窗改大之後
+    # （例如這次從 15 天改到 60 天），不同股票被裁到只剩的天數參差不齊：全市場合起來看涵蓋的
+    # 日期範圍很廣，但個別股票在比較舊的日期常常已經被裁掉了。如果只看「這天在不在 existing_dates
+    # 裡」，只要有任何一檔股票還留著那天的資料，就會誤判成「這天已經齊了」而跳過，導致大部分
+    # 股票永遠補不回舊資料。改成看這天實際有多少檔股票的資料，明顯不齊（低於市場正常家數）才重抓。
+    date_counts: dict[str, int] = defaultdict(int)
+    for r in existing:
+        date_counts[r["date"]] += 1
+    FULL_MARKET_THRESHOLD = 1500  # 低於這個家數，視為這天的資料不完整，值得重抓
     by_key = {(r["code"], r["date"]): r for r in existing}
 
     today = datetime.now(timezone.utc).date()
@@ -101,8 +111,8 @@ def main() -> int:
             continue
 
         iso_date = cursor.isoformat()
-        if iso_date in existing_dates:
-            print(f"{iso_date} 已經有資料了，跳過")
+        if date_counts.get(iso_date, 0) >= FULL_MARKET_THRESHOLD:
+            print(f"{iso_date} 已經有完整資料了（{date_counts[iso_date]} 檔），跳過")
             cursor -= timedelta(days=1)
             continue
 
