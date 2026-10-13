@@ -430,6 +430,7 @@ const db = getFirestore(fbApp);
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainResults(); renderChainDetail(); }
       if (target === 'signals') renderSignals();
+      if (target === 'report') renderReport();
       if (target === 'watchlist') renderWatchlist();
     });
   });
@@ -533,6 +534,125 @@ const db = getFirestore(fbApp);
       metaEl.textContent = '';
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;
       signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
+    }
+  }
+
+  // ================= AI SUPPLY CHAIN REPORT =================
+  // 報告本體由 GitHub Actions 呼叫 Anthropic API 產生（見
+  // scripts/daily_ai_supply_chain_report.py），存成 data/ai_supply_chain_report.json，
+  // 這裡只負責讀取並把 Markdown 轉成畫面。報告格式是固定規格（見
+  // scripts/ai_supply_chain_report_prompt.md），所以用一個簡單的手刻 parser 就夠，
+  // 不需要額外引入外部 Markdown 套件。
+  let reportLoaded = false;
+
+  function inlineMd(text) {
+    let s = escapeHtml(text);
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return s;
+  }
+
+  function splitTableRow(row) {
+    return row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+  }
+
+  function reportTableHtml(rows) {
+    const parsed = rows.map(splitTableRow);
+    const isSepRow = cells => cells.length > 0 && cells.every(c => c === '' || /^:?-{2,}:?$/.test(c));
+    let header = null;
+    let bodyRows = parsed;
+    if (parsed.length > 1 && isSepRow(parsed[1])) {
+      header = parsed[0];
+      bodyRows = parsed.slice(2);
+    }
+    const theadHtml = header
+      ? `<thead><tr>${header.map(c => `<th>${inlineMd(c)}</th>`).join('')}</tr></thead>`
+      : '';
+    const tbodyHtml = `<tbody>${bodyRows.map(r => `<tr>${r.map(c => `<td>${inlineMd(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    return `<div class="table-wrap"><table class="trade-table">${theadHtml}${tbodyHtml}</table></div>`;
+  }
+
+  function markdownToHtml(md) {
+    const lines = md.replace(/\r\n/g, '\n').split('\n');
+    const out = [];
+    let listStack = []; // 每一層存該層 bullet 的縮排空格數，用來判斷巢狀層級
+    let inBlockquote = false;
+    let tableRows = [];
+
+    const closeLists = () => { while (listStack.length) { out.push('</ul>'); listStack.pop(); } };
+    const closeBlockquote = () => { if (inBlockquote) { out.push('</blockquote>'); inBlockquote = false; } };
+    const flushTable = () => { if (tableRows.length) { out.push(reportTableHtml(tableRows)); tableRows = []; } };
+
+    for (const line of lines) {
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        closeLists(); closeBlockquote();
+        tableRows.push(line);
+        continue;
+      }
+      flushTable();
+
+      if (!line.trim()) { closeLists(); closeBlockquote(); continue; }
+
+      if (/^\s*---+\s*$/.test(line)) { closeLists(); closeBlockquote(); out.push('<hr>'); continue; }
+
+      const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headerMatch) {
+        closeLists(); closeBlockquote();
+        const level = Math.min(headerMatch[1].length + 1, 6);
+        out.push(`<h${level} class="report-heading">${inlineMd(headerMatch[2])}</h${level}>`);
+        continue;
+      }
+
+      const bqMatch = line.match(/^>\s?(.*)$/);
+      if (bqMatch) {
+        closeLists();
+        if (!inBlockquote) { out.push('<blockquote class="report-quote">'); inBlockquote = true; }
+        out.push(`<p>${inlineMd(bqMatch[1])}</p>`);
+        continue;
+      }
+      closeBlockquote();
+
+      const bulletMatch = line.match(/^(\s*)[*\-]\s+(.*)$/);
+      if (bulletMatch) {
+        const level = Math.floor(bulletMatch[1].length / 2);
+        while (listStack.length <= level) { out.push('<ul>'); listStack.push(true); }
+        while (listStack.length > level + 1) { out.push('</ul>'); listStack.pop(); }
+        out.push(`<li>${inlineMd(bulletMatch[2])}</li>`);
+        continue;
+      }
+      closeLists();
+
+      out.push(`<p>${inlineMd(line.trim())}</p>`);
+    }
+    flushTable();
+    closeLists();
+    closeBlockquote();
+    return out.join('\n');
+  }
+
+  async function renderReport() {
+    if (reportLoaded) return;
+    reportLoaded = true;
+
+    const metaEl = document.getElementById('report-meta');
+    const contentEl = document.getElementById('report-content');
+
+    try {
+      const res = await fetch('data/ai_supply_chain_report.json', { cache: 'no-store' });
+      if (res.status === 404) {
+        metaEl.textContent = '';
+        contentEl.innerHTML = `<p class="empty-state">還沒有產生過報告，排程會在平日台灣時間早上 7 點自動產生，也可以用 workflow_dispatch 手動觸發。</p>`;
+        return;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      const truncatedNote = data.truncated ? '　<span class="pnl-neg">⚠️ 內容可能被截斷</span>' : '';
+      metaEl.innerHTML = `報告日期 ${escapeHtml(data.report_date_taipei || '')}　更新於 ${new Date(data.generated_at).toLocaleString('zh-TW')}　模型：${escapeHtml(data.model || '')}${truncatedNote}`;
+      contentEl.innerHTML = markdownToHtml(data.markdown || '');
+    } catch (e) {
+      metaEl.textContent = '';
+      contentEl.innerHTML = `<p class="empty-state">讀取報告失敗：${escapeHtml(e.message)}</p>`;
+      reportLoaded = false;
     }
   }
 
