@@ -2062,6 +2062,7 @@ const db = getFirestore(fbApp);
           renderChainDetail();
         });
       });
+    }
   }
 
   document.getElementById('chain-search').addEventListener('input', (e) => {
