@@ -637,7 +637,17 @@ const db = getFirestore(fbApp);
     } else {
       banner.hidden = true;
     }
+
+    updateSymbolDatalist();
   }
+
+  // 打過的股票代號（交易紀錄或觀察清單都算），自動帶出名稱——跟 f-symbol 同一套 symbolLookup()
+  document.getElementById('wl-code').addEventListener('input', (e) => {
+    const info = symbolLookup().get(e.target.value.trim());
+    if (!info || !info.name) return;
+    const nameEl = document.getElementById('wl-name');
+    if (!nameEl.value) nameEl.value = info.name;
+  });
 
   document.getElementById('watchlist-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -860,10 +870,15 @@ const db = getFirestore(fbApp);
   }
 
   // ---- 股票代號自動帶出名稱/族群（依最近一筆同代號的紀錄） ----
+  // 交易紀錄跟觀察清單共用這一份對照表：交易紀錄優先（有族群資訊，資料也比較新），
+  // 觀察清單只在交易紀錄裡沒有這個代號時拿來補名稱（觀察清單本身沒有族群欄位）。
   function symbolLookup() {
     const map = new Map();
     for (const t of sortedTrades()) { // 由新到舊，先出現的（較新）優先，不覆蓋
       if (!map.has(t.symbol)) map.set(t.symbol, { name: t.name || '', sector: t.sector || '' });
+    }
+    for (const w of sortedWatchlist()) {
+      if (w.code && !map.has(w.code)) map.set(w.code, { name: w.name || '', sector: '' });
     }
     return map;
   }
