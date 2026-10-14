@@ -34,6 +34,7 @@
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="trades" role="tab" aria-selected="true">交易紀錄</button>
+      <button class="tab" data-tab="holdings" role="tab" aria-selected="false">庫存股</button>
       <button class="tab" data-tab="stats" role="tab" aria-selected="false">統計分析</button>
       <button class="tab" data-tab="review" role="tab" aria-selected="false">月度回顧</button>
       <button class="tab" data-tab="chain" role="tab" aria-selected="false">供應鏈</button>
@@ -101,6 +102,45 @@
           <tbody id="trade-tbody"></tbody>
         </table>
         <p class="empty-state" id="trades-empty">還沒有任何交易紀錄，點選「新增交易」開始記錄。</p>
+      </div>
+    </section>
+
+    <!-- ===== HOLDINGS TAB ===== -->
+    <section class="panel" id="panel-holdings">
+      <div class="panel-head">
+        <h1>庫存股</h1>
+      </div>
+
+      <div class="chart-card">
+        <form id="holding-form" class="form-row">
+          <label>股票代號 <input type="text" id="hd-symbol" placeholder="2330" required></label>
+          <label>股票名稱 <input type="text" id="hd-name" placeholder="台積電"></label>
+          <label>份數 <input type="number" id="hd-units" placeholder="1" step="0.1" min="0" required></label>
+          <label>進場價格 <input type="number" id="hd-entry-price" placeholder="600" step="0.01" min="0" required></label>
+          <button type="submit" class="btn primary" style="align-self:flex-end;">＋ 新增庫存</button>
+        </form>
+      </div>
+
+      <div class="stat-grid" id="holdings-summary"></div>
+
+      <div class="chart-card">
+        <div class="table-wrap">
+          <table class="trade-table">
+            <thead>
+              <tr>
+                <th>股票</th>
+                <th class="num">份數</th>
+                <th class="num">進場價格</th>
+                <th class="num">現價</th>
+                <th class="num">損益率</th>
+                <th class="num">損益 (萬)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="holdings-tbody"></tbody>
+          </table>
+          <p class="empty-state" id="holdings-empty">還沒有任何庫存紀錄，上面加入第一筆吧。</p>
+        </div>
       </div>
     </section>
 

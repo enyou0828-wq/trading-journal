@@ -184,6 +184,33 @@ const db = getFirestore(fbApp);
     return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
   }
 
+  // 庫存股分頁的「現價」：直接讀 data/price_history.csv（daily_signal_scan.py 每個交易日
+  // 自動更新，涵蓋全市場個股），取每檔股票最新一天的收盤價，不用使用者自己手動輸入/更新。
+  // 這份 CSV 目前只有 Python 腳本在讀，這裡是前端第一次 fetch 它，欄位順序見檔頭：
+  // date,code,name,market,close,volume。
+  const LATEST_CLOSE_BY_CODE = {};
+  let priceHistoryLoaded = false;
+  async function ensurePriceHistoryData() {
+    if (priceHistoryLoaded) return;
+    try {
+      const res = await fetch('data/price_history.csv', { cache: 'no-store' });
+      if (res.ok) {
+        const text = await res.text();
+        const lines = text.split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          if (!line) continue;
+          const [date, code, name, , close] = line.split(',');
+          const closeNum = parseFloat(close);
+          if (!code || isNaN(closeNum)) continue;
+          const existing = LATEST_CLOSE_BY_CODE[code];
+          if (!existing || date > existing.date) LATEST_CLOSE_BY_CODE[code] = { date, close: closeNum, name };
+        }
+      }
+    } catch (e) { /* 讀取失敗就不顯示現價，進場價格等其餘欄位不受影響 */ }
+    priceHistoryLoaded = true;
+  }
+
   // 各月加權指數報酬率：算法跟 computeOtcMonthlyReturns 一樣（該月最後一個交易日收盤
   // 相對前一月最後一個交易日收盤）。data/twi_index.json 跟 OTC_INDEX_CLOSE 一樣只從
   // 6/1 開始每日累積，所以 5 月同樣沒有逐日資料可以算，但這裡直接去查證過加權指數的
@@ -212,7 +239,7 @@ const db = getFirestore(fbApp);
   }
 
   // ---------- state ----------
-  let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], fcmTokens: [] };
+  let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], holdings: [], fcmTokens: [] };
   let currentUser = null;
 
   const syncStatusEl = document.getElementById('sync-status');
@@ -376,6 +403,7 @@ const db = getFirestore(fbApp);
       }
 
       if (!Array.isArray(state.watchlist)) state.watchlist = [];
+      if (!Array.isArray(state.holdings)) state.holdings = [];
       if (!Array.isArray(state.fcmTokens)) state.fcmTokens = [];
 
       if (ensureMonthlyStatsSnapshots()) await save();
@@ -426,6 +454,7 @@ const db = getFirestore(fbApp);
       const target = tabBtn.dataset.tab;
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById('panel-' + target).classList.add('active');
+      if (target === 'holdings') renderHoldings();
       if (target === 'stats') renderStats();
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainResults(); renderChainDetail(); }
@@ -738,6 +767,109 @@ const db = getFirestore(fbApp);
     await addWatchlistItem(code, document.getElementById('wl-name').value, document.getElementById('wl-note').value);
     e.target.reset();
     codeInput.focus();
+  });
+
+  // ================= HOLDINGS（庫存股）=================
+  // 份數：使用者自己慣用的部位單位，一份約固定投入 UNIT_AMOUNT_WAN 萬——不是真實股數，
+  // 所以損益也是用「一份固定投入 X 萬」這個近似值反推，不是用實際股數 × 股價算出來的
+  // 精確金額。現價一律從 price_history.csv 自動帶入，這裡不存使用者手動輸入的現價。
+  const UNIT_AMOUNT_WAN = 8;
+
+  async function addHoldingItem(symbol, name, units, entryPrice) {
+    state.holdings.push({
+      id: uid(),
+      symbol: symbol.trim(),
+      name: (name || '').trim(),
+      units,
+      entryPrice,
+    });
+    await save();
+    renderHoldings();
+  }
+
+  function sortedHoldings() {
+    return [...state.holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }
+
+  function holdingMetrics(h) {
+    const latest = LATEST_CLOSE_BY_CODE[h.symbol];
+    const currentPrice = latest ? latest.close : null;
+    const investedWan = h.units * UNIT_AMOUNT_WAN;
+    const pnlPct = currentPrice != null ? (currentPrice / h.entryPrice - 1) * 100 : null;
+    const pnlWan = pnlPct != null ? investedWan * (pnlPct / 100) : null;
+    return { currentPrice, investedWan, pnlPct, pnlWan };
+  }
+
+  function holdingRowHtml(h) {
+    const { currentPrice, pnlPct, pnlWan } = holdingMetrics(h);
+    const pnlClass = pnlPct == null ? 'pnl-zero' : pnlPct > 0 ? 'pnl-pos' : pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
+    return `
+      <tr>
+        <td><strong>${escapeHtml(h.symbol)}</strong> ${h.name ? `<span style="color:var(--text-muted)">${escapeHtml(h.name)}</span>` : ''}</td>
+        <td class="num">${h.units}</td>
+        <td class="num">${h.entryPrice}</td>
+        <td class="num">${currentPrice != null ? currentPrice : '–'}</td>
+        <td class="num ${pnlClass}">${fmtPct(pnlPct, 2)}</td>
+        <td class="num ${pnlClass}">${fmtWan(pnlWan, 2)}</td>
+        <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除">✕</button></td>
+      </tr>
+    `;
+  }
+
+  async function renderHoldings() {
+    await ensurePriceHistoryData();
+
+    const tbody = document.getElementById('holdings-tbody');
+    const empty = document.getElementById('holdings-empty');
+    const items = sortedHoldings();
+
+    tbody.innerHTML = items.map(holdingRowHtml).join('');
+    empty.style.display = items.length ? 'none' : '';
+
+    tbody.querySelectorAll('.btn-del-holding').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        state.holdings = state.holdings.filter(h => h.id !== btn.dataset.id);
+        await save();
+        renderHoldings();
+      });
+    });
+
+    const summaryEl = document.getElementById('holdings-summary');
+    const totalInvestedWan = items.reduce((s, h) => s + holdingMetrics(h).investedWan, 0);
+    const totalPnlWan = items.reduce((s, h) => s + (holdingMetrics(h).pnlWan || 0), 0);
+    const totalValueWan = totalInvestedWan + totalPnlWan;
+    const totalPnlPct = totalInvestedWan > 0 ? (totalPnlWan / totalInvestedWan) * 100 : 0;
+    const totalPnlClass = totalPnlWan > 0 ? 'pnl-pos' : totalPnlWan < 0 ? 'pnl-neg' : 'pnl-zero';
+    summaryEl.innerHTML = items.length ? `
+      <div class="stat-tile">
+        <span class="stat-label">總投入</span>
+        <span class="stat-value">${fmtWan(totalInvestedWan, 2)}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">總現值</span>
+        <span class="stat-value">${fmtWan(totalValueWan, 2)}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">總損益</span>
+        <span class="stat-value ${totalPnlClass}">${fmtWan(totalPnlWan, 2)}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">總損益率</span>
+        <span class="stat-value ${totalPnlClass}">${fmtPct(totalPnlPct, 2)}</span>
+      </div>
+    ` : '';
+  }
+
+  document.getElementById('holding-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const symbolInput = document.getElementById('hd-symbol');
+    const symbol = symbolInput.value.trim();
+    const units = parseFloat(document.getElementById('hd-units').value);
+    const entryPrice = parseFloat(document.getElementById('hd-entry-price').value);
+    if (!symbol || !(units > 0) || !(entryPrice > 0)) return;
+    await addHoldingItem(symbol, document.getElementById('hd-name').value, units, entryPrice);
+    e.target.reset();
+    symbolInput.focus();
   });
 
   // ---- 推播通知（Firebase Cloud Messaging）----
