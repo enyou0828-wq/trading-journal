@@ -263,24 +263,6 @@ body {
 }
 .signal-sets-grid .table-wrap { overflow-x: auto; }
 
-#report-content { line-height: 1.7; }
-#report-content .report-heading { color: var(--text-primary); margin: 20px 0 8px; }
-#report-content .report-heading:first-child { margin-top: 0; }
-#report-content h2.report-heading { font-size: 19px; }
-#report-content h3.report-heading { font-size: 16px; }
-#report-content h4.report-heading { font-size: 14px; color: var(--text-secondary); }
-#report-content p { margin: 6px 0; color: var(--text-secondary); }
-#report-content ul { margin: 4px 0 10px; padding-left: 20px; }
-#report-content li { margin: 3px 0; color: var(--text-secondary); }
-#report-content li strong { color: var(--text-primary); }
-#report-content hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-#report-content .table-wrap { overflow-x: auto; margin: 8px 0 14px; }
-#report-content .report-quote {
-  border-left: 3px solid var(--series-1); margin: 8px 0; padding: 2px 14px;
-  background: var(--surface-raised); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-#report-content .report-quote p { margin: 4px 0; color: var(--text-primary); }
-
 .watchlist-due-banner {
   background: var(--surface-1);
   border: 1px solid var(--border);
