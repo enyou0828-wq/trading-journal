@@ -1036,6 +1036,27 @@ const db = getFirestore(fbApp);
     renderSectorChart(s.realized);
   }
 
+  // 月度回顧要把「當月損益最好/最差的 2 筆交易」連同完整欄位一起凍結進快照，
+  // 所以在這裡存一份獨立的欄位副本（不是存 trade id）——這樣之後就算原始那筆交易
+  // 被編輯或刪除，快照裡留存的數字跟文字也不會跟著變動，維持「凍結快照」一貫的原則。
+  function snapshotTradeFields(t) {
+    return {
+      date: t.date, symbol: t.symbol, name: t.name || '', sector: t.sector || '',
+      action: t.action, strategy: t.strategy || '',
+      profitWan: displayProfitWan(t), returnPct: t.returnPct,
+      rating: t.rating || '', reason: t.reason || '',
+    };
+  }
+
+  function computeTopBottomTrades(realized) {
+    const withProfit = realized.filter(t => displayProfitWan(t) != null);
+    const sorted = [...withProfit].sort((a, b) => displayProfitWan(b) - displayProfitWan(a));
+    return {
+      topTrades: sorted.slice(0, 2).map(snapshotTradeFields),
+      bottomTrades: sorted.slice(-2).reverse().map(snapshotTradeFields),
+    };
+  }
+
   // ---- monthly stats breakdown table ----
   // 算出某個月份的統計列，給「月度統計明細」即時表格跟「月度回顧」的凍結快照共用，
   // 確保兩邊算法永遠一致。pf 是 Infinity 時存成 null（而不是 JS 的 Infinity），避免存進
@@ -1056,6 +1077,7 @@ const db = getFirestore(fbApp);
       pf: s.pf === Infinity ? null : s.pf,
       maxWin: s.maxWin,
       maxLoss: s.maxLoss,
+      ...computeTopBottomTrades(s.realized),
     };
   }
 
@@ -1132,6 +1154,11 @@ const db = getFirestore(fbApp);
         // 一次性補欄位：總報酬改成「萬」單位之前凍結的快照沒有 totalProfitWan 這個欄位——
         // 只補這一個欄位，其餘已經凍結的數字（勝率、報酬率等）完全不動，不是重新計算整筆快照。
         review.statsSnapshot.totalProfitWan = computeMonthRow(m, byMonth, basisMap).totalProfitWan;
+        changed = true;
+      } else if (review.statsSnapshot.topTrades == null) {
+        // 一次性補欄位：新增「當月最佳/最差 2 筆交易」之前凍結的快照沒有這兩個欄位——
+        // 只補這兩個，其餘已經凍結的數字完全不動，不是重新計算整筆快照。
+        Object.assign(review.statsSnapshot, computeTopBottomTrades(computeStats(byMonth[m]).realized));
         changed = true;
       }
     }
@@ -1733,6 +1760,53 @@ const db = getFirestore(fbApp);
         <div class="stat-tile">
           <span class="stat-label">最大單筆獲利 / 虧損</span>
           <span class="stat-value">${fmtPct(row.maxWin, 2)} / ${fmtPct(row.maxLoss, 2)}</span>
+        </div>
+      </div>
+      ${row.topTrades ? topBottomTradesHtml(row) : ''}
+    `;
+  }
+
+  function topBottomTradesTableRowsHtml(trades) {
+    return trades.map(t => {
+      const profitClass = t.profitWan == null ? 'pnl-zero' : t.profitWan > 0 ? 'pnl-pos' : t.profitWan < 0 ? 'pnl-neg' : 'pnl-zero';
+      const pnlClass = t.returnPct == null ? 'pnl-zero' : t.returnPct > 0 ? 'pnl-pos' : t.returnPct < 0 ? 'pnl-neg' : 'pnl-zero';
+      const ratingHtml = t.rating ? `<span class="rating-badge rating-${t.rating}">${t.rating}</span>` : '–';
+      return `
+        <tr>
+          <td class="num">${t.date}</td>
+          <td><strong>${escapeHtml(t.symbol)}</strong> ${t.name ? `<span style="color:var(--text-muted)">${escapeHtml(t.name)}</span>` : ''}</td>
+          <td><span class="badge ${actionBadgeClass(t.action)}">${escapeHtml(t.action)}</span></td>
+          <td>${escapeHtml(t.strategy)}</td>
+          <td>${escapeHtml(t.sector || '–')}</td>
+          <td class="num ${profitClass}">${fmtWan(t.profitWan, 2)}</td>
+          <td class="num ${pnlClass}">${fmtPct(t.returnPct, 2)}</td>
+          <td>${ratingHtml}</td>
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">${escapeHtml(t.reason || '')}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function topBottomTradesHtml(row) {
+    const headHtml = `
+      <thead>
+        <tr>
+          <th>日期</th><th>股票</th><th>操作</th><th>策略</th><th>族群</th>
+          <th>損益 (萬)</th><th>報酬率</th><th>評級</th><th>理由</th>
+        </tr>
+      </thead>
+    `;
+    return `
+      <div class="chart-card">
+        <div class="chart-head"><h2>當月最佳 2 筆</h2></div>
+        <div class="table-wrap">
+          <table class="trade-table">${headHtml}<tbody>${topBottomTradesTableRowsHtml(row.topTrades)}</tbody></table>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-head"><h2>當月最差 2 筆</h2></div>
+        <div class="table-wrap">
+          <table class="trade-table">${headHtml}<tbody>${topBottomTradesTableRowsHtml(row.bottomTrades)}</tbody></table>
         </div>
       </div>
     `;
