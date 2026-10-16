@@ -1253,6 +1253,13 @@ const db = getFirestore(fbApp);
         // 只補這兩個，其餘已經凍結的數字完全不動，不是重新計算整筆快照。
         Object.assign(review.statsSnapshot, computeTopBottomTrades(computeStats(byMonth[m]).realized));
         changed = true;
+      } else if (review.statsSnapshot.medianWin == null) {
+        // 一次性補欄位：新增「獲利/虧損中位數」之前凍結的快照沒有這兩個欄位——
+        // 只補這兩個，其餘已經凍結的數字完全不動，不是重新計算整筆快照。
+        const s = computeStats(byMonth[m]);
+        review.statsSnapshot.medianWin = s.medianWin;
+        review.statsSnapshot.medianLoss = s.medianLoss;
+        changed = true;
       }
     }
     return changed;
