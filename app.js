@@ -707,7 +707,6 @@ const db = getFirestore(fbApp);
       <tr class="holding-lot-row">
         <td colspan="4" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice}</td>
         <td class="num ${lotPnlClass}" style="font-size:12px;">${fmtPct(l.pnlPct, 2)}</td>
-        <td class="num ${lotPnlClass}" style="font-size:12px;">${fmtWan(l.pnlWan, 2)}</td>
         <td><button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這筆買進紀錄">✕</button></td>
       </tr>
     `;
@@ -715,7 +714,7 @@ const db = getFirestore(fbApp);
   }
 
   function holdingRowHtml(h) {
-    const { totalUnits, avgEntryPrice, currentPrice, pnlPct, pnlWan, lotPnls } = holdingTotals(h);
+    const { totalUnits, avgEntryPrice, currentPrice, pnlPct, lotPnls } = holdingTotals(h);
     const pnlClass = pnlPct == null ? 'pnl-zero' : pnlPct > 0 ? 'pnl-pos' : pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
     return `
       <tr>
@@ -724,7 +723,6 @@ const db = getFirestore(fbApp);
         <td class="num">${avgEntryPrice.toFixed(2)}</td>
         <td class="num"><input type="number" class="holding-current-price-input" data-holding="${h.id}" value="${currentPrice != null ? currentPrice : ''}" placeholder="輸入現價" step="0.01" min="0" style="width:90px;"></td>
         <td class="num ${pnlClass}">${fmtPct(pnlPct, 2)}</td>
-        <td class="num ${pnlClass}">${fmtWan(pnlWan, 2)}</td>
         <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除整檔">✕</button></td>
       </tr>
       ${holdingLotRowsHtml(h, lotPnls)}
@@ -783,10 +781,6 @@ const db = getFirestore(fbApp);
       <div class="stat-tile">
         <span class="stat-label">總現值</span>
         <span class="stat-value">${fmtWan(totalValueWan, 2)}</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-label">未實現損益</span>
-        <span class="stat-value ${totalPnlClass}">${fmtWan(totalPnlWan, 2)}</span>
       </div>
       <div class="stat-tile">
         <span class="stat-label">未實現損益率</span>
