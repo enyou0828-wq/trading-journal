@@ -1834,7 +1834,7 @@ const db = getFirestore(fbApp);
           <span class="stat-value">${fmtPct(row.avgWin, 2)} / ${fmtPct(row.avgLoss, 2)}</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">獲利因子</span>
+          <span class="stat-label">Profit Factor</span>
           <span class="stat-value">${row.pf == null ? '∞' : row.pf.toFixed(2)}</span>
           <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
@@ -2219,7 +2219,7 @@ const db = getFirestore(fbApp);
           <span class="stat-value">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">獲利因子</span>
+          <span class="stat-label">Profit Factor</span>
           <span class="stat-value">${s.pf === Infinity ? '∞' : s.realized.length ? s.pf.toFixed(2) : '–'}</span>
           <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
