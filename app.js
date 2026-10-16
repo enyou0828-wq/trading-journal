@@ -681,27 +681,41 @@ const db = getFirestore(fbApp);
     return [...state.holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
+  // 損益逐份計算：每一份買進的價格不同，不能用加權均價去算整體報酬率
+  // （均價法會讓不同份數/價格的組合在數學上失真）；改成每一份各自算報酬率跟損益(萬)，
+  // 整體損益(萬) = 各份損益(萬)加總，整體報酬率 = 整體損益(萬) ÷ 總投入(萬)（換算成資金加權的報酬率）。
   function holdingTotals(h) {
     const totalUnits = h.lots.reduce((s, l) => s + l.units, 0);
     const investedWan = totalUnits * UNIT_AMOUNT_WAN;
     const avgEntryPrice = totalUnits > 0 ? h.lots.reduce((s, l) => s + l.units * l.entryPrice, 0) / totalUnits : 0;
     const currentPrice = h.currentPrice;
-    const pnlPct = (currentPrice != null && avgEntryPrice > 0) ? (currentPrice / avgEntryPrice - 1) * 100 : null;
-    const pnlWan = pnlPct != null ? investedWan * (pnlPct / 100) : null;
-    return { totalUnits, avgEntryPrice, investedWan, currentPrice, pnlPct, pnlWan };
+    const lotPnls = h.lots.map(l => {
+      const investedWan = l.units * UNIT_AMOUNT_WAN;
+      const pnlPct = (currentPrice != null && l.entryPrice > 0) ? (currentPrice / l.entryPrice - 1) * 100 : null;
+      const pnlWan = pnlPct != null ? investedWan * (pnlPct / 100) : null;
+      return { ...l, investedWan, pnlPct, pnlWan };
+    });
+    const pnlWan = currentPrice != null ? lotPnls.reduce((s, l) => s + (l.pnlWan || 0), 0) : null;
+    const pnlPct = (pnlWan != null && investedWan > 0) ? (pnlWan / investedWan) * 100 : null;
+    return { totalUnits, avgEntryPrice, investedWan, currentPrice, pnlPct, pnlWan, lotPnls };
   }
 
-  function holdingLotRowsHtml(h) {
-    return h.lots.map(l => `
+  function holdingLotRowsHtml(h, lotPnls) {
+    return lotPnls.map(l => {
+      const lotPnlClass = l.pnlPct == null ? 'pnl-zero' : l.pnlPct > 0 ? 'pnl-pos' : l.pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
+      return `
       <tr class="holding-lot-row">
-        <td colspan="6" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice}</td>
+        <td colspan="4" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice}</td>
+        <td class="num ${lotPnlClass}" style="font-size:12px;">${fmtPct(l.pnlPct, 2)}</td>
+        <td class="num ${lotPnlClass}" style="font-size:12px;">${fmtWan(l.pnlWan, 2)}</td>
         <td><button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這筆買進紀錄">✕</button></td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
   }
 
   function holdingRowHtml(h) {
-    const { totalUnits, avgEntryPrice, currentPrice, pnlPct, pnlWan } = holdingTotals(h);
+    const { totalUnits, avgEntryPrice, currentPrice, pnlPct, pnlWan, lotPnls } = holdingTotals(h);
     const pnlClass = pnlPct == null ? 'pnl-zero' : pnlPct > 0 ? 'pnl-pos' : pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
     return `
       <tr>
@@ -713,7 +727,7 @@ const db = getFirestore(fbApp);
         <td class="num ${pnlClass}">${fmtWan(pnlWan, 2)}</td>
         <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除整檔">✕</button></td>
       </tr>
-      ${holdingLotRowsHtml(h)}
+      ${holdingLotRowsHtml(h, lotPnls)}
     `;
   }
 
