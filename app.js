@@ -184,33 +184,6 @@ const db = getFirestore(fbApp);
     return [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
   }
 
-  // 庫存股分頁的「現價」：直接讀 data/price_history.csv（daily_signal_scan.py 每個交易日
-  // 自動更新，涵蓋全市場個股），取每檔股票最新一天的收盤價，不用使用者自己手動輸入/更新。
-  // 這份 CSV 目前只有 Python 腳本在讀，這裡是前端第一次 fetch 它，欄位順序見檔頭：
-  // date,code,name,market,close,volume。
-  const LATEST_CLOSE_BY_CODE = {};
-  let priceHistoryLoaded = false;
-  async function ensurePriceHistoryData() {
-    if (priceHistoryLoaded) return;
-    try {
-      const res = await fetch('data/price_history.csv', { cache: 'no-store' });
-      if (res.ok) {
-        const text = await res.text();
-        const lines = text.split('\n');
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i];
-          if (!line) continue;
-          const [date, code, name, , close] = line.split(',');
-          const closeNum = parseFloat(close);
-          if (!code || isNaN(closeNum)) continue;
-          const existing = LATEST_CLOSE_BY_CODE[code];
-          if (!existing || date > existing.date) LATEST_CLOSE_BY_CODE[code] = { date, close: closeNum, name };
-        }
-      }
-    } catch (e) { /* 讀取失敗就不顯示現價，進場價格等其餘欄位不受影響 */ }
-    priceHistoryLoaded = true;
-  }
-
   // 各月加權指數報酬率：算法跟 computeOtcMonthlyReturns 一樣（該月最後一個交易日收盤
   // 相對前一月最後一個交易日收盤）。data/twi_index.json 跟 OTC_INDEX_CLOSE 一樣只從
   // 6/1 開始每日累積，所以 5 月同樣沒有逐日資料可以算，但這裡直接去查證過加權指數的
@@ -405,6 +378,7 @@ const db = getFirestore(fbApp);
       if (!Array.isArray(state.watchlist)) state.watchlist = [];
       if (!Array.isArray(state.holdings)) state.holdings = [];
       if (!Array.isArray(state.fcmTokens)) state.fcmTokens = [];
+      if (migrateHoldings()) await save();
 
       if (ensureMonthlyStatsSnapshots()) await save();
     } catch (e) {
@@ -660,19 +634,45 @@ const db = getFirestore(fbApp);
   });
 
   // ================= HOLDINGS（庫存股）=================
+  // 每一檔股票（symbol）底下可以有多筆「分批買進」的紀錄（lots），各自有自己的份數與
+  // 進場價格；畫面上顯示的是加總後的總份數與加權均價。現價是使用者自己輸入、存在
+  // holding 本身（不是存在個別 lot 裡，因為現價是這檔股票當下的屬性，不是某一次買進的
+  // 屬性），不會自動帶入，使用者想更新幾次就自己改。
   // 份數：使用者自己慣用的部位單位，一份約固定投入 UNIT_AMOUNT_WAN 萬——不是真實股數，
-  // 所以損益也是用「一份固定投入 X 萬」這個近似值反推，不是用實際股數 × 股價算出來的
-  // 精確金額。現價一律從 price_history.csv 自動帶入，這裡不存使用者手動輸入的現價。
+  // 所以損益也是用「每筆 lot 各自固定投入 X 萬」這個近似值反推，不是用實際股數 × 股價
+  // 算出來的精確金額。
   const UNIT_AMOUNT_WAN = 8;
 
-  async function addHoldingItem(symbol, name, units, entryPrice) {
-    state.holdings.push({
-      id: uid(),
-      symbol: symbol.trim(),
-      name: (name || '').trim(),
-      units,
-      entryPrice,
+  // 一次性欄位搬遷：舊版每筆庫存只有單一 units/entryPrice，沒有 lots 陣列、也沒有
+  // currentPrice（現價以前是自動抓的，不存在資料裡）。把舊欄位包成第一筆 lot，現價留空
+  // 讓使用者自己填，其餘資料不動。
+  function migrateHoldings() {
+    let changed = false;
+    state.holdings = state.holdings.map(h => {
+      if (Array.isArray(h.lots)) return h;
+      changed = true;
+      return {
+        id: h.id, symbol: h.symbol, name: h.name || '', currentPrice: null,
+        lots: [{ id: uid(), units: h.units, entryPrice: h.entryPrice }],
+      };
     });
+    return changed;
+  }
+
+  function findHolding(symbol) {
+    return state.holdings.find(h => h.symbol === symbol);
+  }
+
+  async function addHoldingLot(symbol, name, units, entryPrice) {
+    symbol = symbol.trim();
+    let holding = findHolding(symbol);
+    if (!holding) {
+      holding = { id: uid(), symbol, name: (name || '').trim(), currentPrice: null, lots: [] };
+      state.holdings.push(holding);
+    } else if (name && name.trim() && !holding.name) {
+      holding.name = name.trim();
+    }
+    holding.lots.push({ id: uid(), units, entryPrice });
     await save();
     renderHoldings();
   }
@@ -681,34 +681,43 @@ const db = getFirestore(fbApp);
     return [...state.holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
-  function holdingMetrics(h) {
-    const latest = LATEST_CLOSE_BY_CODE[h.symbol];
-    const currentPrice = latest ? latest.close : null;
-    const investedWan = h.units * UNIT_AMOUNT_WAN;
-    const pnlPct = currentPrice != null ? (currentPrice / h.entryPrice - 1) * 100 : null;
+  function holdingTotals(h) {
+    const totalUnits = h.lots.reduce((s, l) => s + l.units, 0);
+    const investedWan = totalUnits * UNIT_AMOUNT_WAN;
+    const avgEntryPrice = totalUnits > 0 ? h.lots.reduce((s, l) => s + l.units * l.entryPrice, 0) / totalUnits : 0;
+    const currentPrice = h.currentPrice;
+    const pnlPct = (currentPrice != null && avgEntryPrice > 0) ? (currentPrice / avgEntryPrice - 1) * 100 : null;
     const pnlWan = pnlPct != null ? investedWan * (pnlPct / 100) : null;
-    return { currentPrice, investedWan, pnlPct, pnlWan };
+    return { totalUnits, avgEntryPrice, investedWan, currentPrice, pnlPct, pnlWan };
+  }
+
+  function holdingLotRowsHtml(h) {
+    return h.lots.map(l => `
+      <tr class="holding-lot-row">
+        <td colspan="6" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice}</td>
+        <td><button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這筆買進紀錄">✕</button></td>
+      </tr>
+    `).join('');
   }
 
   function holdingRowHtml(h) {
-    const { currentPrice, pnlPct, pnlWan } = holdingMetrics(h);
+    const { totalUnits, avgEntryPrice, currentPrice, pnlPct, pnlWan } = holdingTotals(h);
     const pnlClass = pnlPct == null ? 'pnl-zero' : pnlPct > 0 ? 'pnl-pos' : pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
     return `
       <tr>
         <td><strong>${escapeHtml(h.symbol)}</strong> ${h.name ? `<span style="color:var(--text-muted)">${escapeHtml(h.name)}</span>` : ''}</td>
-        <td class="num">${h.units}</td>
-        <td class="num">${h.entryPrice}</td>
-        <td class="num">${currentPrice != null ? currentPrice : '–'}</td>
+        <td class="num">${totalUnits}</td>
+        <td class="num">${avgEntryPrice.toFixed(2)}</td>
+        <td class="num"><input type="number" class="holding-current-price-input" data-holding="${h.id}" value="${currentPrice != null ? currentPrice : ''}" placeholder="輸入現價" step="0.01" min="0" style="width:90px;"></td>
         <td class="num ${pnlClass}">${fmtPct(pnlPct, 2)}</td>
         <td class="num ${pnlClass}">${fmtWan(pnlWan, 2)}</td>
-        <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除">✕</button></td>
+        <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除整檔">✕</button></td>
       </tr>
+      ${holdingLotRowsHtml(h)}
     `;
   }
 
   async function renderHoldings() {
-    await ensurePriceHistoryData();
-
     const tbody = document.getElementById('holdings-tbody');
     const empty = document.getElementById('holdings-empty');
     const items = sortedHoldings();
@@ -724,9 +733,31 @@ const db = getFirestore(fbApp);
       });
     });
 
+    tbody.querySelectorAll('.btn-del-lot').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const holding = state.holdings.find(h => h.id === btn.dataset.holding);
+        if (!holding) return;
+        holding.lots = holding.lots.filter(l => l.id !== btn.dataset.lot);
+        if (!holding.lots.length) state.holdings = state.holdings.filter(h => h.id !== holding.id);
+        await save();
+        renderHoldings();
+      });
+    });
+
+    tbody.querySelectorAll('.holding-current-price-input').forEach(input => {
+      input.addEventListener('change', async () => {
+        const holding = state.holdings.find(h => h.id === input.dataset.holding);
+        if (!holding) return;
+        const v = parseFloat(input.value);
+        holding.currentPrice = isNaN(v) ? null : v;
+        await save();
+        renderHoldings();
+      });
+    });
+
     const summaryEl = document.getElementById('holdings-summary');
-    const totalInvestedWan = items.reduce((s, h) => s + holdingMetrics(h).investedWan, 0);
-    const totalPnlWan = items.reduce((s, h) => s + (holdingMetrics(h).pnlWan || 0), 0);
+    const totalInvestedWan = items.reduce((s, h) => s + holdingTotals(h).investedWan, 0);
+    const totalPnlWan = items.reduce((s, h) => s + (holdingTotals(h).pnlWan || 0), 0);
     const totalValueWan = totalInvestedWan + totalPnlWan;
     const totalPnlPct = totalInvestedWan > 0 ? (totalPnlWan / totalInvestedWan) * 100 : 0;
     const totalPnlClass = totalPnlWan > 0 ? 'pnl-pos' : totalPnlWan < 0 ? 'pnl-neg' : 'pnl-zero';
@@ -757,7 +788,7 @@ const db = getFirestore(fbApp);
     const units = parseFloat(document.getElementById('hd-units').value);
     const entryPrice = parseFloat(document.getElementById('hd-entry-price').value);
     if (!symbol || !(units > 0) || !(entryPrice > 0)) return;
-    await addHoldingItem(symbol, document.getElementById('hd-name').value, units, entryPrice);
+    await addHoldingLot(symbol, document.getElementById('hd-name').value, units, entryPrice);
     e.target.reset();
     symbolInput.focus();
   });
