@@ -779,7 +779,17 @@ const db = getFirestore(fbApp);
         <span class="stat-value ${totalPnlClass}">${fmtPct(totalPnlPct, 2)}</span>
       </div>
     ` : '';
+
+    updateSymbolDatalist();
   }
+
+  // 打過的股票代號（交易紀錄或觀察清單都算），自動帶出名稱——跟 f-symbol/wl-code 同一套 symbolLookup()
+  document.getElementById('hd-symbol').addEventListener('input', (e) => {
+    const info = symbolLookup().get(e.target.value.trim());
+    if (!info || !info.name) return;
+    const nameEl = document.getElementById('hd-name');
+    if (!nameEl.value) nameEl.value = info.name;
+  });
 
   document.getElementById('holding-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -910,6 +920,9 @@ const db = getFirestore(fbApp);
     }
     for (const w of sortedWatchlist()) {
       if (w.code && !map.has(w.code)) map.set(w.code, { name: w.name || '', sector: '' });
+    }
+    for (const h of state.holdings) {
+      if (h.symbol && !map.has(h.symbol)) map.set(h.symbol, { name: h.name || '', sector: '' });
     }
     return map;
   }
