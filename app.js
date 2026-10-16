@@ -1061,6 +1061,13 @@ const db = getFirestore(fbApp);
   });
 
   // ================= STATS =================
+  function median(nums) {
+    if (!nums.length) return 0;
+    const sorted = [...nums].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
   function computeStats(realized) {
     const wins = realized.filter(t => t.returnPct > 0);
     const losses = realized.filter(t => t.returnPct < 0);
@@ -1074,6 +1081,8 @@ const db = getFirestore(fbApp);
     const winRate = realized.length ? (wins.length / realized.length) * 100 : 0;
     const avgWin = wins.length ? wins.reduce((s, t) => s + t.returnPct, 0) / wins.length : 0;
     const avgLoss = losses.length ? losses.reduce((s, t) => s + t.returnPct, 0) / losses.length : 0;
+    const medianWin = median(wins.map(t => t.returnPct));
+    const medianLoss = median(losses.map(t => t.returnPct));
     // 獲利因子 = (平均獲利 × 勝率) ÷ (平均虧損 × (1 − 勝率))
     const winRateFrac = winRate / 100;
     const pfNumer = avgWin * winRateFrac;
@@ -1081,7 +1090,7 @@ const db = getFirestore(fbApp);
     const pf = pfDenom > 0 ? (pfNumer / pfDenom) : (pfNumer > 0 ? Infinity : 0);
     const maxWin = realized.length ? Math.max(...realized.map(t => t.returnPct)) : 0;
     const maxLoss = realized.length ? Math.min(...realized.map(t => t.returnPct)) : 0;
-    return { realized, wins, losses, weighted, totalWeighted, totalProfitWan, winRate, avgWin, avgLoss, pf, maxWin, maxLoss };
+    return { realized, wins, losses, weighted, totalWeighted, totalProfitWan, winRate, avgWin, avgLoss, medianWin, medianLoss, pf, maxWin, maxLoss };
   }
 
   async function renderStats() {
@@ -1098,6 +1107,7 @@ const db = getFirestore(fbApp);
     document.getElementById('stat-count').textContent = s.realized.length;
     document.getElementById('stat-count-sub').textContent = `${s.wins.length} 勝 / ${s.losses.length} 敗`;
     document.getElementById('stat-avg').textContent = `${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}`;
+    document.getElementById('stat-median').textContent = `${fmtPct(s.medianWin, 2)} / ${fmtPct(s.medianLoss, 2)}`;
     document.getElementById('stat-pf').textContent = s.pf === Infinity ? '∞' : s.realized.length ? s.pf.toFixed(2) : '–';
     document.getElementById('stat-maxminmax').textContent = `${fmtPct(s.maxWin, 2)} / ${fmtPct(s.maxLoss, 2)}`;
 
@@ -1155,6 +1165,8 @@ const db = getFirestore(fbApp);
       losses: s.losses.length,
       avgWin: s.avgWin,
       avgLoss: s.avgLoss,
+      medianWin: s.medianWin,
+      medianLoss: s.medianLoss,
       pf: s.pf === Infinity ? null : s.pf,
       maxWin: s.maxWin,
       maxLoss: s.maxLoss,
@@ -1832,6 +1844,10 @@ const db = getFirestore(fbApp);
         <div class="stat-tile">
           <span class="stat-label">平均獲利 / 平均虧損</span>
           <span class="stat-value">${fmtPct(row.avgWin, 2)} / ${fmtPct(row.avgLoss, 2)}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">獲利 / 虧損中位數</span>
+          <span class="stat-value">${fmtPct(row.medianWin, 2)} / ${fmtPct(row.medianLoss, 2)}</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">Profit Factor</span>
