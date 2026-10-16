@@ -785,11 +785,11 @@ const db = getFirestore(fbApp);
         <span class="stat-value">${fmtWan(totalValueWan, 2)}</span>
       </div>
       <div class="stat-tile">
-        <span class="stat-label">總損益</span>
+        <span class="stat-label">未實現損益</span>
         <span class="stat-value ${totalPnlClass}">${fmtWan(totalPnlWan, 2)}</span>
       </div>
       <div class="stat-tile">
-        <span class="stat-label">總損益率</span>
+        <span class="stat-label">未實現損益率</span>
         <span class="stat-value ${totalPnlClass}">${fmtPct(totalPnlPct, 2)}</span>
       </div>
     ` : '';
