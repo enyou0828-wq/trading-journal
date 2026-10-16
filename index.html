@@ -118,7 +118,6 @@
           <label>進場價格 <input type="number" id="hd-entry-price" placeholder="600" step="0.01" min="0" required></label>
           <button type="submit" class="btn primary" style="align-self:flex-end;">＋ 新增庫存</button>
         </form>
-        <p style="color:var(--text-muted);font-size:12px;margin:10px 0 0;">同一檔股票可以分好幾次新增（例如先買 0.5 份，之後再加碼），會自動累計成同一檔的總份數與均價；現價請直接在下面表格裡輸入，不會自動帶入。</p>
       </div>
 
       <div class="stat-grid" id="holdings-summary"></div>
@@ -140,7 +139,6 @@
             <tbody id="holdings-tbody"></tbody>
           </table>
           <p class="empty-state" id="holdings-empty">還沒有任何庫存紀錄，上面加入第一筆吧。</p>
-          <p style="color:var(--text-muted);font-size:12px;margin:10px 0 0;">庫存股是手動輸入現價估算的未實現損益（還沒賣出），不算實際損益；實際損益要賣出後記錄在「交易紀錄」才算數，兩邊數字不會互相加總。</p>
         </div>
       </div>
     </section>
