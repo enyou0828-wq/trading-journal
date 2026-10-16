@@ -1066,9 +1066,11 @@ const db = getFirestore(fbApp);
     const winRate = realized.length ? (wins.length / realized.length) * 100 : 0;
     const avgWin = wins.length ? wins.reduce((s, t) => s + t.returnPct, 0) / wins.length : 0;
     const avgLoss = losses.length ? losses.reduce((s, t) => s + t.returnPct, 0) / losses.length : 0;
-    const grossWin = wins.reduce((s, t) => s + t.returnPct, 0);
-    const grossLoss = Math.abs(losses.reduce((s, t) => s + t.returnPct, 0));
-    const pf = grossLoss > 0 ? (grossWin / grossLoss) : (grossWin > 0 ? Infinity : 0);
+    // 獲利因子 = (平均獲利 × 勝率) ÷ (平均虧損 × (1 − 勝率))
+    const winRateFrac = winRate / 100;
+    const pfNumer = avgWin * winRateFrac;
+    const pfDenom = Math.abs(avgLoss) * (1 - winRateFrac);
+    const pf = pfDenom > 0 ? (pfNumer / pfDenom) : (pfNumer > 0 ? Infinity : 0);
     const maxWin = realized.length ? Math.max(...realized.map(t => t.returnPct)) : 0;
     const maxLoss = realized.length ? Math.min(...realized.map(t => t.returnPct)) : 0;
     return { realized, wins, losses, weighted, totalWeighted, totalProfitWan, winRate, avgWin, avgLoss, pf, maxWin, maxLoss };
