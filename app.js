@@ -1828,7 +1828,7 @@ const db = getFirestore(fbApp);
         <div class="stat-tile">
           <span class="stat-label">獲利因子</span>
           <span class="stat-value">${row.pf == null ? '∞' : row.pf.toFixed(2)}</span>
-          <span class="stat-sub">總獲利% ÷ 總虧損%</span>
+          <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">最大單筆獲利 / 虧損</span>
@@ -2213,7 +2213,7 @@ const db = getFirestore(fbApp);
         <div class="stat-tile">
           <span class="stat-label">獲利因子</span>
           <span class="stat-value">${s.pf === Infinity ? '∞' : s.realized.length ? s.pf.toFixed(2) : '–'}</span>
-          <span class="stat-sub">總獲利% ÷ 總虧損%</span>
+          <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">最大單筆獲利 / 虧損</span>
