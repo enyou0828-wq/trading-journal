@@ -999,6 +999,16 @@ const db = getFirestore(fbApp);
   document.getElementById('f-calc-shares').addEventListener('input', recalcPositionPct);
   document.getElementById('f-date').addEventListener('change', recalcPositionPct);
 
+  // R% = (進場價 − 原始停損價) ÷ 進場價，依策略規則第三點自動算，使用者仍可手動覆蓋
+  function recalcRPct() {
+    const entry = parseFloat(document.getElementById('f-entry-price').value);
+    const stop = parseFloat(document.getElementById('f-stop-price').value);
+    if (!entry || isNaN(stop)) return;
+    document.getElementById('f-r-pct').value = (((entry - stop) / entry) * 100).toFixed(2);
+  }
+  document.getElementById('f-entry-price').addEventListener('input', recalcRPct);
+  document.getElementById('f-stop-price').addEventListener('input', recalcRPct);
+
   function openTradeModal(t) {
     document.getElementById('trade-modal-title').textContent = t ? '編輯交易' : '新增交易';
     document.getElementById('trade-id').value = t ? t.id : '';
@@ -1014,6 +1024,16 @@ const db = getFirestore(fbApp);
     document.getElementById('f-position-pct').value = t && t.positionPct != null ? t.positionPct : '';
     document.getElementById('f-return-pct').value = t && t.returnPct != null ? t.returnPct : '';
     document.getElementById('f-profit-wan').value = t && t.profitWan != null ? t.profitWan : '';
+    document.getElementById('f-lot-number').value = t && t.lotNumber != null ? t.lotNumber : '';
+    document.getElementById('f-entry-price').value = t && t.entryPrice != null ? t.entryPrice : '';
+    document.getElementById('f-stop-price').value = t && t.stopPrice != null ? t.stopPrice : '';
+    document.getElementById('f-r-pct').value = t && t.rPct != null ? t.rPct : '';
+    document.getElementById('f-position-r-pct').value = t && t.positionRPct != null ? t.positionRPct : '';
+    document.getElementById('f-max-gain-pct').value = t && t.maxGainPct != null ? t.maxGainPct : '';
+    document.getElementById('f-exit-reason').value = t ? (t.exitReason || '') : '';
+    document.getElementById('f-profit-r').value = t && t.profitR != null ? t.profitR : '';
+    document.getElementById('f-rebound-3r').value = t ? (t.reboundTo3R || '') : '';
+    document.getElementById('f-market-level').value = t ? (t.marketLevelAtEntry || '') : '';
     document.getElementById('f-rating').value = t ? (t.rating || '') : '';
     document.getElementById('f-reason').value = t ? (t.reason || '') : '';
     document.getElementById('f-review').value = t ? (t.review || '') : '';
@@ -1028,6 +1048,13 @@ const db = getFirestore(fbApp);
     const retVal = document.getElementById('f-return-pct').value;
     const profitWanVal = document.getElementById('f-profit-wan').value;
     const priceVal = document.getElementById('f-calc-price').value;
+    const lotNumberVal = document.getElementById('f-lot-number').value;
+    const entryPriceVal = document.getElementById('f-entry-price').value;
+    const stopPriceVal = document.getElementById('f-stop-price').value;
+    const rPctVal = document.getElementById('f-r-pct').value;
+    const positionRPctVal = document.getElementById('f-position-r-pct').value;
+    const maxGainPctVal = document.getElementById('f-max-gain-pct').value;
+    const profitRVal = document.getElementById('f-profit-r').value;
     const rec = {
       id,
       markColor: document.getElementById('f-marked-color').value,
@@ -1041,6 +1068,16 @@ const db = getFirestore(fbApp);
       positionPct: posVal === '' ? null : parseFloat(posVal),
       returnPct: retVal === '' ? null : parseFloat(retVal),
       profitWan: profitWanVal === '' ? null : parseFloat(profitWanVal),
+      lotNumber: lotNumberVal === '' ? null : parseInt(lotNumberVal, 10),
+      entryPrice: entryPriceVal === '' ? null : parseFloat(entryPriceVal),
+      stopPrice: stopPriceVal === '' ? null : parseFloat(stopPriceVal),
+      rPct: rPctVal === '' ? null : parseFloat(rPctVal),
+      positionRPct: positionRPctVal === '' ? null : parseFloat(positionRPctVal),
+      maxGainPct: maxGainPctVal === '' ? null : parseFloat(maxGainPctVal),
+      exitReason: document.getElementById('f-exit-reason').value,
+      profitR: profitRVal === '' ? null : parseFloat(profitRVal),
+      reboundTo3R: document.getElementById('f-rebound-3r').value,
+      marketLevelAtEntry: document.getElementById('f-market-level').value.trim(),
       rating: document.getElementById('f-rating').value,
       reason: document.getElementById('f-reason').value.trim(),
       review: document.getElementById('f-review').value.trim(),
