@@ -3,7 +3,7 @@
   "twse_date": "2026-10-16",
   "tpex_date": "2026-10-16",
   "markets_in_sync": true,
-  "generated_at": "2026-10-17T01:57:06.585267+00:00",
+  "generated_at": "2026-10-18T06:02:01.285853+00:00",
   "sets": [
     {
       "key": "fast",
@@ -649,6 +649,39 @@
           "volume": 1659874,
           "industry": "綠能環保",
           "sub_group": null
+        }
+      ]
+    },
+    {
+      "key": "vcp",
+      "label": "量縮整理突破(VCP)",
+      "params": {
+        "consolidation_days": "10-25",
+        "min_contractions": 2,
+        "contraction_shrink_ratio": 0.6,
+        "first_contraction_max_pct": 25.0,
+        "last_contraction_max_pct": 7.0,
+        "volume_dryup_ratio": 0.7,
+        "breakout_volume_multiplier": 1.5,
+        "prior_rally_min_pct": 25.0,
+        "near_120d_high_max_pct": 15.0
+      },
+      "warmup": true,
+      "signal_count": 1,
+      "signals": [
+        {
+          "code": "6112",
+          "name": "邁達特",
+          "close": 49.2,
+          "daily_change_pct": 8.13,
+          "volume_multiple": 2.8,
+          "volume": 8850150,
+          "industry": "資訊服務業",
+          "sub_group": null,
+          "consolidation_days": 17,
+          "contraction_count": 2,
+          "breakout_level": 46.5,
+          "last_contraction_low": 45.5
         }
       ]
     }

@@ -60,6 +60,14 @@ SIGNAL_SETS = [
         "key": "streak", "label": "近3日收盤站上5日扣抵值＋近3日平均率3%以上", "type": "deduction_uptrend",
         "lookback": 8, "consecutive_days": 3, "deduct_days": 5, "avg_slope_days": 3, "min_avg_slope_pct": 3.0,
     },
+    {
+        # "lookback" 這裡只用來撐大下面的 HISTORY_KEEP_DAYS（跟 streak 那組一樣是佔位用途，
+        # compute_vcp_breakout_signals 實際需要的天數門檻寫在函式自己的預設參數裡）。
+        # 這個策略要看 120 日高點＋整理期前 60 日的漲幅，需要比其他兩組更長的歷史，
+        # 50*3=150 天，比函式內部最低需求（約131天）多留一點緩衝。
+        "key": "vcp", "label": "量縮整理突破(VCP)", "type": "vcp_breakout",
+        "lookback": 50,
+    },
 ]
 HISTORY_KEEP_DAYS = max(s["lookback"] for s in SIGNAL_SETS) * 3  # 歷史檔只保留這麼多天，避免無限膨脹
 
@@ -499,6 +507,209 @@ def compute_deduction_uptrend_signals(
     return signals, warmup
 
 
+def find_zigzag_swings(closes: list[float], min_pct: float) -> list[tuple[int, float, str]]:
+    """在收盤價序列上找交替的波段高低點（zigzag）：價格從目前極值反轉超過 min_pct，
+    才確認上一個極值是一次真正的轉折（濾掉單日雜訊），回傳依時間順序排列的
+    (在序列中的索引, 價格, 'peak' 或 'trough') 列表。
+
+    最後一筆是「目前還在追蹤、尚未被反向確認」的極值——VCP 偵測刻意需要這個，因為
+    最後一次收縮的低點，常常就是還沒出現反轉就被突破帶量拉上去的那個低點。
+    """
+    if len(closes) < 2:
+        return []
+    swings = []
+    extreme_idx, extreme_val = 0, closes[0]
+    direction = None  # None／'up'：目前在追蹤一個可能的波段高點；'down'：在追蹤一個可能的波段低點
+    for i in range(1, len(closes)):
+        price = closes[i]
+        if direction != "down":
+            if price >= extreme_val:
+                extreme_idx, extreme_val = i, price
+                direction = "up"
+            else:
+                drop_pct = (extreme_val - price) / extreme_val * 100
+                if drop_pct >= min_pct:
+                    swings.append((extreme_idx, extreme_val, "peak"))
+                    direction = "down"
+                    extreme_idx, extreme_val = i, price
+            continue
+        if price <= extreme_val:
+            extreme_idx, extreme_val = i, price
+        else:
+            rise_pct = (price - extreme_val) / extreme_val * 100
+            if rise_pct >= min_pct:
+                swings.append((extreme_idx, extreme_val, "trough"))
+                direction = "up"
+                extreme_idx, extreme_val = i, price
+    swings.append((extreme_idx, extreme_val, "trough" if direction == "down" else "peak"))
+    return swings
+
+
+def extract_down_legs(swings: list[tuple[int, float, str]]) -> list[dict]:
+    """從 zigzag 的波段高低點裡，依時間順序取出每一段「高點→低點」的下跌段（收縮）。"""
+    legs = []
+    for (idx1, val1, kind1), (idx2, val2, kind2) in zip(swings, swings[1:]):
+        if kind1 == "peak" and kind2 == "trough" and val1 > 0:
+            legs.append({
+                "peak_idx": idx1, "peak_val": val1,
+                "trough_idx": idx2, "trough_val": val2,
+                "pct": (val1 - val2) / val1 * 100,
+            })
+    return legs
+
+
+def compute_vcp_breakout_signals(
+    by_code: dict[str, list[dict]],
+    expected_date_by_market: dict[str, str],
+    calendar: list[str],
+    date_index: dict[str, int],
+    companies: dict[str, dict],
+    industries: dict[str, dict],
+    ma_short: int = 20,
+    ma_long: int = 60,
+    ma_long_slope_days: int = 10,
+    high_lookback: int = 120,
+    near_high_max_pct: float = 15.0,
+    prior_rally_lookback: int = 60,
+    prior_rally_min_pct: float = 25.0,
+    consolidation_min_days: int = 10,
+    consolidation_max_days: int = 25,
+    min_contractions: int = 2,
+    contraction_shrink_ratio: float = 0.6,
+    first_contraction_max_pct: float = 25.0,
+    last_contraction_max_pct: float = 7.0,
+    volume_dryup_ratio: float = 0.7,
+    baseline_volume_days: int = 20,
+    breakout_volume_multiplier: float = 1.5,
+    zigzag_min_pct: float = 2.0,
+) -> tuple[list[dict], bool]:
+    """VCP（量縮整理突破）訊號——使用者策略：趨勢向上＋前段漲幅≥25%＋整理期10~25天內
+    至少2次一次比一次小的收縮（第一次≤25%、最後一次≤7%，每次≤前一次60%）＋最後一次
+    收縮量縮到20日均量70%以下，然後帶量(≥1.5倍)突破最後一次收縮的高點。
+
+    這份資料來源只有每日收盤價＋成交量，沒有日內最高/最低價，所以「收縮幅度」改用
+    zigzag（find_zigzag_swings）在收盤價序列上找交替高低點來近似，不是用真正的日內高低點
+    算的回檔幅度——跟真正的 K 線圖看起來的回檔會有些落差,但方向與大小關係是一致的。
+    zigzag_min_pct（預設2%）故意設得比「最後一次收縮上限7%」小很多，這樣才抓得到真正
+    很小的最後一次收縮,不會被雜訊濾掉。
+
+    「貼近120日高點」「前段漲幅」「整理期收縮」都只用「突破前一天」(pre，不含今天)的
+    資料判斷,不會用到突破當天的漲幅去墊高這些本來該是突破前就成立的條件。「收盤>20日線
+    >60日線、60日線上揚」則用含今天收盤的均線去比（跟看盤軟體上的均線一樣，EOD後本來
+    就含當天）——這組屬於進場當下該成立的條件，不是突破前就該成立的條件，20日均線期間
+    短，整理期才10~25天時很容易被不含今天的算法在最後一天算出「收盤還在均線下方」。
+    「60日線上揚」用 10 個交易日前的 60日均線來比,不是每天比前一天——用意是濾掉單日
+    雜訊造成的假上揚/假下彎。「前段漲幅近60個交易日」解讀成整理期開始之前緊接著的60個
+    交易日(不含整理期本身),因為使用者的策略敘述是「先前段漲幅、再整理」的順序。
+    """
+    signals = []
+    warmup = False
+    min_pre_len = max(
+        high_lookback,
+        prior_rally_lookback + consolidation_max_days,
+        ma_long + ma_long_slope_days,
+    ) + 10
+
+    for code, rows in by_code.items():
+        expected_today = expected_date_by_market.get(rows[-1]["market"])
+        if expected_today is None or rows[-1]["date"] != expected_today:
+            continue
+        if len(rows) < min_pre_len + 1:
+            warmup = True
+            continue
+
+        today = rows[-1]
+        pre = rows[:-1]
+        closes_pre = [r["close"] for r in pre]
+        volumes_pre = [r["volume"] for r in pre]
+
+        # 趨勢：收盤>20日線>60日線，60日線比10個交易日前還高（上揚）。
+        # 20日線/60日線用「含今天」的收盤序列算（跟一般看盤軟體上的均線一樣，EOD 收盤後
+        # 均線本來就會納入當天）；但「離120日高點15%以內」刻意只看突破前一天的收盤，
+        # 不讓今天的噴出漲幅去墊高這個應該在突破前就成立的條件。
+        closes_all = closes_pre + [today["close"]]
+        ma20 = sum(closes_all[-ma_short:]) / ma_short
+        ma60 = sum(closes_all[-ma_long:]) / ma_long
+        ma60_prior = sum(closes_all[-(ma_long + ma_long_slope_days):-ma_long_slope_days]) / ma_long
+        if not (today["close"] > ma20 > ma60 and ma60 > ma60_prior):
+            continue
+        close_pre = closes_pre[-1]
+        high120 = max(closes_pre[-high_lookback:])
+        if high120 <= 0 or (high120 - close_pre) / high120 * 100 > near_high_max_pct:
+            continue
+
+        # 整理期：由長(25天)往短(10天)試窗格去找 zigzag——視窗比真正的整理期長也沒關係
+        # （前面多出來的那段漸漲通常不會被 zigzag 判定出額外的收縮），但找到收縮序列後，
+        # 真正的整理期天數要用第一次收縮的高點(legs[0]["peak_idx"])往後算，不能直接拿視窗
+        # 長度當整理期天數，否則視窗裡夾帶的前段漲幅尾段會被誤算成整理期的一部分，連帶讓
+        # 「整理期開始之前的60個交易日漲幅」那段窗口往前錯位、少算到漲幅。
+        base = None
+        for length in range(consolidation_max_days, consolidation_min_days - 1, -1):
+            window = pre[-length:]
+            swings = find_zigzag_swings([r["close"] for r in window], zigzag_min_pct)
+            legs = extract_down_legs(swings)
+            if len(legs) < min_contractions:
+                continue
+            if legs[0]["pct"] > first_contraction_max_pct:
+                continue
+            if legs[-1]["pct"] > last_contraction_max_pct:
+                continue
+            if not all(legs[k]["pct"] <= legs[k - 1]["pct"] * contraction_shrink_ratio for k in range(1, len(legs))):
+                continue
+            base_span = length - legs[0]["peak_idx"]
+            if not (consolidation_min_days <= base_span <= consolidation_max_days):
+                continue
+            base = (base_span, window, legs)
+            break
+        if base is None:
+            continue
+        base_span, window, legs = base
+        last_leg = legs[-1]
+        breakout_level = last_leg["peak_val"]
+
+        # 前段漲幅：整理期開始之前緊接著的60個交易日內，低點到低點之後的高點至少+25%
+        rally_closes = [r["close"] for r in pre[-(base_span + prior_rally_lookback):-base_span]]
+        if len(rally_closes) < 2:
+            continue
+        rally_low_idx = min(range(len(rally_closes)), key=lambda i: rally_closes[i])
+        rally_low = rally_closes[rally_low_idx]
+        rally_high_after_low = max(rally_closes[rally_low_idx:])
+        if rally_low <= 0 or (rally_high_after_low - rally_low) / rally_low * 100 < prior_rally_min_pct:
+            continue
+
+        # 量縮：最後一次收縮(高點→低點)期間的平均成交量 ≤ 20日均量 * 70%
+        baseline_vol = sum(volumes_pre[-baseline_volume_days:]) / baseline_volume_days
+        if baseline_vol <= 0:
+            continue
+        leg_vol_rows = window[last_leg["peak_idx"]: last_leg["trough_idx"] + 1]
+        if not leg_vol_rows:
+            continue
+        leg_avg_vol = sum(r["volume"] for r in leg_vol_rows) / len(leg_vol_rows)
+        if leg_avg_vol > baseline_vol * volume_dryup_ratio:
+            continue
+
+        # 進場：今天收盤突破最後一次收縮的高點，且今天成交量達20日均量的1.5倍以上。
+        # 「昨天收盤還沒突破」這個條件是必要的——否則突破後只要股價一直撐在那個高點之上，
+        # 之後任何一天只要成交量又放大（即使是下跌的那種爆量，例如出貨），都會被誤判成
+        # 又一次「突破當天」，變成同一次突破被重複觸發好幾天。
+        if not (close_pre <= breakout_level < today["close"] and today["volume"] >= breakout_volume_multiplier * baseline_vol):
+            continue
+
+        change = daily_change_pct(rows, calendar, date_index)
+        entry = build_entry(
+            code, today["name"], today["close"], change, today["volume"] / baseline_vol, today["volume"],
+            companies, industries,
+        )
+        entry["consolidation_days"] = base_span
+        entry["contraction_count"] = len(legs)
+        entry["breakout_level"] = round(breakout_level, 2)
+        entry["last_contraction_low"] = round(last_leg["trough_val"], 2)
+        signals.append(entry)
+
+    signals.sort(key=lambda s: priority_sort_key(s, s["volume_multiple"] or 0))
+    return signals, warmup
+
+
 def compute_group_rotation(
     by_code: dict[str, list[dict]],
     expected_date_by_market: dict[str, str],
@@ -671,6 +882,14 @@ def main() -> int:
             if spec.get("min_avg_slope_pct") is not None:
                 params["avg_slope_days"] = spec["avg_slope_days"]
                 params["min_avg_slope_pct"] = spec["min_avg_slope_pct"]
+        elif set_type == "vcp_breakout":
+            signals, warmup = compute_vcp_breakout_signals(by_code, expected_date_by_market, calendar, date_index, companies, industries)
+            params = {
+                "consolidation_days": "10-25", "min_contractions": 2, "contraction_shrink_ratio": 0.6,
+                "first_contraction_max_pct": 25.0, "last_contraction_max_pct": 7.0,
+                "volume_dryup_ratio": 0.7, "breakout_volume_multiplier": 1.5,
+                "prior_rally_min_pct": 25.0, "near_120d_high_max_pct": 15.0,
+            }
         else:
             raise ValueError(f"未知的 signal set type：{set_type}")
 

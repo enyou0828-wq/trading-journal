@@ -30,7 +30,7 @@ from daily_signal_scan import (  # noqa: E402
 TWSE_HIST_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date={date}&type=ALLBUT0999&response=json"
 TPEX_HIST_URL = "https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&d={roc_date}&se=EW&o=json"
 
-MAX_CALENDAR_DAYS_BACK = 60  # 保險上限，避免碰到長假或端點異常時無限往前找
+MAX_CALENDAR_DAYS_BACK = 260  # 保險上限，避免碰到長假或端點異常時無限往前找（抓150個交易日大約要回溯7~8個月的日曆天）
 REQUEST_DELAY_SECONDS = 0.4  # 對端點客氣一點，不要連續轟炸
 
 

@@ -91,6 +91,9 @@ function renderSet(set) {
         const changeColor = s.daily_change_pct == null ? 'var(--text-muted)' : s.daily_change_pct > 0 ? 'var(--up)' : s.daily_change_pct < 0 ? 'var(--down)' : 'var(--text-muted)';
         const changeText = s.daily_change_pct == null ? '–' : (s.daily_change_pct > 0 ? '+' : '') + s.daily_change_pct + '%';
         const groupText = s.industry && s.sub_group ? `${s.industry} · ${s.sub_group}` : (s.industry || s.sub_group || '–');
+        const vcpRow = s.consolidation_days != null
+          ? `<div class="row"><span>整理 ${s.consolidation_days} 天</span><span>收縮 ${s.contraction_count} 次</span><span>突破價 ${s.breakout_level}</span><span>前低 ${s.last_contraction_low}</span></div>`
+          : '';
         return `
           <div class="card">
             <div class="card-top">
@@ -102,6 +105,7 @@ function renderSet(set) {
               <span style="color:${changeColor}">當日 ${changeText}</span>
               <span>${groupText}</span>
             </div>
+            ${vcpRow}
           </div>
         `;
       }).join('')

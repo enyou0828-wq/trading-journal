@@ -14,7 +14,7 @@ const db = getFirestore(fbApp);
   'use strict';
 
   const SERIES = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'];
-  const STRATEGIES = ['盤整突破', '沿線上行', '族群效應', '回調築底', '處置操作', '其他'];
+  const STRATEGIES = ['盤整突破', '沿線上行', '量縮突破', '族群效應', '回調築底', '處置操作', '其他'];
   const ENTRY_ACTIONS = new Set(['買進', '加碼']);
   const EXIT_ACTIONS = new Set(['減碼', '賣出', '加碼轉賣出']);
 
@@ -452,13 +452,16 @@ const db = getFirestore(fbApp);
     return signals.map(s => {
       const changeClass = s.daily_change_pct == null ? 'pnl-zero' : s.daily_change_pct > 0 ? 'pnl-pos' : s.daily_change_pct < 0 ? 'pnl-neg' : 'pnl-zero';
       const changeText = s.daily_change_pct == null ? '–' : (s.daily_change_pct > 0 ? '+' : '') + s.daily_change_pct + '%';
+      const vcpHtml = s.consolidation_days != null
+        ? `<br><span style="color:var(--text-muted)">整理${s.consolidation_days}天 · 收縮${s.contraction_count}次 · 突破價${s.breakout_level} · 前低${s.last_contraction_low}</span>`
+        : '';
       return `
         <tr>
           <td><strong>${escapeHtml(s.code)}</strong> <span style="color:var(--text-muted)">${escapeHtml(s.name)}</span></td>
           <td class="num">${s.close != null ? s.close : '–'}</td>
           <td class="num ${changeClass}">${changeText}</td>
           <td class="num">${s.volume != null ? Math.round(s.volume / 1000).toLocaleString('zh-TW') + '張' : '–'}</td>
-          <td>${signalGroupHtml(s)}</td>
+          <td>${signalGroupHtml(s)}${vcpHtml}</td>
         </tr>
       `;
     }).join('');
