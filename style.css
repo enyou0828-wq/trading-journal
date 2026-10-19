@@ -437,3 +437,13 @@ body {
   .table-wrap { overflow-x: auto; }
   .trade-table { min-width: 760px; }
 }
+
+#futures-form { flex-wrap: wrap; align-items: flex-end; }
+#futures-form label { flex: 1 1 120px; }
+#futures-form button { flex: 0 0 auto; height: 38px; }
+.tab { white-space: nowrap; }
+.tabs { overflow-x: auto; max-width: 100%; }
+@media (max-width: 720px) {
+  #futures-form { align-items: stretch; }
+  #futures-form label { flex: 0 0 auto; }
+}

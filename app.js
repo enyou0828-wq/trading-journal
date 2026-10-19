@@ -212,7 +212,7 @@ const db = getFirestore(fbApp);
   }
 
   // ---------- state ----------
-  let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], holdings: [], fcmTokens: [] };
+  let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], holdings: [], futures: [], fcmTokens: [] };
   let currentUser = null;
 
   const syncStatusEl = document.getElementById('sync-status');
@@ -377,6 +377,7 @@ const db = getFirestore(fbApp);
 
       if (!Array.isArray(state.watchlist)) state.watchlist = [];
       if (!Array.isArray(state.holdings)) state.holdings = [];
+      if (!Array.isArray(state.futures)) state.futures = [];
       if (!Array.isArray(state.fcmTokens)) state.fcmTokens = [];
       if (migrateHoldings()) await save();
 
@@ -429,6 +430,7 @@ const db = getFirestore(fbApp);
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById('panel-' + target).classList.add('active');
       if (target === 'holdings') renderHoldings();
+      if (target === 'futures') renderFutures();
       if (target === 'stats') renderStats();
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainResults(); renderChainDetail(); }
@@ -812,6 +814,107 @@ const db = getFirestore(fbApp);
     await addHoldingLot(symbol, document.getElementById('hd-name').value, units, entryPrice);
     e.target.reset();
     symbolInput.focus();
+  });
+
+  // ================= FUTURES =================
+  // 每點價值（元）：大台 200、小台 50、微台 10。損益獨立統計，不進股票的資金加權報酬與月度回顧。
+  const FUTURES_POINT_VALUE = { '大台': 200, '小台': 50, '微台': 10 };
+
+  function futuresPnl(f) {
+    const points = (f.exit - f.entry) * (f.side === '空' ? -1 : 1);
+    const pnl = points * (FUTURES_POINT_VALUE[f.product] || 0) * f.lots - (f.fee || 0);
+    return { points, pnl };
+  }
+
+  const fmtYuan = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('zh-TW');
+  const pnlClassOf = (n) => n > 0 ? 'pnl-pos' : n < 0 ? 'pnl-neg' : 'pnl-zero';
+
+  function renderFutures() {
+    if (!Array.isArray(state.futures)) state.futures = [];
+    const tbody = document.getElementById('futures-tbody');
+    const empty = document.getElementById('futures-empty');
+    const items = [...state.futures].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+    tbody.innerHTML = items.map(f => {
+      const { points, pnl } = futuresPnl(f);
+      return `
+        <tr>
+          <td>${escapeHtml(f.date)}</td>
+          <td>${escapeHtml(f.product)}</td>
+          <td><span class="badge ${f.side === '空' ? 'action-out' : 'action-in'}">${f.side === '空' ? '做空' : '做多'}</span></td>
+          <td class="num">${f.lots}</td>
+          <td class="num">${f.entry}</td>
+          <td class="num">${f.exit}</td>
+          <td class="num ${pnlClassOf(points)}">${points > 0 ? '+' : ''}${points}</td>
+          <td class="num ${pnlClassOf(pnl)}">${fmtYuan(pnl)}</td>
+          <td>${escapeHtml(f.note || '')}</td>
+          <td><button class="icon-btn btn-del-future" data-id="${f.id}" title="刪除">✕</button></td>
+        </tr>`;
+    }).join('');
+    empty.style.display = items.length ? 'none' : '';
+
+    tbody.querySelectorAll('.btn-del-future').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        state.futures = state.futures.filter(f => f.id !== btn.dataset.id);
+        await save();
+        renderFutures();
+      });
+    });
+
+    const pnls = items.map(f => futuresPnl(f).pnl);
+    const total = pnls.reduce((s, n) => s + n, 0);
+    const wins = pnls.filter(n => n > 0).length;
+    const losses = pnls.filter(n => n < 0).length;
+    const winRate = items.length ? (wins / items.length) * 100 : 0;
+    const winSum = pnls.filter(n => n > 0).reduce((s, n) => s + n, 0);
+    const lossSum = -pnls.filter(n => n < 0).reduce((s, n) => s + n, 0);
+    document.getElementById('futures-summary').innerHTML = items.length ? `
+      <div class="stat-tile">
+        <span class="stat-label">總淨損益</span>
+        <span class="stat-value ${pnlClassOf(total)}">${fmtWan(total / 10000, 2)}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">勝率</span>
+        <span class="stat-value">${winRate.toFixed(1)}%</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">交易次數</span>
+        <span class="stat-value">${items.length}</span>
+        <span class="stat-sub">${wins} 勝 / ${losses} 敗</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">平均獲利 / 平均虧損 (元)</span>
+        <span class="stat-value">${wins ? fmtYuan(winSum / wins) : '–'} / ${losses ? fmtYuan(-lossSum / losses) : '–'}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">Profit Factor</span>
+        <span class="stat-value">${lossSum > 0 ? (winSum / lossSum).toFixed(2) : '–'}</span>
+      </div>
+    ` : '';
+  }
+
+  document.getElementById('ft-date').value = new Date().toLocaleDateString('sv-SE');
+
+  document.getElementById('futures-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const date = document.getElementById('ft-date').value;
+    const lots = parseInt(document.getElementById('ft-lots').value, 10);
+    const entry = parseFloat(document.getElementById('ft-entry').value);
+    const exit = parseFloat(document.getElementById('ft-exit').value);
+    const feeRaw = parseFloat(document.getElementById('ft-fee').value);
+    if (!date || !(lots > 0) || !(entry > 0) || !(exit > 0)) return;
+    if (!Array.isArray(state.futures)) state.futures = [];
+    state.futures.push({
+      id: uid(), date,
+      product: document.getElementById('ft-product').value,
+      side: document.getElementById('ft-side').value,
+      lots, entry, exit,
+      fee: isNaN(feeRaw) ? 0 : feeRaw,
+      note: document.getElementById('ft-note').value.trim(),
+    });
+    await save();
+    renderFutures();
+    ['ft-lots', 'ft-entry', 'ft-exit', 'ft-fee', 'ft-note'].forEach(id => { document.getElementById(id).value = ''; });
   });
 
   // ---- 推播通知（Firebase Cloud Messaging）----
