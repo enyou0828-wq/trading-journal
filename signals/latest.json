@@ -1,9 +1,9 @@
 {
   "scan_date": "2026-10-19",
-  "twse_date": "2026-10-16",
+  "twse_date": "2026-10-19",
   "tpex_date": "2026-10-19",
-  "markets_in_sync": false,
-  "generated_at": "2026-10-19T16:46:36.107076+00:00",
+  "markets_in_sync": true,
+  "generated_at": "2026-10-20T02:27:35.482692+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,7 +14,7 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 24,
+      "signal_count": 18,
       "signals": [
         {
           "code": "6465",
@@ -39,41 +39,11 @@
         {
           "code": "6756",
           "name": "威鋒電子",
-          "close": 110.0,
+          "close": 121.0,
           "daily_change_pct": 10.0,
-          "volume_multiple": 8.39,
-          "volume": 938233,
+          "volume_multiple": 14.6,
+          "volume": 2265551,
           "industry": "半導體業",
-          "sub_group": null
-        },
-        {
-          "code": "6153",
-          "name": "嘉聯益",
-          "close": 19.25,
-          "daily_change_pct": 6.65,
-          "volume_multiple": 7.62,
-          "volume": 29443703,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
-          "code": "2380",
-          "name": "虹光",
-          "close": 18.85,
-          "daily_change_pct": 9.91,
-          "volume_multiple": 7.44,
-          "volume": 856846,
-          "industry": "電腦及週邊設備業",
-          "sub_group": null
-        },
-        {
-          "code": "6269",
-          "name": "台郡",
-          "close": 82.0,
-          "daily_change_pct": 9.92,
-          "volume_multiple": 6.88,
-          "volume": 27988277,
-          "industry": "電子零組件業",
           "sub_group": null
         },
         {
@@ -97,36 +67,6 @@
           "sub_group": null
         },
         {
-          "code": "6909",
-          "name": "創控",
-          "close": 48.45,
-          "daily_change_pct": 6.13,
-          "volume_multiple": 5.64,
-          "volume": 3259826,
-          "industry": "半導體業",
-          "sub_group": null
-        },
-        {
-          "code": "6209",
-          "name": "今國光",
-          "close": 100.5,
-          "daily_change_pct": 8.06,
-          "volume_multiple": 4.08,
-          "volume": 55194753,
-          "industry": "光電業",
-          "sub_group": null
-        },
-        {
-          "code": "3535",
-          "name": "晶彩科",
-          "close": 103.5,
-          "daily_change_pct": 9.52,
-          "volume_multiple": 3.83,
-          "volume": 3729122,
-          "industry": "光電業",
-          "sub_group": null
-        },
-        {
           "code": "8074",
           "name": "鉅橡",
           "close": 61.1,
@@ -134,16 +74,6 @@
           "volume_multiple": 3.62,
           "volume": 2499271,
           "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
-          "code": "3305",
-          "name": "昇貿",
-          "close": 113.0,
-          "daily_change_pct": 9.71,
-          "volume_multiple": 3.48,
-          "volume": 2476481,
-          "industry": "其他電子業",
           "sub_group": null
         },
         {
@@ -157,23 +87,13 @@
           "sub_group": null
         },
         {
-          "code": "6108",
-          "name": "競國",
-          "close": 30.85,
-          "daily_change_pct": 5.65,
-          "volume_multiple": 3.35,
-          "volume": 9961151,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
-          "code": "2424",
-          "name": "隴華",
-          "close": 15.6,
-          "daily_change_pct": 9.86,
-          "volume_multiple": 3.08,
-          "volume": 314152,
-          "industry": "通信網路業",
+          "code": "4960",
+          "name": "誠美材",
+          "close": 27.8,
+          "daily_change_pct": 9.88,
+          "volume_multiple": 3.13,
+          "volume": 19184659,
+          "industry": "光電業",
           "sub_group": null
         },
         {
@@ -197,23 +117,13 @@
           "sub_group": null
         },
         {
-          "code": "2332",
-          "name": "友訊",
-          "close": 21.35,
-          "daily_change_pct": 5.43,
-          "volume_multiple": 2.74,
-          "volume": 23414143,
-          "industry": "通信網路業",
-          "sub_group": null
-        },
-        {
-          "code": "4960",
-          "name": "誠美材",
-          "close": 25.3,
-          "daily_change_pct": 6.75,
-          "volume_multiple": 2.13,
-          "volume": 11982042,
-          "industry": "光電業",
+          "code": "6141",
+          "name": "柏承",
+          "close": 58.4,
+          "daily_change_pct": 9.98,
+          "volume_multiple": 2.7,
+          "volume": 5523003,
+          "industry": "電子零組件業",
           "sub_group": null
         },
         {
@@ -227,23 +137,53 @@
           "sub_group": null
         },
         {
-          "code": "6934",
-          "name": "心誠鎂",
-          "close": 87.0,
-          "daily_change_pct": 8.48,
-          "volume_multiple": 3.51,
-          "volume": 263564,
-          "industry": "生技醫療業",
+          "code": "1526",
+          "name": "日馳",
+          "close": 16.5,
+          "daily_change_pct": 10.0,
+          "volume_multiple": 13.44,
+          "volume": 1056949,
+          "industry": "電機機械",
           "sub_group": null
         },
         {
-          "code": "4557",
-          "name": "永新-KY",
-          "close": 57.0,
-          "daily_change_pct": 7.75,
-          "volume_multiple": 3.3,
-          "volume": 183937,
-          "industry": "汽車工業",
+          "code": "7786",
+          "name": "東方風能",
+          "close": 125.0,
+          "daily_change_pct": 9.65,
+          "volume_multiple": 9.38,
+          "volume": 1082534,
+          "industry": "綠能環保",
+          "sub_group": null
+        },
+        {
+          "code": "8429",
+          "name": "金麗-KY",
+          "close": 6.22,
+          "daily_change_pct": 5.96,
+          "volume_multiple": 7.35,
+          "volume": 951806,
+          "industry": "貿易百貨業",
+          "sub_group": null
+        },
+        {
+          "code": "1452",
+          "name": "宏益",
+          "close": 11.15,
+          "daily_change_pct": 5.19,
+          "volume_multiple": 5.74,
+          "volume": 422438,
+          "industry": "紡織纖維",
+          "sub_group": null
+        },
+        {
+          "code": "2033",
+          "name": "佳大",
+          "close": 65.7,
+          "daily_change_pct": 9.87,
+          "volume_multiple": 3.04,
+          "volume": 8061565,
+          "industry": "鋼鐵工業",
           "sub_group": null
         },
         {
@@ -268,36 +208,16 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 28,
+      "signal_count": 15,
       "signals": [
         {
           "code": "6756",
           "name": "威鋒電子",
-          "close": 110.0,
+          "close": 121.0,
           "daily_change_pct": 10.0,
           "volume_multiple": null,
-          "volume": 938233,
+          "volume": 2265551,
           "industry": "半導體業",
-          "sub_group": null
-        },
-        {
-          "code": "6933",
-          "name": "AMAX-KY",
-          "close": 451.5,
-          "daily_change_pct": 9.99,
-          "volume_multiple": null,
-          "volume": 2066435,
-          "industry": "電腦及週邊設備業",
-          "sub_group": null
-        },
-        {
-          "code": "6668",
-          "name": "中揚光",
-          "close": 68.3,
-          "daily_change_pct": 9.98,
-          "volume_multiple": null,
-          "volume": 12160579,
-          "industry": "光電業",
           "sub_group": null
         },
         {
@@ -321,16 +241,6 @@
           "sub_group": null
         },
         {
-          "code": "6269",
-          "name": "台郡",
-          "close": 82.0,
-          "daily_change_pct": 9.92,
-          "volume_multiple": null,
-          "volume": 27988277,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
           "code": "6751",
           "name": "智聯服務",
           "close": 59.9,
@@ -351,66 +261,6 @@
           "sub_group": null
         },
         {
-          "code": "2468",
-          "name": "華經",
-          "close": 51.1,
-          "daily_change_pct": 9.89,
-          "volume_multiple": null,
-          "volume": 16244546,
-          "industry": "資訊服務業",
-          "sub_group": null
-        },
-        {
-          "code": "2424",
-          "name": "隴華",
-          "close": 15.6,
-          "daily_change_pct": 9.86,
-          "volume_multiple": null,
-          "volume": 314152,
-          "industry": "通信網路業",
-          "sub_group": null
-        },
-        {
-          "code": "3535",
-          "name": "晶彩科",
-          "close": 103.5,
-          "daily_change_pct": 9.52,
-          "volume_multiple": null,
-          "volume": 3729122,
-          "industry": "光電業",
-          "sub_group": null
-        },
-        {
-          "code": "6209",
-          "name": "今國光",
-          "close": 100.5,
-          "daily_change_pct": 8.06,
-          "volume_multiple": null,
-          "volume": 55194753,
-          "industry": "光電業",
-          "sub_group": null
-        },
-        {
-          "code": "6153",
-          "name": "嘉聯益",
-          "close": 19.25,
-          "daily_change_pct": 6.65,
-          "volume_multiple": null,
-          "volume": 29443703,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
-          "code": "6108",
-          "name": "競國",
-          "close": 30.85,
-          "daily_change_pct": 5.65,
-          "volume_multiple": null,
-          "volume": 9961151,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
           "code": "6465",
           "name": "威潤",
           "close": 47.45,
@@ -421,63 +271,53 @@
           "sub_group": null
         },
         {
-          "code": "6415",
-          "name": "矽力*-KY",
-          "close": 489.0,
-          "daily_change_pct": 4.82,
+          "code": "6108",
+          "name": "競國",
+          "close": 31.6,
+          "daily_change_pct": 2.43,
           "volume_multiple": null,
-          "volume": 12572866,
-          "industry": "半導體業",
-          "sub_group": "分離式半導體"
-        },
-        {
-          "code": "6672",
-          "name": "騰輝電子-KY",
-          "close": 591.0,
-          "daily_change_pct": 3.68,
-          "volume_multiple": null,
-          "volume": 1341215,
+          "volume": 10767173,
           "industry": "電子零組件業",
           "sub_group": null
         },
         {
-          "code": "6225",
-          "name": "天瀚",
-          "close": 87.5,
-          "daily_change_pct": 3.43,
+          "code": "6209",
+          "name": "今國光",
+          "close": 102.0,
+          "daily_change_pct": 1.49,
           "volume_multiple": null,
-          "volume": 157634,
+          "volume": 48023425,
           "industry": "光電業",
           "sub_group": null
         },
         {
-          "code": "6278",
-          "name": "台表科",
-          "close": 298.5,
-          "daily_change_pct": -1.49,
+          "code": "6269",
+          "name": "台郡",
+          "close": 80.3,
+          "daily_change_pct": -2.07,
           "volume_multiple": null,
-          "volume": 40009262,
-          "industry": "光電業",
+          "volume": 180081775,
+          "industry": "電子零組件業",
           "sub_group": null
         },
         {
-          "code": "2429",
-          "name": "銘旺科",
-          "close": 36.0,
-          "daily_change_pct": -5.76,
+          "code": "2424",
+          "name": "隴華",
+          "close": 15.15,
+          "daily_change_pct": -2.88,
           "volume_multiple": null,
-          "volume": 1453689,
-          "industry": "光電業",
+          "volume": 176275,
+          "industry": "通信網路業",
           "sub_group": null
         },
         {
-          "code": "6689",
-          "name": "伊雲谷",
-          "close": 70.5,
-          "daily_change_pct": 9.98,
+          "code": "2380",
+          "name": "虹光",
+          "close": 17.8,
+          "daily_change_pct": -5.57,
           "volume_multiple": null,
-          "volume": 1287208,
-          "industry": "數位雲端",
+          "volume": 518319,
+          "industry": "電腦及週邊設備業",
           "sub_group": null
         },
         {
@@ -491,13 +331,13 @@
           "sub_group": null
         },
         {
-          "code": "4557",
-          "name": "永新-KY",
-          "close": 57.0,
-          "daily_change_pct": 7.75,
+          "code": "2033",
+          "name": "佳大",
+          "close": 65.7,
+          "daily_change_pct": 9.87,
           "volume_multiple": null,
-          "volume": 183937,
-          "industry": "汽車工業",
+          "volume": 8061565,
+          "industry": "鋼鐵工業",
           "sub_group": null
         },
         {
@@ -508,36 +348,6 @@
           "volume_multiple": null,
           "volume": 5006201,
           "industry": "數位雲端",
-          "sub_group": null
-        },
-        {
-          "code": "1321",
-          "name": "大洋",
-          "close": 36.15,
-          "daily_change_pct": 0.42,
-          "volume_multiple": null,
-          "volume": 324183,
-          "industry": "塑膠工業",
-          "sub_group": null
-        },
-        {
-          "code": "6885",
-          "name": "全福生技",
-          "close": 33.6,
-          "daily_change_pct": 0.3,
-          "volume_multiple": null,
-          "volume": 1449873,
-          "industry": "生技醫療業",
-          "sub_group": null
-        },
-        {
-          "code": "4426",
-          "name": "利勤",
-          "close": 8.59,
-          "daily_change_pct": -0.35,
-          "volume_multiple": null,
-          "volume": 712349,
-          "industry": "紡織纖維",
           "sub_group": null
         },
         {
@@ -567,23 +377,8 @@
         "near_120d_high_max_pct": 15.0
       },
       "warmup": true,
-      "signal_count": 1,
-      "signals": [
-        {
-          "code": "6112",
-          "name": "邁達特",
-          "close": 49.2,
-          "daily_change_pct": 8.13,
-          "volume_multiple": 2.8,
-          "volume": 8850150,
-          "industry": "資訊服務業",
-          "sub_group": null,
-          "consolidation_days": 17,
-          "contraction_count": 2,
-          "breakout_level": 46.5,
-          "last_contraction_low": 45.5
-        }
-      ]
+      "signal_count": 0,
+      "signals": []
     }
   ],
   "group_rotation": {
