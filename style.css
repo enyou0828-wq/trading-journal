@@ -255,10 +255,6 @@ body {
 .chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .chart-head h2 { font-size: 15px; margin: 0; }
 .chart-body { width: 100%; }
-/* 兩張報酬累計曲線並排；窄螢幕改成上下排 */
-.chart-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.chart-pair > .chart-card { min-width: 0; }
-@media (max-width: 900px) { .chart-pair { grid-template-columns: 1fr; gap: 0; } }
 .chart-body svg { width: 100%; display: block; overflow: visible; }
 
 .signal-sets-grid {

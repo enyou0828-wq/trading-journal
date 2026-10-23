@@ -78,9 +78,8 @@ const db = getFirestore(fbApp);
     return (profitWan * 10000 / basis) * 100;
   }
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
-  const EQUITY_CURVE_START = '2026-06-01';
-  // 第二格報酬累計曲線的起點：個人、櫃買、加權三條線都從這天的 0% 重新起算
-  const EQUITY_CURVE_START_2 = '2026-09-01';
+  // 報酬累計曲線的起點：個人、櫃買、加權三條線都從這天的 0% 起算（原本 6/1 起的圖已移除）
+  const EQUITY_CURVE_START = '2026-09-01';
 
   // ---- 供應鏈資料模型 ----
   // 節點是扁平陣列，用 parentIds（可多個上層）表達階層，不用巢狀樹狀結構，
@@ -1266,8 +1265,7 @@ const db = getFirestore(fbApp);
     }
 
     renderMonthlyStatsTable(allRealized);
-    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START), { elId: 'equity-chart' });
-    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START_2), { elId: 'equity-chart-sep', startDate: EQUITY_CURVE_START_2, autoY: true });
+    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START), { startDate: EQUITY_CURVE_START, autoY: true });
     renderMonthlyChart(s.weighted);
     renderStrategyChart(s.realized);
     renderSectorChart(s.realized);
@@ -1452,8 +1450,7 @@ const db = getFirestore(fbApp);
     const twiSeries = computeTwiSeries(binStart, BIN_DAYS, startDate);
     const twiBinsByIdx = new Map(twiSeries.map(p => [Math.round((p.binTs - binStart) / binMs), p]));
 
-    // 兩格並排後每張圖只有一半寬，viewBox 縮窄讓文字維持可讀大小
-    const W = 560, H = 320, PAD = { top: 16, right: 12, bottom: 36, left: 50 };
+    const W = 900, H = 280, PAD = { top: 16, right: 16, bottom: 36, left: 56 };
     const innerW = W - PAD.left - PAD.right, innerH = H - PAD.top - PAD.bottom;
 
     // 縱軸固定為 -50% ~ +50%，每 10% 一格；autoY 時依三條線的最大振幅縮放（至少 ±10%）
