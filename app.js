@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getMessaging, isSupported as isMessagingSupported, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
@@ -821,17 +821,121 @@ const db = getFirestore(fbApp);
   });
 
   // ================= FUTURES =================
-  // 每點價值（元）：大台 200、小台 50、微台 10。損益獨立統計，不進股票的資金加權報酬與月度回顧。
+  // 期貨分頁＝線圖＋簡易紀錄：每筆 { id, date, trend: '順'|'逆', pnl: 元 | null, images: [chartId] }。
+  // 損益獨立統計，不進股票的資金加權報酬與月度回顧。
+  // 圖片不能塞進 journals/{uid}（整個 state 一份文件，上限 1 MB），每張圖壓成 JPEG 後
+  // 各自存一份文件：journals/{uid}/futuresCharts/{chartId} = { data: dataURL, createdAt }。
+  // 舊版紀錄（大台／小台口數、進出場點數）沒有 pnl 欄位時，用 legacyFuturesPnl 換算。
   const FUTURES_POINT_VALUE = { '大台': 200, '小台': 50, '微台': 10 };
-
-  function futuresPnl(f) {
+  function legacyFuturesPnl(f) {
     const points = (f.exit - f.entry) * (f.side === '空' ? -1 : 1);
-    const pnl = points * (FUTURES_POINT_VALUE[f.product] || 0) * f.lots - (f.fee || 0);
-    return { points, pnl };
+    return points * (FUTURES_POINT_VALUE[f.product] || 0) * f.lots - (f.fee || 0);
+  }
+  function futurePnlOf(f) {
+    if (f.pnl != null && f.pnl !== '') return +f.pnl;
+    if (f.entry != null && f.exit != null) return legacyFuturesPnl(f);
+    return null;
   }
 
   const fmtYuan = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('zh-TW');
   const pnlClassOf = (n) => n > 0 ? 'pnl-pos' : n < 0 ? 'pnl-neg' : 'pnl-zero';
+
+  const FT_RULE_HINT = '圖片沒有存成功：Firestore 規則還不允許寫入線圖。\n到 Firebase 主控台 → Firestore → 規則，在 match /databases/{database}/documents { … } 裡加上：\n\nmatch /journals/{uid}/futuresCharts/{chartId} {\n  allow read, write: if request.auth != null && request.auth.uid == uid;\n}';
+  function chartRef(chartId) { return doc(db, 'journals', currentUser.uid, 'futuresCharts', chartId); }
+  const chartCache = new Map(); // chartId -> Promise<dataURL | null>
+  function loadChart(chartId) {
+    if (!chartCache.has(chartId)) {
+      chartCache.set(chartId, (async () => {
+        try {
+          const snap = await getDoc(chartRef(chartId));
+          return snap.exists() ? snap.data().data : null;
+        } catch (e) { console.error('load chart failed', e); chartCache.delete(chartId); return null; }
+      })());
+    }
+    return chartCache.get(chartId);
+  }
+
+  // 截圖壓成 JPEG：最長邊 1600px，品質由高往低試，直到 dataURL 小於 900 KB（文件上限 1 MB）
+  async function compressImage(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+      let scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      for (let round = 0; round < 4; round++) {
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); // 透明 PNG 轉 JPEG 時不要變黑底
+        g.drawImage(img, 0, 0, c.width, c.height);
+        for (const q of [0.85, 0.75, 0.6]) {
+          const data = c.toDataURL('image/jpeg', q);
+          if (data.length < 900000) return data;
+        }
+        scale *= 0.7;
+      }
+      throw new Error('image too large');
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  let ftPending = []; // { id, file, url }
+  function ftMsg(text, isErr) {
+    const el = document.getElementById('ft-msg');
+    el.textContent = text || ''; el.hidden = !text; el.classList.toggle('err', !!isErr);
+  }
+  function renderFtPending() {
+    const box = document.getElementById('ft-pending');
+    box.innerHTML = ftPending.map(p => `<div class="ft-thumb"><img src="${p.url}" alt=""><button type="button" class="ft-x" data-id="${p.id}" title="移除">✕</button></div>`).join('');
+    box.querySelectorAll('.ft-x').forEach(b => b.addEventListener('click', () => {
+      const p = ftPending.find(x => x.id === b.dataset.id);
+      if (p) URL.revokeObjectURL(p.url);
+      ftPending = ftPending.filter(x => x.id !== b.dataset.id);
+      renderFtPending();
+    }));
+    box.querySelectorAll('img').forEach(im => im.addEventListener('click', () => openLightbox(im.src)));
+  }
+  function addFtFiles(files) {
+    [...files].filter(f => f.type && f.type.startsWith('image/')).forEach(file => {
+      ftPending.push({ id: uid(), file, url: URL.createObjectURL(file) });
+    });
+    ftMsg('');
+    renderFtPending();
+  }
+  function openLightbox(src) {
+    const lb = document.getElementById('ft-lightbox');
+    lb.querySelector('img').src = src;
+    lb.hidden = false;
+  }
+  document.getElementById('ft-lightbox').addEventListener('click', (e) => { e.currentTarget.hidden = true; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.getElementById('ft-lightbox').hidden = true; });
+
+  const ftDrop = document.getElementById('ft-drop');
+  document.getElementById('ft-files').addEventListener('change', (e) => { addFtFiles(e.target.files); e.target.value = ''; });
+  ftDrop.addEventListener('dragover', (e) => { e.preventDefault(); ftDrop.classList.add('over'); });
+  ftDrop.addEventListener('dragleave', () => ftDrop.classList.remove('over'));
+  ftDrop.addEventListener('drop', (e) => { e.preventDefault(); ftDrop.classList.remove('over'); addFtFiles(e.dataTransfer.files); });
+  document.addEventListener('paste', (e) => {
+    if (!document.getElementById('panel-futures').classList.contains('active')) return;
+    const files = [...(e.clipboardData?.items || [])].filter(it => it.kind === 'file').map(it => it.getAsFile()).filter(Boolean);
+    if (files.length) { e.preventDefault(); addFtFiles(files); }
+  });
+
+  function futuresStats(list) {
+    const pnls = list.map(futurePnlOf).filter(n => n != null);
+    const n = pnls.length;
+    const wins = pnls.filter(v => v > 0), losses = pnls.filter(v => v < 0);
+    const winSum = wins.reduce((a, v) => a + v, 0), lossSum = -losses.reduce((a, v) => a + v, 0);
+    const total = pnls.reduce((a, v) => a + v, 0);
+    return {
+      n, wins: wins.length, losses: losses.length, total,
+      winRate: n ? wins.length / n * 100 : null,
+      pf: lossSum > 0 ? winSum / lossSum : (winSum > 0 ? Infinity : null),
+      expectancy: n ? total / n : null,
+      avgWin: wins.length ? winSum / wins.length : null,
+      avgLoss: losses.length ? -lossSum / losses.length : null,
+    };
+  }
+  const fmtPf = (pf) => pf == null ? '–' : pf === Infinity ? '∞' : pf.toFixed(2);
 
   function renderFutures() {
     if (!Array.isArray(state.futures)) state.futures = [];
@@ -840,61 +944,78 @@ const db = getFirestore(fbApp);
     const items = [...state.futures].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
     tbody.innerHTML = items.map(f => {
-      const { points, pnl } = futuresPnl(f);
+      const pnl = futurePnlOf(f);
+      const trend = f.trend === '順' ? '<span class="badge action-in">順勢</span>' : f.trend === '逆' ? '<span class="badge action-out">逆勢</span>' : '–';
+      const thumbs = (f.images || []).map(cid => `<div class="ft-thumb"><img data-cid="${escapeHtml(cid)}" alt=""></div>`).join('');
       return `
         <tr>
           <td>${escapeHtml(f.date)}</td>
-          <td>${escapeHtml(f.product)}</td>
-          <td><span class="badge ${f.side === '空' ? 'action-out' : 'action-in'}">${f.side === '空' ? '做空' : '做多'}</span></td>
-          <td class="num">${f.lots}</td>
-          <td class="num">${f.entry}</td>
-          <td class="num">${f.exit}</td>
-          <td class="num ${pnlClassOf(points)}">${points > 0 ? '+' : ''}${points}</td>
-          <td class="num ${pnlClassOf(pnl)}">${fmtYuan(pnl)}</td>
-          <td>${escapeHtml(f.note || '')}</td>
+          <td>${trend}</td>
+          <td class="num ${pnl == null ? '' : pnlClassOf(pnl)}">${pnl == null ? '–' : fmtYuan(pnl)}</td>
+          <td>${thumbs ? `<div class="ft-thumbs">${thumbs}</div>` : '–'}</td>
           <td><button class="icon-btn btn-del-future" data-id="${f.id}" title="刪除">✕</button></td>
         </tr>`;
     }).join('');
     empty.style.display = items.length ? 'none' : '';
 
+    if (currentUser) {
+      tbody.querySelectorAll('img[data-cid]').forEach(async im => {
+        const data = await loadChart(im.dataset.cid);
+        if (data) { im.src = data; im.addEventListener('click', () => openLightbox(data)); }
+        else im.alt = '讀取失敗';
+      });
+    }
+
     tbody.querySelectorAll('.btn-del-future').forEach(btn => {
       btn.addEventListener('click', async () => {
-        state.futures = state.futures.filter(f => f.id !== btn.dataset.id);
+        const f = state.futures.find(x => x.id === btn.dataset.id);
+        const n = (f?.images || []).length;
+        if (!confirm(n ? `刪除這筆紀錄和 ${n} 張線圖？` : '刪除這筆紀錄？')) return;
+        state.futures = state.futures.filter(x => x.id !== btn.dataset.id);
         await save();
+        if (currentUser) for (const cid of (f?.images || [])) {
+          try { await deleteDoc(chartRef(cid)); chartCache.delete(cid); } catch (e) { console.error('delete chart failed', e); }
+        }
         renderFutures();
       });
     });
 
-    const pnls = items.map(f => futuresPnl(f).pnl);
-    const total = pnls.reduce((s, n) => s + n, 0);
-    const wins = pnls.filter(n => n > 0).length;
-    const losses = pnls.filter(n => n < 0).length;
-    const winRate = items.length ? (wins / items.length) * 100 : 0;
-    const winSum = pnls.filter(n => n > 0).reduce((s, n) => s + n, 0);
-    const lossSum = -pnls.filter(n => n < 0).reduce((s, n) => s + n, 0);
-    document.getElementById('futures-summary').innerHTML = items.length ? `
-      <div class="stat-tile">
-        <span class="stat-label">總淨損益</span>
-        <span class="stat-value ${pnlClassOf(total)}">${fmtWan(total / 10000, 2)}</span>
-      </div>
+    const all = futuresStats(items);
+    document.getElementById('futures-summary').innerHTML = all.n ? `
       <div class="stat-tile">
         <span class="stat-label">勝率</span>
-        <span class="stat-value">${winRate.toFixed(1)}%</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-label">交易次數</span>
-        <span class="stat-value">${items.length}</span>
-        <span class="stat-sub">${wins} 勝 / ${losses} 敗</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-label">平均獲利 / 平均虧損 (元)</span>
-        <span class="stat-value">${wins ? fmtYuan(winSum / wins) : '–'} / ${losses ? fmtYuan(-lossSum / losses) : '–'}</span>
+        <span class="stat-value">${all.winRate.toFixed(1)}%</span>
+        <span class="stat-sub">${all.wins} 勝 / ${all.losses} 敗（共 ${all.n} 筆）</span>
       </div>
       <div class="stat-tile">
         <span class="stat-label">Profit Factor</span>
-        <span class="stat-value">${lossSum > 0 ? (winSum / lossSum).toFixed(2) : '–'}</span>
+        <span class="stat-value">${fmtPf(all.pf)}</span>
+        <span class="stat-sub">總獲利 ÷ 總虧損</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">期望值 (元/筆)</span>
+        <span class="stat-value ${pnlClassOf(all.expectancy)}">${fmtYuan(all.expectancy)}</span>
+        <span class="stat-sub">平均獲利 ${all.avgWin == null ? '–' : fmtYuan(all.avgWin)} / 平均虧損 ${all.avgLoss == null ? '–' : fmtYuan(all.avgLoss)}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">總損益 (元)</span>
+        <span class="stat-value ${pnlClassOf(all.total)}">${fmtYuan(all.total)}</span>
       </div>
     ` : '';
+
+    const rows = [['全部', items], ['順勢', items.filter(f => f.trend === '順')], ['逆勢', items.filter(f => f.trend === '逆')]];
+    document.getElementById('futures-split-card').hidden = !all.n;
+    document.getElementById('futures-split-tbody').innerHTML = rows.map(([name, list]) => {
+      const st = futuresStats(list);
+      return `<tr>
+        <td>${name}</td>
+        <td class="num">${st.n}</td>
+        <td class="num">${st.winRate == null ? '–' : st.winRate.toFixed(1) + '%'}</td>
+        <td class="num">${fmtPf(st.pf)}</td>
+        <td class="num ${st.expectancy == null ? '' : pnlClassOf(st.expectancy)}">${st.expectancy == null ? '–' : fmtYuan(st.expectancy)}</td>
+        <td class="num ${st.n ? pnlClassOf(st.total) : ''}">${st.n ? fmtYuan(st.total) : '–'}</td>
+      </tr>`;
+    }).join('');
   }
 
   document.getElementById('ft-date').value = new Date().toLocaleDateString('sv-SE');
@@ -902,23 +1023,40 @@ const db = getFirestore(fbApp);
   document.getElementById('futures-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const date = document.getElementById('ft-date').value;
-    const lots = parseInt(document.getElementById('ft-lots').value, 10);
-    const entry = parseFloat(document.getElementById('ft-entry').value);
-    const exit = parseFloat(document.getElementById('ft-exit').value);
-    const feeRaw = parseFloat(document.getElementById('ft-fee').value);
-    if (!date || !(lots > 0) || !(entry > 0) || !(exit > 0)) return;
+    const pnlRaw = document.getElementById('ft-pnl').value.trim();
+    const pnl = pnlRaw === '' ? null : parseFloat(pnlRaw);
+    if (!date || (pnl != null && isNaN(pnl))) return;
+    if (pnl == null && !ftPending.length) { ftMsg('請填損益或加一張線圖。', true); return; }
+    if (!currentUser) { ftMsg('請先登入，紀錄和線圖才能存到雲端。', true); return; }
+    const btn = document.getElementById('ft-submit');
+    btn.disabled = true;
+    const images = [];
+    try {
+      for (let k = 0; k < ftPending.length; k++) {
+        ftMsg(`上傳線圖 ${k + 1} / ${ftPending.length}…`);
+        const data = await compressImage(ftPending[k].file);
+        const cid = uid();
+        await setDoc(chartRef(cid), { data, createdAt: Date.now() });
+        chartCache.set(cid, Promise.resolve(data));
+        images.push(cid);
+      }
+    } catch (err) {
+      console.error('upload chart failed', err);
+      for (const cid of images) { try { await deleteDoc(chartRef(cid)); } catch (_) {} }
+      ftMsg(err && err.code === 'permission-denied' ? FT_RULE_HINT : '線圖上傳失敗，請再試一次。', true);
+      btn.disabled = false;
+      return;
+    }
     if (!Array.isArray(state.futures)) state.futures = [];
-    state.futures.push({
-      id: uid(), date,
-      product: document.getElementById('ft-product').value,
-      side: document.getElementById('ft-side').value,
-      lots, entry, exit,
-      fee: isNaN(feeRaw) ? 0 : feeRaw,
-      note: document.getElementById('ft-note').value.trim(),
-    });
+    state.futures.push({ id: uid(), date, trend: document.getElementById('ft-trend').value, pnl, images });
     await save();
+    ftPending.forEach(p => URL.revokeObjectURL(p.url));
+    ftPending = [];
+    renderFtPending();
+    document.getElementById('ft-pnl').value = '';
+    ftMsg('');
+    btn.disabled = false;
     renderFutures();
-    ['ft-lots', 'ft-entry', 'ft-exit', 'ft-fee', 'ft-note'].forEach(id => { document.getElementById(id).value = ''; });
   });
 
   // ---- 推播通知（Firebase Cloud Messaging）----

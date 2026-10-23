@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2a78d6">
-<link rel="stylesheet" href="style.css?v=20261023194053">
+<link rel="stylesheet" href="style.css?v=20261023232143">
 </head>
 <body>
 
@@ -153,29 +153,42 @@
       <div class="chart-card">
         <form id="futures-form" class="form-row">
           <label>日期 <input type="date" id="ft-date" required></label>
-          <label>商品
-            <select id="ft-product">
-              <option value="大台">大台</option>
-              <option value="小台">小台</option>
-              <option value="微台">微台</option>
+          <label>順／逆
+            <select id="ft-trend">
+              <option value="順">順勢</option>
+              <option value="逆">逆勢</option>
             </select>
           </label>
-          <label>方向
-            <select id="ft-side">
-              <option value="多">做多</option>
-              <option value="空">做空</option>
-            </select>
-          </label>
-          <label>口數 <input type="number" id="ft-lots" placeholder="1" step="1" min="1" required></label>
-          <label>進場點數 <input type="number" id="ft-entry" placeholder="23000" step="1" min="0" required></label>
-          <label>出場點數 <input type="number" id="ft-exit" placeholder="23100" step="1" min="0" required></label>
-          <label>手續費＋稅 (元) <input type="number" id="ft-fee" placeholder="0" step="1" min="0"></label>
-          <label>理由 <input type="text" id="ft-note"></label>
-          <button type="submit" class="btn primary" style="align-self:flex-end;">＋ 新增期貨交易</button>
+          <label>損益 (元) <input type="number" id="ft-pnl" placeholder="3000 或 -1500" step="1"></label>
+          <button type="submit" class="btn primary" id="ft-submit" style="align-self:flex-end;">＋ 新增</button>
         </form>
+        <label class="ft-drop" id="ft-drop">
+          <input type="file" id="ft-files" accept="image/*" multiple hidden>
+          <span>拖曳、點選或 ⌘V 貼上線圖</span>
+        </label>
+        <div class="ft-pending" id="ft-pending"></div>
+        <p class="ft-msg" id="ft-msg" hidden></p>
       </div>
 
       <div class="stat-grid" id="futures-summary"></div>
+
+      <div class="chart-card" id="futures-split-card" hidden>
+        <div class="table-wrap">
+          <table class="trade-table ft-split">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="num">筆數</th>
+                <th class="num">勝率</th>
+                <th class="num">Profit Factor</th>
+                <th class="num">期望值 (元/筆)</th>
+                <th class="num">總損益 (元)</th>
+              </tr>
+            </thead>
+            <tbody id="futures-split-tbody"></tbody>
+          </table>
+        </div>
+      </div>
 
       <div class="chart-card">
         <div class="table-wrap">
@@ -183,14 +196,9 @@
             <thead>
               <tr>
                 <th>日期</th>
-                <th>商品</th>
-                <th>方向</th>
-                <th class="num">口數</th>
-                <th class="num">進場</th>
-                <th class="num">出場</th>
-                <th class="num">點數</th>
-                <th class="num">淨損益 (元)</th>
-                <th>理由</th>
+                <th>順／逆</th>
+                <th class="num">損益 (元)</th>
+                <th>線圖</th>
                 <th></th>
               </tr>
             </thead>
@@ -199,6 +207,8 @@
           <p class="empty-state" id="futures-empty">還沒有任何期貨紀錄。</p>
         </div>
       </div>
+
+      <div class="ft-lightbox" id="ft-lightbox" hidden><img alt="線圖"></div>
     </section>
 
     <!-- ===== STATS TAB ===== -->
@@ -609,6 +619,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=20261023194053"></script>
+<script type="module" src="app.js?v=20261023232143"></script>
 </body>
 </html>
