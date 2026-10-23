@@ -80,6 +80,9 @@ const db = getFirestore(fbApp);
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
   // 報酬累計曲線的起點：個人、櫃買、加權三條線都從這天的 0% 起算（原本 6/1 起的圖已移除）
   const EQUITY_CURVE_START = '2026-09-01';
+  // 這張曲線個人報酬的分母：起點當天的實際淨值（9/1 = 9 月月初資金 55 萬），
+  // 所以藍線＝起點以來的真實報酬率。只影響這張圖，總覽的資金加權累計報酬仍用 fixedCapitalBasis。
+  const EQUITY_CURVE_CAPITAL = 550000;
 
   // ---- 供應鏈資料模型 ----
   // 節點是扁平陣列，用 parentIds（可多個上層）表達階層，不用巢狀樹狀結構，
@@ -1265,7 +1268,12 @@ const db = getFirestore(fbApp);
     }
 
     renderMonthlyStatsTable(allRealized);
-    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START), { startDate: EQUITY_CURVE_START, autoY: true });
+    renderEquityCurve(
+      s.weighted
+        .filter(t => t.date >= EQUITY_CURVE_START)
+        .map(t => ({ ...t, contrib: profitPct(t.profitWan, t.date, () => EQUITY_CURVE_CAPITAL) })),
+      { startDate: EQUITY_CURVE_START, autoY: true }
+    );
     renderMonthlyChart(s.weighted);
     renderStrategyChart(s.realized);
     renderSectorChart(s.realized);
@@ -1522,7 +1530,7 @@ const db = getFirestore(fbApp);
 
     const legend = (otcSeries.length || twiSeries.length) ? `
       <div class="legend" style="margin-bottom:6px;">
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>個人資金加權報酬</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>${opts.startDate ? `個人報酬（${opts.startDate} 起，以 ${EQUITY_CURVE_CAPITAL / 10000} 萬為分母）` : '個人資金加權報酬'}</div>
         ${otcSeries.length ? `<div class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>櫃買指數（${otcSeries[0].date} 起，基準 0%，資料經核對）</div>` : ''}
         ${twiSeries.length ? `<div class="legend-item"><span class="legend-swatch" style="background:var(--series-2)"></span>加權指數（${twiSeries[0].date} 起，基準 0%，資料經核對）</div>` : ''}
       </div>
