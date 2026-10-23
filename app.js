@@ -79,6 +79,8 @@ const db = getFirestore(fbApp);
   }
   // 資金加權累計報酬曲線只看 6/1 之後的紀錄，6/1 當天視為 0% 起點（之前的紀錄不計入這條曲線）
   const EQUITY_CURVE_START = '2026-06-01';
+  // 第二格報酬累計曲線的起點：個人、櫃買、加權三條線都從這天的 0% 重新起算
+  const EQUITY_CURVE_START_2 = '2026-09-01';
 
   // ---- 供應鏈資料模型 ----
   // 節點是扁平陣列，用 parentIds（可多個上層）表達階層，不用巢狀樹狀結構，
@@ -1264,7 +1266,8 @@ const db = getFirestore(fbApp);
     }
 
     renderMonthlyStatsTable(allRealized);
-    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START));
+    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START), { elId: 'equity-chart' });
+    renderEquityCurve(s.weighted.filter(t => t.date >= EQUITY_CURVE_START_2), { elId: 'equity-chart-sep', startDate: EQUITY_CURVE_START_2, autoY: true });
     renderMonthlyChart(s.weighted);
     renderStrategyChart(s.realized);
     renderSectorChart(s.realized);
@@ -1411,16 +1414,22 @@ const db = getFirestore(fbApp);
   // ---- weighted cumulative return curve (SVG line chart) ----
   function parseDateTs(dateStr) { return new Date(dateStr + 'T00:00:00').getTime(); }
 
-  function renderEquityCurve(weighted) {
-    const el = document.getElementById('equity-chart');
+  // opts.startDate：指定起點時，個人曲線在起點補一個 0% 的點，兩條指數線也從起點收盤重新算 0%。
+  // opts.autoY：縱軸依資料自動縮放（起點較晚、波動較小時比較看得清楚），否則固定 ±50%。
+  function renderEquityCurve(weighted, opts = {}) {
+    const el = document.getElementById(opts.elId || 'equity-chart');
+    if (!el) return;
     el.innerHTML = '';
-    if (!weighted.length) {
+    const startDate = opts.startDate || null;
+    if (!weighted.length && !startDate) {
       el.innerHTML = '<p class="empty-state">尚無帶有損益（萬）的已實現紀錄，無法繪製曲線。</p>';
       return;
     }
     const sorted = [...weighted].sort((a, b) => a.date > b.date ? 1 : -1);
     let cum = 0;
     const raw = sorted.map(t => { cum += t.contrib; return { date: t.date, ts: parseDateTs(t.date), value: cum, symbol: t.symbol, contrib: t.contrib }; });
+    const anchor = startDate ? { date: startDate, ts: parseDateTs(startDate), value: 0, symbol: '起點', contrib: 0, count: 1, isAnchor: true } : null;
+    if (anchor) raw.unshift(anchor);
 
     // 每 6 天合併成一個資料點（取區間內最後一筆的累計值），避免資料點過於密集
     const BIN_DAYS = 3;
@@ -1432,20 +1441,28 @@ const db = getFirestore(fbApp);
       const existing = bins.get(idx);
       bins.set(idx, { ...p, count: existing ? existing.count + 1 : 1 });
     });
+    // 跟指數線一樣：起點那一桶固定畫 0%，不被同一桶裡較晚的交易蓋掉（累計值會在下一桶接上）
+    if (anchor) bins.set(0, anchor);
     // binTs：每個桶固定用「桶的起始時間」當作繪圖 x 座標（而非桶內最後一筆的實際日期），
     // 這樣個人曲線跟櫃買指數線只要落在同一個桶，x 座標就會完全一致、對得齊。
     const points = [...bins.keys()].sort((a, b) => a - b).map(k => ({ ...bins.get(k), binTs: binStart + k * binMs }));
 
-    const otcSeries = computeOtcSeries(binStart, BIN_DAYS);
+    const otcSeries = computeOtcSeries(binStart, BIN_DAYS, startDate);
     const otcBinsByIdx = new Map(otcSeries.map(p => [Math.round((p.binTs - binStart) / binMs), p]));
-    const twiSeries = computeTwiSeries(binStart, BIN_DAYS);
+    const twiSeries = computeTwiSeries(binStart, BIN_DAYS, startDate);
     const twiBinsByIdx = new Map(twiSeries.map(p => [Math.round((p.binTs - binStart) / binMs), p]));
 
-    const W = 900, H = 280, PAD = { top: 16, right: 16, bottom: 36, left: 56 };
+    // 兩格並排後每張圖只有一半寬，viewBox 縮窄讓文字維持可讀大小
+    const W = 560, H = 320, PAD = { top: 16, right: 12, bottom: 36, left: 50 };
     const innerW = W - PAD.left - PAD.right, innerH = H - PAD.top - PAD.bottom;
 
-    // 縱軸固定為 -50% ~ +50%，每 10% 一格
-    const min = -50, max = 50;
+    // 縱軸固定為 -50% ~ +50%，每 10% 一格；autoY 時依三條線的最大振幅縮放（至少 ±10%）
+    let min = -50, max = 50, gridStep = 10;
+    if (opts.autoY) {
+      const peak = Math.max(...[...points, ...otcSeries, ...twiSeries].map(p => Math.abs(p.value)), 0);
+      const lim = Math.max(10, Math.ceil(peak * 1.15 / 5) * 5);
+      min = -lim; max = lim; gridStep = lim <= 20 ? 5 : 10;
+    }
 
     // 用「原始交易」的日期範圍當作 X 軸範圍（而非合併後的區間點），
     // 這樣月初/月中標記線才不會因為合併時取區間內最後一筆而被誤判裁掉
@@ -1461,7 +1478,6 @@ const db = getFirestore(fbApp);
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.binTs).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
     const areaPath = `${linePath} L ${x(points[points.length - 1].binTs).toFixed(1)} ${zeroY.toFixed(1)} L ${x(points[0].binTs).toFixed(1)} ${zeroY.toFixed(1)} Z`;
 
-    const gridStep = 10;
     let gridLines = '';
     let axisLabels = '';
     for (let v = min; v <= max; v += gridStep) {
@@ -1540,7 +1556,9 @@ const db = getFirestore(fbApp);
       dot.addEventListener('mouseenter', () => {
         const i = +dot.dataset.i;
         const p = points[i];
-        tooltip.innerHTML = `<div class="tt-title">${p.date}${p.count > 1 ? `（近 ${BIN_DAYS} 天內 ${p.count} 筆）` : ''}</div><div>最新一筆：${p.symbol}</div><div>累計 ${fmtPct(p.value, 2)}</div>`;
+        tooltip.innerHTML = p.isAnchor
+          ? `<div class="tt-title">${p.date}</div><div>起點 0%</div>`
+          : `<div class="tt-title">${p.date}${p.count > 1 ? `（近 ${BIN_DAYS} 天內 ${p.count} 筆）` : ''}</div><div>最新一筆：${p.symbol}</div><div>累計 ${fmtPct(p.value, 2)}</div>`;
         tooltip.style.opacity = '1';
         dot.setAttribute('r', '5');
       });
