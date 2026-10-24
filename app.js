@@ -821,11 +821,10 @@ const db = getFirestore(fbApp);
   });
 
   // ================= FUTURES =================
-  // 期貨分頁＝線圖＋簡易紀錄：每筆 { id, date, trend: '順'|'逆', pnl: 元 | null, images: [chartId] }。
+  // 期貨分頁＝簡易文字紀錄：每筆 { id, date, trend: '順'|'逆', pnl: 元 }。
   // 損益獨立統計，不進股票的資金加權報酬與月度回顧。
-  // 圖片不能塞進 journals/{uid}（整個 state 一份文件，上限 1 MB），每張圖壓成 JPEG 後
-  // 各自存一份文件：journals/{uid}/futuresCharts/{chartId} = { data: dataURL, createdAt }。
   // 舊版紀錄（大台／小台口數、進出場點數）沒有 pnl 欄位時，用 legacyFuturesPnl 換算。
+  // 2026-10-23 短暫有過線圖上傳（journals/{uid}/futuresCharts），已拿掉；刪除帶 images 的舊紀錄時順手清掉圖。
   const FUTURES_POINT_VALUE = { '大台': 200, '小台': 50, '微台': 10 };
   function legacyFuturesPnl(f) {
     const points = (f.exit - f.entry) * (f.side === '空' ? -1 : 1);
@@ -839,86 +838,6 @@ const db = getFirestore(fbApp);
 
   const fmtYuan = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('zh-TW');
   const pnlClassOf = (n) => n > 0 ? 'pnl-pos' : n < 0 ? 'pnl-neg' : 'pnl-zero';
-
-  const FT_RULE_HINT = '圖片沒有存成功：Firestore 規則還不允許寫入線圖。\n到 Firebase 主控台 → Firestore → 規則，在 match /databases/{database}/documents { … } 裡加上：\n\nmatch /journals/{uid}/futuresCharts/{chartId} {\n  allow read, write: if request.auth != null && request.auth.uid == uid;\n}';
-  function chartRef(chartId) { return doc(db, 'journals', currentUser.uid, 'futuresCharts', chartId); }
-  const chartCache = new Map(); // chartId -> Promise<dataURL | null>
-  function loadChart(chartId) {
-    if (!chartCache.has(chartId)) {
-      chartCache.set(chartId, (async () => {
-        try {
-          const snap = await getDoc(chartRef(chartId));
-          return snap.exists() ? snap.data().data : null;
-        } catch (e) { console.error('load chart failed', e); chartCache.delete(chartId); return null; }
-      })());
-    }
-    return chartCache.get(chartId);
-  }
-
-  // 截圖壓成 JPEG：最長邊 1600px，品質由高往低試，直到 dataURL 小於 900 KB（文件上限 1 MB）
-  async function compressImage(file) {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
-      let scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
-      for (let round = 0; round < 4; round++) {
-        const c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(img.naturalWidth * scale));
-        c.height = Math.max(1, Math.round(img.naturalHeight * scale));
-        const g = c.getContext('2d');
-        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); // 透明 PNG 轉 JPEG 時不要變黑底
-        g.drawImage(img, 0, 0, c.width, c.height);
-        for (const q of [0.85, 0.75, 0.6]) {
-          const data = c.toDataURL('image/jpeg', q);
-          if (data.length < 900000) return data;
-        }
-        scale *= 0.7;
-      }
-      throw new Error('image too large');
-    } finally { URL.revokeObjectURL(url); }
-  }
-
-  let ftPending = []; // { id, file, url }
-  function ftMsg(text, isErr) {
-    const el = document.getElementById('ft-msg');
-    el.textContent = text || ''; el.hidden = !text; el.classList.toggle('err', !!isErr);
-  }
-  function renderFtPending() {
-    const box = document.getElementById('ft-pending');
-    box.innerHTML = ftPending.map(p => `<div class="ft-thumb"><img src="${p.url}" alt=""><button type="button" class="ft-x" data-id="${p.id}" title="移除">✕</button></div>`).join('');
-    box.querySelectorAll('.ft-x').forEach(b => b.addEventListener('click', () => {
-      const p = ftPending.find(x => x.id === b.dataset.id);
-      if (p) URL.revokeObjectURL(p.url);
-      ftPending = ftPending.filter(x => x.id !== b.dataset.id);
-      renderFtPending();
-    }));
-    box.querySelectorAll('img').forEach(im => im.addEventListener('click', () => openLightbox(im.src)));
-  }
-  function addFtFiles(files) {
-    [...files].filter(f => f.type && f.type.startsWith('image/')).forEach(file => {
-      ftPending.push({ id: uid(), file, url: URL.createObjectURL(file) });
-    });
-    ftMsg('');
-    renderFtPending();
-  }
-  function openLightbox(src) {
-    const lb = document.getElementById('ft-lightbox');
-    lb.querySelector('img').src = src;
-    lb.hidden = false;
-  }
-  document.getElementById('ft-lightbox').addEventListener('click', (e) => { e.currentTarget.hidden = true; });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.getElementById('ft-lightbox').hidden = true; });
-
-  const ftDrop = document.getElementById('ft-drop');
-  document.getElementById('ft-files').addEventListener('change', (e) => { addFtFiles(e.target.files); e.target.value = ''; });
-  ftDrop.addEventListener('dragover', (e) => { e.preventDefault(); ftDrop.classList.add('over'); });
-  ftDrop.addEventListener('dragleave', () => ftDrop.classList.remove('over'));
-  ftDrop.addEventListener('drop', (e) => { e.preventDefault(); ftDrop.classList.remove('over'); addFtFiles(e.dataTransfer.files); });
-  document.addEventListener('paste', (e) => {
-    if (!document.getElementById('panel-futures').classList.contains('active')) return;
-    const files = [...(e.clipboardData?.items || [])].filter(it => it.kind === 'file').map(it => it.getAsFile()).filter(Boolean);
-    if (files.length) { e.preventDefault(); addFtFiles(files); }
-  });
 
   function futuresStats(list) {
     const pnls = list.map(futurePnlOf).filter(n => n != null);
@@ -946,35 +865,24 @@ const db = getFirestore(fbApp);
     tbody.innerHTML = items.map(f => {
       const pnl = futurePnlOf(f);
       const trend = f.trend === '順' ? '<span class="badge action-in">順勢</span>' : f.trend === '逆' ? '<span class="badge action-out">逆勢</span>' : '–';
-      const thumbs = (f.images || []).map(cid => `<div class="ft-thumb"><img data-cid="${escapeHtml(cid)}" alt=""></div>`).join('');
       return `
         <tr>
           <td>${escapeHtml(f.date)}</td>
           <td>${trend}</td>
           <td class="num ${pnl == null ? '' : pnlClassOf(pnl)}">${pnl == null ? '–' : fmtYuan(pnl)}</td>
-          <td>${thumbs ? `<div class="ft-thumbs">${thumbs}</div>` : '–'}</td>
           <td><button class="icon-btn btn-del-future" data-id="${f.id}" title="刪除">✕</button></td>
         </tr>`;
     }).join('');
     empty.style.display = items.length ? 'none' : '';
 
-    if (currentUser) {
-      tbody.querySelectorAll('img[data-cid]').forEach(async im => {
-        const data = await loadChart(im.dataset.cid);
-        if (data) { im.src = data; im.addEventListener('click', () => openLightbox(data)); }
-        else im.alt = '讀取失敗';
-      });
-    }
-
     tbody.querySelectorAll('.btn-del-future').forEach(btn => {
       btn.addEventListener('click', async () => {
         const f = state.futures.find(x => x.id === btn.dataset.id);
-        const n = (f?.images || []).length;
-        if (!confirm(n ? `刪除這筆紀錄和 ${n} 張線圖？` : '刪除這筆紀錄？')) return;
+        if (!confirm('刪除這筆紀錄？')) return;
         state.futures = state.futures.filter(x => x.id !== btn.dataset.id);
         await save();
         if (currentUser) for (const cid of (f?.images || [])) {
-          try { await deleteDoc(chartRef(cid)); chartCache.delete(cid); } catch (e) { console.error('delete chart failed', e); }
+          try { await deleteDoc(doc(db, 'journals', currentUser.uid, 'futuresCharts', cid)); } catch (e) { console.error('delete chart failed', e); }
         }
         renderFutures();
       });
@@ -1023,39 +931,12 @@ const db = getFirestore(fbApp);
   document.getElementById('futures-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const date = document.getElementById('ft-date').value;
-    const pnlRaw = document.getElementById('ft-pnl').value.trim();
-    const pnl = pnlRaw === '' ? null : parseFloat(pnlRaw);
-    if (!date || (pnl != null && isNaN(pnl))) return;
-    if (pnl == null && !ftPending.length) { ftMsg('請填損益或加一張線圖。', true); return; }
-    if (!currentUser) { ftMsg('請先登入，紀錄和線圖才能存到雲端。', true); return; }
-    const btn = document.getElementById('ft-submit');
-    btn.disabled = true;
-    const images = [];
-    try {
-      for (let k = 0; k < ftPending.length; k++) {
-        ftMsg(`上傳線圖 ${k + 1} / ${ftPending.length}…`);
-        const data = await compressImage(ftPending[k].file);
-        const cid = uid();
-        await setDoc(chartRef(cid), { data, createdAt: Date.now() });
-        chartCache.set(cid, Promise.resolve(data));
-        images.push(cid);
-      }
-    } catch (err) {
-      console.error('upload chart failed', err);
-      for (const cid of images) { try { await deleteDoc(chartRef(cid)); } catch (_) {} }
-      ftMsg(err && err.code === 'permission-denied' ? FT_RULE_HINT : '線圖上傳失敗，請再試一次。', true);
-      btn.disabled = false;
-      return;
-    }
+    const pnl = parseFloat(document.getElementById('ft-pnl').value);
+    if (!date || isNaN(pnl)) return;
     if (!Array.isArray(state.futures)) state.futures = [];
-    state.futures.push({ id: uid(), date, trend: document.getElementById('ft-trend').value, pnl, images });
+    state.futures.push({ id: uid(), date, trend: document.getElementById('ft-trend').value, pnl });
     await save();
-    ftPending.forEach(p => URL.revokeObjectURL(p.url));
-    ftPending = [];
-    renderFtPending();
     document.getElementById('ft-pnl').value = '';
-    ftMsg('');
-    btn.disabled = false;
     renderFutures();
   });
 

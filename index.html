@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2a78d6">
-<link rel="stylesheet" href="style.css?v=20261023232143">
+<link rel="stylesheet" href="style.css?v=20261024105431">
 </head>
 <body>
 
@@ -159,15 +159,9 @@
               <option value="逆">逆勢</option>
             </select>
           </label>
-          <label>損益 (元) <input type="number" id="ft-pnl" placeholder="3000 或 -1500" step="1"></label>
+          <label>損益 (元) <input type="number" id="ft-pnl" placeholder="3000 或 -1500" step="1" required></label>
           <button type="submit" class="btn primary" id="ft-submit" style="align-self:flex-end;">＋ 新增</button>
         </form>
-        <label class="ft-drop" id="ft-drop">
-          <input type="file" id="ft-files" accept="image/*" multiple hidden>
-          <span>拖曳、點選或 ⌘V 貼上線圖</span>
-        </label>
-        <div class="ft-pending" id="ft-pending"></div>
-        <p class="ft-msg" id="ft-msg" hidden></p>
       </div>
 
       <div class="stat-grid" id="futures-summary"></div>
@@ -198,7 +192,6 @@
                 <th>日期</th>
                 <th>順／逆</th>
                 <th class="num">損益 (元)</th>
-                <th>線圖</th>
                 <th></th>
               </tr>
             </thead>
@@ -207,8 +200,6 @@
           <p class="empty-state" id="futures-empty">還沒有任何期貨紀錄。</p>
         </div>
       </div>
-
-      <div class="ft-lightbox" id="ft-lightbox" hidden><img alt="線圖"></div>
     </section>
 
     <!-- ===== STATS TAB ===== -->
@@ -619,6 +610,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=20261023232143"></script>
+<script type="module" src="app.js?v=20261024105431"></script>
 </body>
 </html>
