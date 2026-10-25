@@ -999,6 +999,8 @@ const db = getFirestore(fbApp);
 
     tbody.innerHTML = '';
     tradesEmpty.style.display = list.length ? 'none' : 'block';
+    // 損益佔淨值：損益（萬）÷ 當月淨值，淨值跟各月份資金加權報酬用同一份 basisMap
+    const basisMap = buildMonthlyCapitalBasisMap(state.trades.filter(x => x.returnPct != null));
 
     for (const t of list) {
       const tr = document.createElement('tr');
@@ -1017,6 +1019,7 @@ const db = getFirestore(fbApp);
         <td>${escapeHtml(t.sector || '–')}</td>
         <td class="num ${profitClass}">${fmtWan(profitWan, 2)}</td>
         <td class="num ${pnlClass}">${fmtPct(t.returnPct, 2)}</td>
+        <td class="num ${profitClass}">${profitWan == null ? '–' : fmtPct(monthlyProfitPct(profitWan, t.date, basisMap), 2)}</td>
         <td>${ratingHtml}</td>
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">${escapeHtml(t.reason || '')}</td>
         <td><button class="row-del" data-del="${t.id}" title="刪除">✕</button></td>
