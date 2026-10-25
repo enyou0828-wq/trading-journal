@@ -385,7 +385,7 @@ const db = getFirestore(fbApp);
       if (!Array.isArray(state.fcmTokens)) state.fcmTokens = [];
       if (migrateHoldings()) await save();
 
-      if (ensureMonthlyStatsSnapshots()) await save();
+      if (ensureMonthlyReviews()) await save();
     } catch (e) {
       console.error('loadFromCloud failed', e);
       setSyncStatus('讀取失敗');
@@ -1381,55 +1381,33 @@ const db = getFirestore(fbApp);
     }
   }
 
-  // ---- 月度回顧：月底自動凍結當月統計快照 ----
-  // 每次載入都檢查一次（不是一次性 migration）：任何「已經結束的月份」（今天的月份 > 該月）
-  // 只要有已實現交易、而且還沒凍結過統計快照，就算一次並永久存進該月的回顧紀錄裡
-  // （review.statsSnapshot）。凍結後不會再重算——就算之後回頭編輯/刪除那個月的交易，
-  // 這張表也不會跟著變動，是「月底當下」的永久歷史記錄，跟統計分析分頁即時計算的
-  // 月度統計明細是兩回事（刻意的設計，使用者要的是凍結快照，不是即時鏡像）。
-  // 該月份如果還沒有月度回顧紀錄，會自動建一筆空的（只有統計表，單筆交易/反思留空）
-  // 讓這張表有地方可以放。
-  function ensureMonthlyStatsSnapshots() {
+  // ---- 月度回顧：統計數字即時計算 ----
+  // 跟統計分析分頁的月度統計明細一樣，每次顯示都用目前的交易紀錄重算（computeMonthRow），
+  // 交易新增/編輯/刪除後數字會跟著變。舊版存在 review.statsSnapshot 的凍結快照保留在資料裡，但不再讀取。
+  function realizedByMonth() {
     const allRealized = state.trades.filter(t => t.returnPct != null);
-    if (!allRealized.length) return false;
-
     const byMonth = {};
     allRealized.forEach(t => {
       const m = t.date.slice(0, 7);
       (byMonth[m] = byMonth[m] || []).push(t);
     });
-    const basisMap = buildMonthlyCapitalBasisMap(allRealized);
-    const thisMonth = taipeiDateStr().slice(0, 7);
+    return { allRealized, byMonth };
+  }
 
+  function liveMonthRow(month) {
+    const { allRealized, byMonth } = realizedByMonth();
+    if (!byMonth[month]) return null;
+    return computeMonthRow(month, byMonth, buildMonthlyCapitalBasisMap(allRealized));
+  }
+
+  // 有已實現交易的月份（含進行中的當月）若還沒有月度回顧紀錄，自動建一筆空的，讓統計有地方顯示。
+  function ensureMonthlyReviews() {
+    const { byMonth } = realizedByMonth();
     let changed = false;
     for (const m of Object.keys(byMonth)) {
-      if (m >= thisMonth) continue; // 當月還沒結束，不凍結
       if (m === '2026-05') continue; // 跟月度統計明細表同一條規則：樣本太少不列入
-      let review = findReview(m);
-      if (!review) {
-        review = { month: m, entries: [], reflections: [] };
-        state.monthlyReviews.push(review);
-        changed = true;
-      }
-      if (!review.statsSnapshot) {
-        review.statsSnapshot = computeMonthRow(m, byMonth, basisMap);
-        changed = true;
-      } else if (review.statsSnapshot.totalProfitWan == null) {
-        // 一次性補欄位：總報酬改成「萬」單位之前凍結的快照沒有 totalProfitWan 這個欄位——
-        // 只補這一個欄位，其餘已經凍結的數字（勝率、報酬率等）完全不動，不是重新計算整筆快照。
-        review.statsSnapshot.totalProfitWan = computeMonthRow(m, byMonth, basisMap).totalProfitWan;
-        changed = true;
-      } else if (review.statsSnapshot.topTrades == null) {
-        // 一次性補欄位：新增「當月最佳/最差 2 筆交易」之前凍結的快照沒有這兩個欄位——
-        // 只補這兩個，其餘已經凍結的數字完全不動，不是重新計算整筆快照。
-        Object.assign(review.statsSnapshot, computeTopBottomTrades(computeStats(byMonth[m]).realized));
-        changed = true;
-      } else if (review.statsSnapshot.medianWin == null) {
-        // 一次性補欄位：新增「獲利/虧損中位數」之前凍結的快照沒有這兩個欄位——
-        // 只補這兩個，其餘已經凍結的數字完全不動，不是重新計算整筆快照。
-        const s = computeStats(byMonth[m]);
-        review.statsSnapshot.medianWin = s.medianWin;
-        review.statsSnapshot.medianLoss = s.medianLoss;
+      if (!findReview(m)) {
+        state.monthlyReviews.push({ month: m, entries: [], reflections: [] });
         changed = true;
       }
     }
@@ -1977,6 +1955,7 @@ const db = getFirestore(fbApp);
   }
 
   function renderMonthlyReview() {
+    if (ensureMonthlyReviews()) save();
     const tabsEl = document.getElementById('review-month-tabs');
     const reviews = sortedReviews();
     if (reviewSelectedMonth && !findReview(reviewSelectedMonth)) reviewSelectedMonth = null;
@@ -2008,7 +1987,7 @@ const db = getFirestore(fbApp);
 
   function renderReviewStatsSnapshot(review) {
     const el = document.getElementById('review-stats-snapshot');
-    const row = review.statsSnapshot;
+    const row = liveMonthRow(review.month);
     if (!row) { el.innerHTML = ''; return; }
     const pctClass = row.realReturn > 0 ? 'pnl-pos' : row.realReturn < 0 ? 'pnl-neg' : 'pnl-zero';
     const wanClass = row.totalProfitWan > 0 ? 'pnl-pos' : row.totalProfitWan < 0 ? 'pnl-neg' : 'pnl-zero';
