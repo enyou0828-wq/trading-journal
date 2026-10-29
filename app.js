@@ -1278,12 +1278,15 @@ const db = getFirestore(fbApp);
     const totalWeighted = weighted.reduce((s, t) => s + t.contrib, 0);
     const totalProfitWan = weighted.reduce((s, t) => s + t.profitWan, 0);
     const winRate = realized.length ? (wins.length / realized.length) * 100 : 0;
-    // 加權平均獲利/虧損：每筆損益佔當月淨值的 %（跟交易紀錄「佔淨值」欄同一個算法），賺錢單、賠錢單各自平均
-    const basisMap = buildMonthlyCapitalBasisMap(state.trades.filter(t => t.returnPct != null));
-    const navPcts = weighted.map(t => monthlyProfitPct(t.profitWan, t.date, basisMap));
-    const navWins = navPcts.filter(v => v > 0), navLosses = navPcts.filter(v => v < 0);
-    const avgWin = navWins.length ? navWins.reduce((a, b) => a + b, 0) / navWins.length : 0;
-    const avgLoss = navLosses.length ? navLosses.reduce((a, b) => a + b, 0) / navLosses.length : 0;
+    // 部位加權平均獲利/虧損：總損益 ÷ 總投入。每筆投入 = 損益（萬）÷ 報酬率，
+    // 所以大部位影響大、小部位影響小，數字又跟報酬率同一個量級。報酬率與損益同號才算得出投入。
+    const positionWeightedReturn = (list) => {
+      const profit = list.reduce((a, t) => a + t.profitWan, 0);
+      const invested = list.reduce((a, t) => a + t.profitWan / (t.returnPct / 100), 0);
+      return invested > 0 ? (profit / invested) * 100 : 0;
+    };
+    const avgWin = positionWeightedReturn(weighted.filter(t => t.profitWan > 0 && t.returnPct > 0));
+    const avgLoss = positionWeightedReturn(weighted.filter(t => t.profitWan < 0 && t.returnPct < 0));
     const medianWin = median(wins.map(t => t.returnPct));
     const medianLoss = median(losses.map(t => t.returnPct));
     // 加權獲利因子 = 賺錢單損益（萬）總和 ÷ 賠錢單損益（萬）總和
