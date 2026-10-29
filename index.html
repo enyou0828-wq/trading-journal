@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2a78d6">
-<link rel="stylesheet" href="style.css?v=20261029150415">
+<link rel="stylesheet" href="style.css?v=20261029160514">
 </head>
 <body>
 
@@ -225,7 +225,7 @@
           <span class="stat-sub" id="stat-count-sub">0 勝 / 0 敗</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">平均獲利 / 平均虧損</span>
+          <span class="stat-label">加權平均獲利 / 虧損</span>
           <span class="stat-value" id="stat-avg">0% / 0%</span>
         </div>
         <div class="stat-tile">
@@ -233,9 +233,8 @@
           <span class="stat-value" id="stat-median">0% / 0%</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">Profit Factor</span>
+          <span class="stat-label">Profit Factor（加權）</span>
           <span class="stat-value" id="stat-pf">–</span>
-          <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">最大單筆獲利 / 虧損</span>
@@ -255,8 +254,8 @@
                 <th>資金加權報酬</th>
                 <th>勝率</th>
                 <th>已實現次數</th>
-                <th>平均獲利 / 虧損</th>
-                <th>Profit Factor</th>
+                <th>加權平均獲利 / 虧損</th>
+                <th>Profit Factor（加權）</th>
                 <th>最大獲利 / 虧損</th>
               </tr>
             </thead>
@@ -601,6 +600,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=20261029150415"></script>
+<script type="module" src="app.js?v=20261029160514"></script>
 </body>
 </html>

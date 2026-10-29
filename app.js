@@ -1278,15 +1278,18 @@ const db = getFirestore(fbApp);
     const totalWeighted = weighted.reduce((s, t) => s + t.contrib, 0);
     const totalProfitWan = weighted.reduce((s, t) => s + t.profitWan, 0);
     const winRate = realized.length ? (wins.length / realized.length) * 100 : 0;
-    const avgWin = wins.length ? wins.reduce((s, t) => s + t.returnPct, 0) / wins.length : 0;
-    const avgLoss = losses.length ? losses.reduce((s, t) => s + t.returnPct, 0) / losses.length : 0;
+    // 加權平均獲利/虧損：每筆損益佔當月淨值的 %（跟交易紀錄「佔淨值」欄同一個算法），賺錢單、賠錢單各自平均
+    const basisMap = buildMonthlyCapitalBasisMap(state.trades.filter(t => t.returnPct != null));
+    const navPcts = weighted.map(t => monthlyProfitPct(t.profitWan, t.date, basisMap));
+    const navWins = navPcts.filter(v => v > 0), navLosses = navPcts.filter(v => v < 0);
+    const avgWin = navWins.length ? navWins.reduce((a, b) => a + b, 0) / navWins.length : 0;
+    const avgLoss = navLosses.length ? navLosses.reduce((a, b) => a + b, 0) / navLosses.length : 0;
     const medianWin = median(wins.map(t => t.returnPct));
     const medianLoss = median(losses.map(t => t.returnPct));
-    // 獲利因子 = (平均獲利 × 勝率) ÷ (平均虧損 × (1 − 勝率))
-    const winRateFrac = winRate / 100;
-    const pfNumer = avgWin * winRateFrac;
-    const pfDenom = Math.abs(avgLoss) * (1 - winRateFrac);
-    const pf = pfDenom > 0 ? (pfNumer / pfDenom) : (pfNumer > 0 ? Infinity : 0);
+    // 加權獲利因子 = 賺錢單損益（萬）總和 ÷ 賠錢單損益（萬）總和
+    const grossWin = weighted.filter(t => t.profitWan > 0).reduce((a, t) => a + t.profitWan, 0);
+    const grossLoss = -weighted.filter(t => t.profitWan < 0).reduce((a, t) => a + t.profitWan, 0);
+    const pf = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : 0);
     const maxWin = realized.length ? Math.max(...realized.map(t => t.returnPct)) : 0;
     const maxLoss = realized.length ? Math.min(...realized.map(t => t.returnPct)) : 0;
     return { realized, wins, losses, weighted, totalWeighted, totalProfitWan, winRate, avgWin, avgLoss, medianWin, medianLoss, pf, maxWin, maxLoss };
@@ -2046,7 +2049,7 @@ const db = getFirestore(fbApp);
           <span class="stat-sub">${row.wins} 勝 / ${row.losses} 敗</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">平均獲利 / 平均虧損</span>
+          <span class="stat-label">加權平均獲利 / 虧損</span>
           <span class="stat-value">${fmtPct(row.avgWin, 2)} / ${fmtPct(row.avgLoss, 2)}</span>
         </div>
         <div class="stat-tile">
@@ -2054,9 +2057,8 @@ const db = getFirestore(fbApp);
           <span class="stat-value">${fmtPct(row.medianWin, 2)} / ${fmtPct(row.medianLoss, 2)}</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">Profit Factor</span>
+          <span class="stat-label">Profit Factor（加權）</span>
           <span class="stat-value">${row.pf == null ? '∞' : row.pf.toFixed(2)}</span>
-          <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">最大單筆獲利 / 虧損</span>
@@ -2435,13 +2437,12 @@ const db = getFirestore(fbApp);
           <span class="stat-sub">${s.wins.length} 勝 / ${s.losses.length} 敗</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">平均獲利 / 平均虧損</span>
+          <span class="stat-label">加權平均獲利 / 虧損</span>
           <span class="stat-value">${fmtPct(s.avgWin, 2)} / ${fmtPct(s.avgLoss, 2)}</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-label">Profit Factor</span>
+          <span class="stat-label">Profit Factor（加權）</span>
           <span class="stat-value">${s.pf === Infinity ? '∞' : s.realized.length ? s.pf.toFixed(2) : '–'}</span>
-          <span class="stat-sub">平均獲利×勝率 ÷ 平均虧損×(1-勝率)</span>
         </div>
         <div class="stat-tile">
           <span class="stat-label">最大單筆獲利 / 虧損</span>
