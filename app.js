@@ -14,7 +14,12 @@ const db = getFirestore(fbApp);
   'use strict';
 
   const SERIES = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'];
-  const STRATEGIES = ['盤整突破', '沿線上行', '量縮突破', '族群效應', '回調築底', '處置操作', '其他'];
+  // 新增交易只能選這兩種；舊紀錄裡的其他策略名稱（量縮突破、族群效應…）原樣保留，篩選與統計會自動列出
+  const STRATEGIES = ['盤整突破', '動能延續'];
+  function strategyList() {
+    const legacy = [...new Set(state.trades.map(t => t.strategy).filter(n => n && !STRATEGIES.includes(n)))].sort();
+    return [...STRATEGIES, ...legacy];
+  }
   const ENTRY_ACTIONS = new Set(['買進', '加碼']);
   const EXIT_ACTIONS = new Set(['減碼', '賣出', '加碼轉賣出']);
 
@@ -240,6 +245,8 @@ const db = getFirestore(fbApp);
     if (!Array.isArray(data.supplyChainNodes)) data.supplyChainNodes = [];
     if (!Array.isArray(data.companyLinks)) data.companyLinks = [];
     if (!Array.isArray(data.monthlyReviews)) data.monthlyReviews = [];
+    // 舊的匯出檔可能沒有這些欄位，補空陣列避免畫面出錯
+    for (const k of ['watchlist', 'holdings', 'futures', 'fcmTokens']) if (!Array.isArray(data[k])) data[k] = [];
     return data;
   }
 
@@ -376,6 +383,13 @@ const db = getFirestore(fbApp);
       if (!state.markColorMigrated) {
         state.trades = state.trades.map(t => t.marked && !t.markColor ? { ...t, markColor: 'yellow' } : t);
         state.markColorMigrated = true;
+        await save();
+      }
+
+      // 一次性改名：策略B「沿線上行」改叫「動能延續」
+      if (!state.strategyRenameMomentumV1) {
+        state.trades = state.trades.map(t => t.strategy === '沿線上行' ? { ...t, strategy: '動能延續' } : t);
+        state.strategyRenameMomentumV1 = true;
         await save();
       }
 
@@ -988,7 +1002,16 @@ const db = getFirestore(fbApp);
 
   [filterAction, filterStrategy, filterSearch].forEach(el => el.addEventListener('input', renderTrades));
 
+  function updateStrategyFilter() {
+    const current = filterStrategy.value;
+    const names = strategyList();
+    filterStrategy.innerHTML = '<option value="all">全部策略</option>' +
+      names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    filterStrategy.value = names.includes(current) ? current : 'all';
+  }
+
   function renderTrades() {
+    updateStrategyFilter();
     const list = sortedTrades().filter(t => {
       if (filterAction.value !== 'all' && t.action !== filterAction.value) return false;
       if (filterStrategy.value !== 'all' && t.strategy !== filterStrategy.value) return false;
@@ -1152,7 +1175,14 @@ const db = getFirestore(fbApp);
     document.getElementById('f-calc-price').value = t && t.price != null ? t.price : '';
     document.getElementById('f-calc-shares').value = '';
     document.getElementById('f-action').value = t ? t.action : '買進';
-    document.getElementById('f-strategy').value = t ? t.strategy : '';
+    const strategySel = document.getElementById('f-strategy');
+    strategySel.querySelectorAll('option[data-legacy]').forEach(o => o.remove());
+    if (t && t.strategy && !STRATEGIES.includes(t.strategy)) {
+      const opt = document.createElement('option');
+      opt.value = t.strategy; opt.textContent = t.strategy; opt.dataset.legacy = '1';
+      strategySel.appendChild(opt);
+    }
+    strategySel.value = t ? t.strategy : '';
     document.getElementById('f-position-pct').value = t && t.positionPct != null ? t.positionPct : '';
     document.getElementById('f-return-pct').value = t && t.returnPct != null ? t.returnPct : '';
     document.getElementById('f-profit-wan').value = t && t.profitWan != null ? t.profitWan : '';
@@ -1740,7 +1770,7 @@ const db = getFirestore(fbApp);
       el.innerHTML = '<p class="empty-state">尚無已實現紀錄，無法繪製策略統計。</p>';
       return;
     }
-    const byStrategy = STRATEGIES.map((name, i) => {
+    const byStrategy = strategyList().map((name, i) => {
       const trades = realized.filter(t => t.strategy === name);
       // 平均獲利 = 總獲利（報酬率加總）÷ 總次數，不看資金佔比/資金加權貢獻
       const totalProfit = trades.reduce((s, t) => s + t.returnPct, 0);
