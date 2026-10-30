@@ -1,83 +1,123 @@
 :root {
-  --surface-1:      #fcfcfb;
-  --page-plane:     #f9f9f7;
+  --surface-1:      #ffffff;
+  --page-plane:     #f5f5f7;
   --surface-raised: #ffffff;
-  --text-primary:   #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted:     #898781;
-  --gridline:       #e1e0d9;
-  --baseline:       #c3c2b7;
-  --border:         rgba(11,11,11,0.10);
+  --text-primary:   #1d1d1f;
+  --text-secondary: #424245;
+  --text-muted:     #86868b;
+  --gridline:       #e8e8ed;
+  --baseline:       #d2d2d7;
+  --border:         rgba(0,0,0,0.08);
+  --fill:           rgba(118,118,128,0.12);
+  --fill-hover:     rgba(118,118,128,0.20);
+  --seg-active:     #ffffff;
+  --glass:          rgba(245,245,247,0.72);
+  --shadow-card:    0 1px 2px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.04);
 
-  --series-1: #2a78d6; /* blue */
-  --series-2: #1baf7a; /* aqua */
-  --series-3: #eda100; /* yellow */
-  --series-4: #4a3aa7; /* violet */
+  --series-1: #0071e3; /* blue */
+  --series-2: #00a3a3; /* aqua */
+  --series-3: #f59e0b; /* yellow */
+  --series-4: #8e44ec; /* violet */
 
-  --good:     #006300;
-  --good-bg:  #0ca30c;
-  --critical: #d03b3b;
+  /* 台股慣例：紅賺綠賠（--good＝獲利、--critical＝虧損） */
+  --good:     #d70015;
+  --good-bg:  #ff3b30;
+  --critical: #248a3d;
+  /* 與盈虧無關的語意色 */
+  --danger:   #e30000;
+  --ok:       #248a3d;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang TC", "Inter", "Noto Sans TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --surface-1:      #1a1a19;
-    --page-plane:     #0d0d0d;
-    --surface-raised: #232322;
-    --text-primary:   #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted:     #898781;
-    --gridline:       #2c2c2a;
-    --baseline:       #383835;
-    --border:         rgba(255,255,255,0.10);
+  --surface-1:      #1c1c1e;
+  --page-plane:     #000000;
+  --surface-raised: #2c2c2e;
+  --text-primary:   #f5f5f7;
+  --text-secondary: #d1d1d6;
+  --text-muted:     #8e8e93;
+  --gridline:       #38383a;
+  --baseline:       #48484a;
+  --border:         rgba(255,255,255,0.10);
+  --fill:           rgba(118,118,128,0.24);
+  --fill-hover:     rgba(118,118,128,0.36);
+  --seg-active:     #636366;
+  --glass:          rgba(22,22,23,0.72);
+  --shadow-card:    none;
 
-    --series-1: #3987e5;
-    --series-2: #199e70;
-    --series-3: #c98500;
-    --series-4: #9085e9;
+  --series-1: #2997ff;
+  --series-2: #40c8e0;
+  --series-3: #ffb340;
+  --series-4: #bf5af2;
 
-    --good:     #0ca30c;
-    --critical: #e66767;
+  --good:     #ff453a;
+  --good-bg:  #ff453a;
+  --critical: #30d158;
+  --danger:   #ff453a;
+  --ok:       #30d158;
   }
 }
 
 :root[data-theme="dark"] {
-  --surface-1:      #1a1a19;
-  --page-plane:     #0d0d0d;
-  --surface-raised: #232322;
-  --text-primary:   #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted:     #898781;
-  --gridline:       #2c2c2a;
-  --baseline:       #383835;
+  --surface-1:      #1c1c1e;
+  --page-plane:     #000000;
+  --surface-raised: #2c2c2e;
+  --text-primary:   #f5f5f7;
+  --text-secondary: #d1d1d6;
+  --text-muted:     #8e8e93;
+  --gridline:       #38383a;
+  --baseline:       #48484a;
   --border:         rgba(255,255,255,0.10);
-  --series-1: #3987e5;
-  --series-2: #199e70;
-  --series-3: #c98500;
-  --series-4: #9085e9;
-  --good:     #0ca30c;
-  --critical: #e66767;
+  --fill:           rgba(118,118,128,0.24);
+  --fill-hover:     rgba(118,118,128,0.36);
+  --seg-active:     #636366;
+  --glass:          rgba(22,22,23,0.72);
+  --shadow-card:    none;
+
+  --series-1: #2997ff;
+  --series-2: #40c8e0;
+  --series-3: #ffb340;
+  --series-4: #bf5af2;
+
+  --good:     #ff453a;
+  --good-bg:  #ff453a;
+  --critical: #30d158;
+  --danger:   #ff453a;
+  --ok:       #30d158;
 }
 :root[data-theme="light"] {
-  --surface-1:      #fcfcfb;
-  --page-plane:     #f9f9f7;
+  --surface-1:      #ffffff;
+  --page-plane:     #f5f5f7;
   --surface-raised: #ffffff;
-  --text-primary:   #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted:     #898781;
-  --gridline:       #e1e0d9;
-  --baseline:       #c3c2b7;
-  --border:         rgba(11,11,11,0.10);
-  --series-1: #2a78d6;
-  --series-2: #1baf7a;
-  --series-3: #eda100;
-  --series-4: #4a3aa7;
-  --good:     #006300;
-  --critical: #d03b3b;
+  --text-primary:   #1d1d1f;
+  --text-secondary: #424245;
+  --text-muted:     #86868b;
+  --gridline:       #e8e8ed;
+  --baseline:       #d2d2d7;
+  --border:         rgba(0,0,0,0.08);
+  --fill:           rgba(118,118,128,0.12);
+  --fill-hover:     rgba(118,118,128,0.20);
+  --seg-active:     #ffffff;
+  --glass:          rgba(245,245,247,0.72);
+  --shadow-card:    0 1px 2px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.04);
+
+  --series-1: #0071e3; /* blue */
+  --series-2: #00a3a3; /* aqua */
+  --series-3: #f59e0b; /* yellow */
+  --series-4: #8e44ec; /* violet */
+
+  /* 台股慣例：紅賺綠賠（--good＝獲利、--critical＝虧損） */
+  --good:     #d70015;
+  --good-bg:  #ff3b30;
+  --critical: #248a3d;
+  /* 與盈虧無關的語意色 */
+  --danger:   #e30000;
+  --ok:       #248a3d;
 }
 
 * { box-sizing: border-box; }
@@ -451,3 +491,156 @@ body {
 /* ===== 期貨 ===== */
 .ft-split td:first-child { font-weight: 600; }
 .ft-split tbody tr:hover { background: none; cursor: default; }
+
+/* =====================================================================
+   Apple 風格外觀層（只改外觀，不影響任何功能）
+   ===================================================================== */
+html { -webkit-text-size-adjust: 100%; }
+body { font-family: var(--font); letter-spacing: -0.003em; line-height: 1.47; }
+::selection { background: rgba(0,113,227,0.22); }
+
+/* ---------- 頂欄：毛玻璃、固定在上方、滿版 ---------- */
+body { overflow-x: clip; }
+.topbar { position: sticky; top: 0; z-index: 50; margin: 0 0 28px; padding: 12px 0; gap: 16px; }
+.topbar::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); z-index: -1;
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
+.brand-mark { border-radius: 7px; }
+
+/* 分頁：iOS 分段控制 */
+.tabs { background: var(--fill); border: none; border-radius: 10px; padding: 3px; gap: 2px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-primary); transition: background .2s, box-shadow .2s; }
+.tab.active { background: var(--seg-active); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); }
+.tab:not(.active):hover { background: var(--fill); }
+
+.sync-status { font-size: 12px; }
+.user-chip { background: var(--fill); }
+
+/* ---------- 按鈕：膠囊形 ---------- */
+.btn { border-radius: 980px; padding: 8px 18px; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; transition: filter .15s, background .15s, transform .1s; }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--series-1); }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.ghost { background: var(--fill); border-color: transparent; color: var(--series-1); }
+.btn.ghost:hover { background: var(--fill-hover); }
+#btn-delete-trade, #btn-delete-review-entry, #btn-del-review-month { color: var(--danger); }
+.icon-btn { border-radius: 980px; }
+.icon-btn:hover { background: var(--fill); }
+.btn:focus-visible, .tab:focus-visible, .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(0,113,227,0.35); }
+
+/* ---------- 頁面標題：大標題 ---------- */
+.panel.active { animation: apple-fade .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes apple-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.panel-head { margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+.panel-head h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; }
+
+/* ---------- 卡片：無邊框、柔和陰影 ---------- */
+.table-wrap, .stat-tile, .chart-card, .chain-detail-panel, .chain-map-embed, .diary-card, .login-card, .watchlist-due-banner {
+  border-color: transparent; box-shadow: var(--shadow-card);
+}
+.chart-card { padding: 22px 24px; border-radius: var(--radius-lg); margin-bottom: 20px; }
+.chart-head { margin-bottom: 10px; }
+.chart-head h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
+.review-content-head h2, .chain-detail-head h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.015em; }
+
+/* ---------- 統計數字 ---------- */
+.stat-grid { gap: 14px; margin-bottom: 28px; }
+.stat-tile { padding: 20px 22px; gap: 6px; }
+.stat-label { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; }
+.stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.winloss-bar { height: 5px; }
+
+/* ---------- 表格 ---------- */
+.chart-card .table-wrap, .review-content .table-wrap { box-shadow: none; background: transparent; }
+#trade-tbody td:nth-child(2) { white-space: nowrap; }
+.trade-table { font-size: 14px; }
+.trade-table th { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; padding: 12px 14px; }
+.trade-table td { padding: 12px 14px; }
+.trade-table tbody tr { transition: background .12s; }
+.trade-table tbody tr:hover { background: var(--fill); }
+
+/* 徽章 */
+.badge { padding: 3px 10px; font-weight: 500; }
+.badge.open, .badge.action-in, .review-entry-badge.entered { background: rgba(0,113,227,0.12); }
+.badge.closed, .review-entry-badge.not-entered { background: var(--fill); }
+.badge.action-out { background: rgba(142,68,236,0.13); }
+.badge.action-day { background: rgba(245,158,11,0.16); }
+.rating-badge { border-radius: 7px; }
+.rating-badge.rating-A { background: rgba(52,199,89,0.16); color: var(--ok); }
+.rating-badge.rating-B { background: rgba(0,113,227,0.12); }
+.rating-badge.rating-C { background: rgba(245,158,11,0.16); }
+.rating-badge.rating-F { background: rgba(255,59,48,0.14); color: var(--danger); }
+.row-del:hover { color: var(--danger); }
+.diary-tag { background: rgba(0,113,227,0.12); }
+
+/* ---------- 篩選列與表單輸入：填色、無框 ---------- */
+.filter-row select, .filter-row input[type="search"],
+.form-row input, .form-row select, .form-row textarea,
+.chain-search-row input {
+  background: var(--fill); border: 1px solid transparent; border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 14px; color: var(--text-primary);
+  transition: box-shadow .15s, background .15s;
+}
+.filter-row select:focus, .filter-row input[type="search"]:focus,
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus,
+.chain-search-row input:focus {
+  outline: none; background: var(--surface-raised); border-color: var(--series-1);
+  box-shadow: 0 0 0 4px rgba(0,113,227,0.22);
+}
+.form-row label { font-weight: 500; font-size: 12.5px; color: var(--text-muted); }
+.calc-hint-row { background: var(--fill); }
+.checkbox-label input[type="checkbox"] { accent-color: var(--series-1); }
+
+/* ---------- 標籤、月份切換 ---------- */
+.chain-chip, .review-month-chip { background: var(--fill); border-color: transparent; font-weight: 500; }
+.chain-chip:hover, .review-month-chip:hover { background: var(--fill-hover); }
+.chain-chip.active, .review-month-chip.active { background: var(--text-primary); border-color: var(--text-primary); color: var(--page-plane); }
+.chain-chip.active .chain-chip-kind { background: rgba(127,127,127,0.3); color: inherit; }
+.chain-chip-kind { background: var(--surface-raised); }
+
+/* ---------- 清單列與卡片 ---------- */
+.chain-company-row, .review-entry-card, .review-reflection-item { background: var(--fill); border-color: transparent; }
+.chain-company-row:hover, .review-entry-card:hover, .diary-card:hover { background: var(--fill-hover); }
+.watchlist-due-banner { border-left: 3px solid var(--series-1); background: var(--surface-1); }
+.chain-companies-title { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+/* ---------- 圖表提示框：毛玻璃 ---------- */
+.chart-tooltip {
+  background: var(--glass); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-color: var(--border); border-radius: 12px; padding: 9px 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.14);
+}
+.chart-pager .pager-btn { border-radius: 980px; }
+
+/* ---------- 彈窗 ---------- */
+.modal-overlay { background: rgba(0,0,0,0.32); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.modal-overlay.open .modal { animation: apple-pop .28s cubic-bezier(.2,.8,.2,1); }
+@keyframes apple-pop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: none; } }
+.modal { border: none; border-radius: 22px; box-shadow: 0 24px 80px rgba(0,0,0,0.28); }
+.modal-head { padding: 18px 22px; border-bottom-color: var(--border); position: sticky; top: 0; z-index: 2; background: var(--surface-raised); }
+.modal-head h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
+#trade-form, #diary-form, #review-entry-form, #review-import-form { padding: 18px 22px 22px; gap: 14px; }
+
+/* ---------- 登入頁 ---------- */
+.login-card { border-radius: 24px; padding: 48px 40px; background: var(--surface-1); }
+.login-card .brand { font-size: 28px; font-weight: 700; flex-direction: column; gap: 14px; }
+.login-card .brand-mark { width: 64px; height: 64px; border-radius: 15px; }
+.login-sub { font-size: 15px; margin-bottom: 28px; }
+#btn-google-signin { justify-content: center; padding: 12px 18px; font-size: 16px; }
+
+/* ---------- 手機 ---------- */
+@media (max-width: 720px) {
+  .topbar { padding: 10px 0; margin-bottom: 20px; gap: 10px; }
+  .tabs { order: 3; width: 100%; }
+  .topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .panel-head h1 { font-size: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel.active, .modal-overlay.open .modal { animation: none; }
+  .btn, .tab, .trade-table tbody tr { transition: none; }
+}
