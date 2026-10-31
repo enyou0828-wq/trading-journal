@@ -305,9 +305,16 @@ const db = getFirestore(fbApp);
   // ---------- state ----------
   let state = { trades: [], diary: [], monthlyReviews: [], watchlist: [], holdings: [], futures: [], fcmTokens: [] };
   let currentUser = null;
+  // 雲端資料讀取成功前不准寫回，避免讀取失敗時用空資料覆蓋雲端
+  let cloudLoaded = false;
 
   const syncStatusEl = document.getElementById('sync-status');
   function setSyncStatus(text) { if (syncStatusEl) syncStatusEl.textContent = text; }
+  syncStatusEl?.addEventListener('click', () => {
+    if (cloudLoaded || !currentUser || !syncStatusEl.classList.contains('sync-retry')) return;
+    syncStatusEl.classList.remove('sync-retry');
+    loadFromCloud(currentUser.uid);
+  });
 
   // Back-compat: imported/older JSON may hold the previous entry/exit-price schema.
   function migrate(data) {
@@ -336,7 +343,8 @@ const db = getFirestore(fbApp);
     setSyncStatus('讀取中…');
     try {
       const snap = await getDoc(doc(db, 'journals', uid));
-      state = snap.exists() ? migrate(snap.data()) : { trades: [], diary: [] };
+      state = snap.exists() ? migrate(snap.data()) : migrate({ trades: [], diary: [] });
+      cloudLoaded = true;
       setSyncStatus('已同步');
 
       // 一次性清除：內容欄已從表單移除，順便清掉舊紀錄殘留的內容文字
@@ -484,14 +492,23 @@ const db = getFirestore(fbApp);
       if (ensureMonthlyReviews()) await save();
     } catch (e) {
       console.error('loadFromCloud failed', e);
-      setSyncStatus('讀取失敗');
-      alert('讀取雲端資料失敗，請檢查網路連線或 Firestore 設定。');
+      if (!cloudLoaded) {
+        setSyncStatus('讀取失敗・點此重試');
+        syncStatusEl?.classList.add('sync-retry');
+        alert('讀取雲端資料失敗（' + (e.code || e.message) + '），請檢查網路後點右上角「點此重試」。');
+      } else {
+        setSyncStatus('同步失敗');
+      }
     }
     renderTrades(); renderStats();
   }
 
   async function save() {
     if (!currentUser) return;
+    if (!cloudLoaded) {
+      alert('雲端資料還沒讀取成功，這次修改不會儲存。請先點右上角「點此重試」。');
+      return;
+    }
     setSyncStatus('同步中…');
     try {
       await setDoc(doc(db, 'journals', currentUser.uid), state);
@@ -2778,6 +2795,7 @@ const db = getFirestore(fbApp);
       setupPushNotifications(); // 不 await：推播是附加功能，失敗也不該擋住主要畫面載入
     } else {
       currentUser = null;
+      cloudLoaded = false;
       loginGate.style.display = 'flex';
       appRoot.hidden = true;
       loginStatus.textContent = '';
