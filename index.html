@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=20261031110056">
+<link rel="stylesheet" href="style.css?v=20261031112817">
 </head>
 <body>
 
@@ -38,9 +38,8 @@
       <button class="tab" data-tab="holdings" role="tab" aria-selected="false">庫存股</button>
       <button class="tab" data-tab="stats" role="tab" aria-selected="false">統計分析</button>
       <button class="tab" data-tab="review" role="tab" aria-selected="false">月度回顧</button>
-      <button class="tab" data-tab="chain" role="tab" aria-selected="false">供應鏈</button>
+      <button class="tab" data-tab="chain" role="tab" aria-selected="false">族群</button>
       <button class="tab" data-tab="signals" role="tab" aria-selected="false">訊號</button>
-      <button class="tab" data-tab="groups" role="tab" aria-selected="false">族群</button>
       <button class="tab" data-tab="watchlist" role="tab" aria-selected="false">觀察清單</button>
       <button class="tab" data-tab="futures" role="tab" aria-selected="false">期貨</button>
     </nav>
@@ -206,6 +205,12 @@
         <h1>統計分析</h1>
       </div>
 
+      <div class="chain-search-row">
+        <input type="search" id="chain-search" placeholder="搜尋交易紀錄裡的族群或標的（例：CPO、面板、3443、創意）" autocomplete="off">
+      </div>
+      <div class="chain-results" id="chain-results"></div>
+      <div class="chain-detail-panel" id="chain-detail" hidden></div>
+
       <div class="stat-grid">
         <div class="stat-tile">
           <span class="stat-label">總報酬率</span>
@@ -338,20 +343,9 @@
       </div>
     </section>
 
-    <!-- ===== SUPPLY CHAIN TAB ===== -->
+    <!-- ===== 族群 TAB（族群分析＋供應鏈地圖） ===== -->
     <section class="panel" id="panel-chain">
-      <div class="panel-head">
-        <h1>供應鏈</h1>
-        <div class="panel-head-actions">
-          <a class="btn primary" href="./supply-chain-map/" target="_blank" rel="noopener">在新分頁開啟完整版 ↗</a>
-        </div>
-      </div>
-
-      <div class="chain-search-row">
-        <input type="search" id="chain-search" placeholder="搜尋交易紀錄裡的族群或標的（例：CPO、面板、3443、創意）" autocomplete="off">
-      </div>
-      <div class="chain-results" id="chain-results"></div>
-      <div class="chain-detail-panel" id="chain-detail" hidden></div>
+      <div id="groups-root"></div>
 
       <div class="chain-map-embed">
         <iframe id="chain-map-frame" src="./supply-chain-map/" title="台股供應鏈互動地圖" loading="lazy"></iframe>
@@ -365,14 +359,6 @@
       </div>
       <p id="signals-meta" style="color:var(--text-muted);font-size:13px;margin:-8px 0 16px;"></p>
       <div class="signal-sets-grid" id="signals-sets"></div>
-    </section>
-
-    <!-- ===== GROUPS TAB ===== -->
-    <section class="panel" id="panel-groups">
-      <div class="panel-head">
-        <h1>族群</h1>
-      </div>
-      <div id="groups-root"></div>
     </section>
 
     <!-- ===== WATCHLIST TAB ===== -->
@@ -610,6 +596,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=20261031110056"></script>
+<script type="module" src="app.js?v=20261031112817"></script>
 </body>
 </html>

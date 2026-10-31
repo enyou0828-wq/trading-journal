@@ -452,11 +452,10 @@ const db = getFirestore(fbApp);
       document.getElementById('panel-' + target).classList.add('active');
       if (target === 'holdings') renderHoldings();
       if (target === 'futures') renderFutures();
-      if (target === 'stats') renderStats();
+      if (target === 'stats') { renderStats(); renderChainResults(); renderChainDetail(); }
       if (target === 'review') renderMonthlyReview();
-      if (target === 'chain') { renderChainResults(); renderChainDetail(); }
+      if (target === 'chain') import(GROUPS_JS).then(m => m.renderGroups(document.getElementById('groups-root')));
       if (target === 'signals') renderSignals();
-      if (target === 'groups') import(GROUPS_JS).then(m => m.renderGroups(document.getElementById('groups-root')));
       if (target === 'watchlist') renderWatchlist();
     });
   });

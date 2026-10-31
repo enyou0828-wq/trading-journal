@@ -71,6 +71,13 @@
   #toolbar input[type=text]{font-family:inherit;font-size:14px;padding:7px 14px;border:1px solid transparent;border-radius:10px;width:240px;
     background:var(--fill);color:var(--text-primary);transition:box-shadow .15s,background .15s;}
   #toolbar input[type=text]:focus{outline:none;background:var(--surface-raised);border-color:var(--series-1);box-shadow:0 0 0 4px rgba(0,113,227,0.22);}
+  #toolbar input[type=text]{flex:0 1 240px;min-width:0;}
+  #openFull{flex:none;font-size:13px;font-weight:500;color:#fff;background:var(--series-1);text-decoration:none;
+    padding:7px 14px;border-radius:999px;white-space:nowrap;}
+  #openFull:hover{filter:brightness(1.08);}
+  #toolbar{flex-wrap:nowrap;}
+  #statusMsg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media (max-width:560px){ #openFull .of-long{display:none;} #openFull{padding:7px 12px;} }
   #stage{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden;}
   svg{width:100%;height:100%;display:block;background:var(--page-plane);}
   #legend{
@@ -102,6 +109,7 @@
 <body>
 <div id="toolbar">
   <input id="searchBox" type="text" placeholder="搜尋公司名稱或代號…">
+  <a id="openFull" href="./" target="_blank" rel="noopener" hidden><span class="of-long">在新分頁開啟</span>完整版 ↗</a>
   <span id="statusMsg" style="color:var(--text-muted);margin-left:6px;"></span>
 </div>
 
@@ -135,6 +143,8 @@ const PALETTE = ['#E69F00','#56B4E9','#009E73','#F0C808','#0072B2','#D55E00',
 const EXTERNAL_NODES = ['資料中心','消費電子','石化中下游加工業','終端品牌／雲端服務商'];
 
 let statusEl = document.getElementById('statusMsg');
+// 嵌在交易日誌 App 裡時才顯示「在新分頁開啟完整版」
+if (window.self !== window.top) document.getElementById('openFull').hidden = false;
 function setStatus(msg){ statusEl.textContent = msg || ''; }
 
 // ---------------------------------------------------------------------
