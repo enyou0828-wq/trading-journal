@@ -2756,8 +2756,18 @@ const db = getFirestore(fbApp);
   // 共用一份暫存狀態。除了使用者自己關掉彈窗以外，失敗時改用整頁導向登入（signInWithRedirect）
   // 當備援——導向登入只需要同一個分頁的儲存空間在導回時還在，比彈窗需要兩個視窗同時能存取
   // 儲存空間更容易在這類設定下成功。
+  // 登入轉接檔跟 App 同網域（authDomain＝enyou0828-wq.github.io），不受第三方儲存空間封鎖影響。
+  // 手機與「加到主畫面」的 App 彈窗常常回不來，直接用整頁導向；電腦用彈窗、失敗再導向。
+  const preferRedirect = window.matchMedia('(display-mode: standalone)').matches
+    || navigator.standalone === true
+    || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   document.getElementById('btn-google-signin').addEventListener('click', async () => {
     loginStatus.textContent = '登入中…';
+    if (preferRedirect) {
+      try { await signInWithRedirect(auth, new GoogleAuthProvider()); }
+      catch (e) { console.error('signIn (redirect) failed', e); loginStatus.textContent = '登入失敗：' + (e.code || e.message); }
+      return;
+    }
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
     } catch (e) {
