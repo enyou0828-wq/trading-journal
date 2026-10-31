@@ -273,9 +273,7 @@ const db = getFirestore(fbApp);
 
   // 個人回撤：9/1 起的已實現報酬累計（分母 55 萬），相對歷史高點的回落。紅線 7.5%、黃線為一半。
   const DD_RED = 7.5, DD_YELLOW = 3.75;
-  function renderDrawdownLight(items) {
-    const el = document.getElementById('dd-light');
-    if (!el) return;
+  function computeDrawdown(items) {
     const sorted = [...items].sort((a, b) => a.date > b.date ? 1 : a.date < b.date ? -1 : 0);
     let cum = 0, peak = 1, peakDate = EQUITY_CURVE_START, maxDd = 0;
     for (const t of sorted) {
@@ -287,6 +285,12 @@ const db = getFirestore(fbApp);
     const dd = (1 - (1 + cum / 100) / peak) * 100;
     const color = dd >= DD_RED ? 'red' : dd >= DD_YELLOW ? 'yellow' : 'green';
     const status = { green: '正常', yellow: '注意', red: '停止新倉' }[color];
+    return { dd, color, status, peakDate, maxDd };
+  }
+  function renderDrawdownLight(items) {
+    const el = document.getElementById('dd-light');
+    if (!el) return;
+    const { dd, color, status, peakDate, maxDd } = computeDrawdown(items);
     el.innerHTML = `<div class="dd-row">
       ${lampHtml(color)}
       <div class="dd-main"><span class="dd-status light-${color}">${status}</span><span class="dd-val">${dd > 0.005 ? '−' + dd.toFixed(2) : '0.00'}%</span></div>
@@ -529,7 +533,7 @@ const db = getFirestore(fbApp);
       if (target === 'stats') { renderStats(); renderChainResults(); renderChainDetail(); }
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') import(GROUPS_JS).then(m => m.renderGroups(document.getElementById('groups-root')));
-      if (target === 'signals') renderSignals();
+      if (target === 'signals') { renderBattleCard(); renderSignals(); renderParallel(); }
       if (target === 'watchlist') renderWatchlist();
     });
   });
@@ -637,6 +641,155 @@ const db = getFirestore(fbApp);
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;
       signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
     }
+  }
+
+  // ================= 盤前作戰卡 =================
+  const jsonCache = {};
+  function fetchJsonCached(path) {
+    if (!jsonCache[path]) jsonCache[path] = fetch(path, { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch(e => { delete jsonCache[path]; throw e; });
+    return jsonCache[path];
+  }
+
+  // 庫存出場規則（10/25 版）：用均價當成本，資料是最近 7 個交易日的高低收
+  function holdingExitChecks(h, rec) {
+    const st = rec.stocks[h.symbol];
+    if (!st) return null;
+    const { h: H, l: L, c: C } = st;
+    const n = C.length - 1;
+    const cost = holdingTotals(h).avgEntryPrice;
+    const hits = [];
+    if (C[n] != null && L[n - 1] != null && C[n] < L[n - 1]) hits.push('收破前日低');
+    const maxH = (a, b) => Math.max(...H.slice(a, b).filter(v => v != null));
+    if (n >= 6 && H[n] != null && H[n - 1] != null && H[n] <= maxH(n - 5, n) && H[n - 1] <= maxH(n - 6, n - 1)) hits.push('連兩天沒創5日新高');
+    const idx = st.m === 'T' ? TWI_INDEX_CLOSE : OTC_INDEX_CLOSE;
+    const i1 = idx[rec.dates[n]], i0 = idx[rec.dates[n - 1]];
+    if (i1 && i0 && C[n] != null && C[n - 1]) {
+      const lag = (C[n] / C[n - 1] - 1) * 100 - (i1 / i0 - 1) * 100;
+      if (lag <= -5) hits.push('落後指數5%');
+    }
+    if (cost > 0 && L[n] != null && L[n] <= cost * 0.93) hits.push('觸及成本−7%');
+    else if (cost > 0 && C[n] != null && C[n] < cost * 0.95) hits.push('收破成本−5%');
+    return { hits, close: C[n], pnl: cost > 0 && C[n] != null ? (C[n] / cost - 1) * 100 : null };
+  }
+
+  async function renderBattleCard() {
+    const el = document.getElementById('battle-card');
+    if (!el) return;
+    let latest, rec, groups;
+    try {
+      [latest, rec, groups] = await Promise.all([
+        fetchJsonCached('signals/latest.json'), fetchJsonCached('signals/recent_ohlc.json'),
+        fetchJsonCached('signals/groups.json').catch(() => null), ensureTwiData(), ensureOtcData(),
+      ]);
+    } catch (e) { el.innerHTML = ''; return; }
+
+    const lv = [['加權', indexLevel(TWI_INDEX_CLOSE)], ['櫃買', indexLevel(OTC_INDEX_CLOSE)]].filter(r => r[1]);
+    const dd = computeDrawdown(equityCurveItems());
+    const tiles = lv.map(([name, r]) => `
+        <div class="bc-tile">${lampHtml(r.color)}<span class="bc-k">${name}水位</span><span class="bc-v light-${r.color}">${r.level}</span></div>`).join('') + `
+        <div class="bc-tile">${lampHtml(dd.color)}<span class="bc-k">個人回撤</span><span class="bc-v light-${dd.color}">${dd.dd > 0.005 ? '−' + dd.dd.toFixed(1) : '0.0'}%</span></div>`;
+
+    const holdings = sortedHoldings();
+    const holdRows = holdings.map(h => {
+      const c = holdingExitChecks(h, rec);
+      const label = `<strong>${escapeHtml(h.symbol)}</strong> ${escapeHtml(h.name || rec.stocks[h.symbol]?.n || '')}`;
+      if (!c) return `<div class="bc-hold">${label}<span class="bc-chip">無資料</span></div>`;
+      const pnl = c.pnl == null ? '' : `<span class="${c.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(c.pnl, 1)}</span>`;
+      const chips = c.hits.length ? c.hits.map(x => `<span class="bc-chip alert">${x}</span>`).join('') : '<span class="bc-chip ok">續抱</span>';
+      return `<div class="bc-hold${c.hits.length ? ' hit' : ''}">${label} ${pnl}<span class="bc-chips">${chips}</span></div>`;
+    }).sort((a, b) => b.includes(' hit') - a.includes(' hit')).join('');
+
+    const quad = new Map((groups?.rrg || []).map(g => [g.group, g.quadrant]));
+    const strong = q => q === '領先' || q === '改善';
+    const setRows = latest.sets.filter(st => st.key !== 'vcp' || st.signal_count).map(st => {
+      const name = st.key === 'fast' ? '盤整突破' : st.key === 'streak' ? '動能延續' : st.key === 'vcp' ? '量縮突破' : st.label;
+      const list = [...st.signals].sort((a, b) => strong(quad.get(b.sub_group)) - strong(quad.get(a.sub_group)));
+      const items = list.slice(0, 10).map(x => {
+        const q = quad.get(x.sub_group);
+        return `<span class="bc-sig${strong(q) ? ' strong' : ''}">${escapeHtml(x.code)} ${escapeHtml(x.name)}${x.sub_group ? `<em>${escapeHtml(x.sub_group)}${q ? '·' + q : ''}</em>` : ''}</span>`;
+      }).join('');
+      return `<div class="bc-set"><div class="bc-set-head">${name}<b>${st.signal_count}</b></div><div class="bc-sigs">${items || '<span class="bc-chip">無</span>'}${list.length > 10 ? `<span class="bc-more">+${list.length - 10}</span>` : ''}</div></div>`;
+    }).join('');
+
+    const today = taipeiDateStr();
+    const due = sortedWatchlist().filter(w => !w.notified && w.reminderDate <= today);
+
+    el.innerHTML = `<div class="chart-card bc-card">
+      <div class="chart-head"><h2>盤前作戰卡</h2><span class="ml-date">${latest.scan_date}</span></div>
+      <div class="bc-tiles">${tiles}</div>
+      <div class="bc-sec"><h3>庫存出場檢查</h3>${holdRows || '<span class="bc-chip">無庫存</span>'}</div>
+      <div class="bc-sec"><h3>今日訊號</h3>${setRows}</div>
+      ${due.length ? `<div class="bc-sec"><h3>觀察清單到期</h3><div class="bc-sigs">${due.map(w => `<span class="bc-sig">${escapeHtml(w.code)} ${escapeHtml(w.name || '')}</span>`).join('')}</div></div>` : ''}
+    </div>`;
+  }
+
+  // ================= 平行宇宙 =================
+  async function renderParallel() {
+    const el = document.getElementById('parallel-universe');
+    if (!el) return;
+    let pu;
+    try { [pu] = await Promise.all([fetchJsonCached('signals/parallel.json'), ensureTwiData()]); }
+    catch (e) { el.innerHTML = ''; return; }
+    const st = pu.stats;
+    // 個人實際：9/1 起已實現累計（與報酬累計曲線同口徑），補成每日階梯
+    const items = equityCurveItems().sort((a, b) => a.date > b.date ? 1 : -1);
+    let cum = 0, k = 0;
+    const days = pu.curve.map(p => p.d);
+    const actual = days.map(d => { while (k < items.length && items[k].date <= d) cum += items[k++].contrib; return cum; });
+    const twiBase = TWI_INDEX_CLOSE[days[0]] || TWI_INDEX_CLOSE[Object.keys(TWI_INDEX_CLOSE).sort().filter(d => d < days[0]).pop()];
+    let lastTwi = null;
+    const twi = days.map(d => { if (TWI_INDEX_CLOSE[d]) lastTwi = (TWI_INDEX_CLOSE[d] / twiBase - 1) * 100; return lastTwi; });
+    const sim = pu.curve.map(p => p.v);
+    const gap = actual[actual.length - 1] - sim[sim.length - 1];
+
+    const W = Math.max(320, Math.min(1100, Math.round(el.clientWidth - 48) || 900)), H = W < 600 ? 220 : 260, P = { t: 14, r: 10, b: 30, l: 46 };
+    const all = [...sim, ...actual, ...twi.filter(v => v != null)];
+    const lim = Math.max(5, Math.ceil(Math.max(...all.map(Math.abs)) * 1.15 / 5) * 5);
+    const x = i => P.l + i / Math.max(1, days.length - 1) * (W - P.l - P.r);
+    const y = v => P.t + (lim - v) / (2 * lim) * (H - P.t - P.b);
+    const path = arr => arr.map((v, i) => v == null ? '' : `${i && arr[i - 1] != null ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+    let grid = '';
+    const step = lim <= 20 ? 5 : 10;
+    for (let v = -lim; v <= lim; v += step) grid += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--gridline)"/><text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--text-muted)" ${v === 0 ? 'font-weight="700"' : ''}>${v > 0 ? '+' : ''}${v}%</text>`;
+    let ticks = '';
+    days.forEach((d, i) => { if (d.endsWith('-01') || d.endsWith('-15') || i === 0) ticks += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${+d.slice(5, 7)}/${+d.slice(8)}</text>`; });
+
+    const fmtN = v => v == null ? '–' : v.toFixed(2);
+    const reasons = Object.entries(pu.exit_reasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span class="bc-chip">${k} ${n}</span>`).join('');
+    const rows = pu.trades.slice(0, 30).map(t => `<tr>
+        <td><strong>${t.code}</strong> ${escapeHtml(t.name)}</td><td>${t.setup === 'A' ? '盤整突破' : '動能延續'}</td>
+        <td class="num">${t.entry_d.slice(5)}</td><td class="num">${t.exit_d.slice(5)}</td>
+        <td>${t.reason}</td><td class="num ${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(t.pnl, 2)}</td></tr>`).join('');
+    const openRows = pu.open.map(t => `<span class="bc-sig">${t.code} ${escapeHtml(t.name)} <b class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(t.pnl, 1)}</b></span>`).join('');
+
+    el.innerHTML = `<div class="chart-card pu-card">
+      <div class="chart-head"><h2>平行宇宙</h2><span class="ml-date">${pu.start} ~ ${pu.last_date}</span></div>
+      <div class="pu-stats">
+        <div><span>規則版</span><b class="${st.ret >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(st.ret, 2)}</b></div>
+        <div><span>實際</span><b class="${actual[actual.length - 1] >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(actual[actual.length - 1], 2)}</b></div>
+        <div><span>執行落差</span><b class="${gap >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(gap, 2)}</b></div>
+        <div><span>筆數 / 勝率</span><b>${st.trades} / ${st.winRate ?? '–'}%</b></div>
+        <div><span>PF</span><b>${fmtN(st.pf)}</b></div>
+        <div><span>最大回撤</span><b>−${fmtN(st.maxDd)}%</b></div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-4)"></span>規則版</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>實際（已實現）</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--series-2)"></span>加權指數</div>
+      </div>
+      <div class="chart-body"><svg viewBox="0 0 ${W} ${H}">${grid}${ticks}
+        <path d="${path(twi)}" fill="none" stroke="var(--series-2)" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <path d="${path(actual)}" fill="none" stroke="var(--series-1)" stroke-width="2.5"/>
+        <path d="${path(sim)}" fill="none" stroke="var(--series-4)" stroke-width="2.5"/>
+      </svg></div>
+      <div class="bc-sec"><h3>出場原因</h3><div class="bc-sigs">${reasons}</div></div>
+      ${openRows ? `<div class="bc-sec"><h3>規則版目前持有</h3><div class="bc-sigs">${openRows}</div></div>` : ''}
+      <details class="pu-trades"><summary>規則版交易明細（${pu.trades.length}）</summary>
+        <div class="table-wrap"><table class="trade-table"><thead><tr><th>股票</th><th>策略</th><th class="num">進場</th><th class="num">出場</th><th>出場原因</th><th class="num">報酬</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </details>
+    </div>`;
   }
 
   // ================= WATCHLIST =================
@@ -1255,6 +1408,13 @@ const db = getFirestore(fbApp);
     return { realized, wins, losses, weighted, totalWeighted, totalProfitWan, winRate, avgWin, avgLoss, medianWin, medianLoss, pf, maxWin, maxLoss };
   }
 
+  function equityCurveItems(weighted) {
+    if (!weighted) weighted = computeStats(sortedTrades().filter(t => t.returnPct != null)).weighted;
+    return weighted
+      .filter(t => t.date >= EQUITY_CURVE_START)
+      .map(t => ({ ...t, contrib: profitPct(t.profitWan, t.date, () => EQUITY_CURVE_CAPITAL) }));
+  }
+
   async function renderStats() {
     await ensureOtcData();
     await ensureTwiData();
@@ -1283,9 +1443,7 @@ const db = getFirestore(fbApp);
     }
 
     renderMonthlyStatsTable(allRealized);
-    const equityItems = s.weighted
-      .filter(t => t.date >= EQUITY_CURVE_START)
-      .map(t => ({ ...t, contrib: profitPct(t.profitWan, t.date, () => EQUITY_CURVE_CAPITAL) }));
+    const equityItems = equityCurveItems(s.weighted);
     renderEquityCurve(equityItems, { startDate: EQUITY_CURVE_START, autoY: true });
     renderDrawdownLight(equityItems);
     renderMonthlyChart(s.weighted);

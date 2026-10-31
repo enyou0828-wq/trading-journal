@@ -203,6 +203,9 @@ def fetch_twse_rows() -> list[dict]:
             "market": "TWSE",
             "close": close,
             "volume": volume,
+            "open": to_float(r.get("OpeningPrice")),
+            "high": to_float(r.get("HighestPrice")),
+            "low": to_float(r.get("LowestPrice")),
         })
     return rows
 
@@ -225,8 +228,14 @@ def fetch_tpex_rows() -> list[dict]:
             "market": "TPEx",
             "close": close,
             "volume": volume,
+            "open": to_float(r.get("Open")),
+            "high": to_float(r.get("High")),
+            "low": to_float(r.get("Low")),
         })
     return rows
+
+
+OHLC_FIELDS = ("open", "high", "low")
 
 
 def load_history() -> list[dict]:
@@ -238,6 +247,8 @@ def load_history() -> list[dict]:
         for r in reader:
             r["close"] = to_float(r["close"])
             r["volume"] = to_float(r["volume"])
+            for k in OHLC_FIELDS:  # 2026-10-31 起才有開高低，舊資料是空字串 → NaN
+                r[k] = to_float(r.get(k))
             rows.append(r)
         return rows
 
@@ -245,10 +256,16 @@ def load_history() -> list[dict]:
 def save_history(rows: list[dict]) -> None:
     HISTORY_CSV.parent.mkdir(parents=True, exist_ok=True)
     rows = sorted(rows, key=lambda r: (r["code"], r["date"]))
+    def clean(r):
+        out = dict(r)
+        for k in OHLC_FIELDS:
+            v = out.get(k)
+            out[k] = "" if v is None or v != v else v
+        return out
     with open(HISTORY_CSV, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["date", "code", "name", "market", "close", "volume"])
+        writer = csv.DictWriter(f, fieldnames=["date", "code", "name", "market", "close", "volume", *OHLC_FIELDS], extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(clean(r) for r in rows)
 
 
 def load_companies() -> dict[str, dict]:
