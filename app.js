@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getMessaging, isSupported as isMessagingSupported, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
@@ -221,6 +221,81 @@ const db = getFirestore(fbApp);
     });
     result['2026-05'] = 14.92;
     return result;
+  }
+
+  // ---- 紅黃綠燈號 ----
+  const LIGHT_ORDER = ['green', 'yellow', 'red'];
+  function lampHtml(color) {
+    return `<span class="lamp">${LIGHT_ORDER.map(c => `<i class="lamp-dot ${c}${c === color ? ' on' : ''}"></i>`).join('')}</span>`;
+  }
+
+  // 大盤水位（2026-10-25 版規則）：收盤跌破月線 → 30%；站回月線 → 50%、再站上 10 日線 → 70%、
+  // 再站上 5 日線 → 滿倉、創新高 → 槓桿。新高＝收盤 ≥ 資料內最高收盤。
+  function indexLevel(closeMap) {
+    const dates = Object.keys(closeMap).sort();
+    if (dates.length < 20) return null;
+    const closes = dates.map(d => closeMap[d]);
+    const n = closes.length, c = closes[n - 1];
+    const ma = k => closes.slice(n - k).reduce((a, v) => a + v, 0) / k;
+    const ma5 = ma(5), ma10 = ma(10), ma20 = ma(20);
+    const high = Math.max(...closes);
+    let level, color;
+    if (c < ma20) { level = '30%'; color = 'red'; }
+    else if (c < ma10) { level = '50%'; color = 'yellow'; }
+    else if (c < ma5) { level = '70%'; color = 'yellow'; }
+    else if (c < high) { level = '100%'; color = 'green'; }
+    else { level = '槓桿'; color = 'green'; }
+    const dist = v => (c / v - 1) * 100;
+    return {
+      date: dates[n - 1], close: c, chg: (c / closes[n - 2] - 1) * 100, level, color,
+      checks: [['月線', dist(ma20)], ['10日線', dist(ma10)], ['5日線', dist(ma5)], ['新高', dist(high)]],
+    };
+  }
+
+  async function renderMarketLevel() {
+    const el = document.getElementById('market-level');
+    if (!el) return;
+    await ensureTwiData();
+    await ensureOtcData();
+    const rows = [['加權', indexLevel(TWI_INDEX_CLOSE)], ['櫃買', indexLevel(OTC_INDEX_CLOSE)]].filter(r => r[1]);
+    if (!rows.length) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="chart-card ml-card">
+      <div class="chart-head"><h2>大盤水位</h2><span class="ml-date">${rows[0][1].date}</span></div>
+      ${rows.map(([name, r]) => `
+        <div class="ml-row">
+          ${lampHtml(r.color)}
+          <div class="ml-name">${name}<span class="ml-close">${r.close.toLocaleString('zh-TW', { maximumFractionDigits: 2 })} <b class="${r.chg >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPct(r.chg, 2)}</b></span></div>
+          <div class="ml-level light-${r.color}">${r.level}</div>
+          <div class="ml-checks">${r.checks.map(([k, d]) => `<span class="ml-chip ${d >= 0 ? 'ok' : 'no'}">${d >= 0 ? '✓' : '✗'} ${k} <em>${fmtPct(d, 1)}</em></span>`).join('')}</div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // 個人回撤：9/1 起的已實現報酬累計（分母 55 萬），相對歷史高點的回落。紅線 7.5%、黃線為一半。
+  const DD_RED = 7.5, DD_YELLOW = 3.75;
+  function renderDrawdownLight(items) {
+    const el = document.getElementById('dd-light');
+    if (!el) return;
+    const sorted = [...items].sort((a, b) => a.date > b.date ? 1 : a.date < b.date ? -1 : 0);
+    let cum = 0, peak = 1, peakDate = EQUITY_CURVE_START, maxDd = 0;
+    for (const t of sorted) {
+      cum += t.contrib;
+      const eq = 1 + cum / 100;
+      if (eq >= peak) { peak = eq; peakDate = t.date; }
+      maxDd = Math.max(maxDd, (1 - eq / peak) * 100);
+    }
+    const dd = (1 - (1 + cum / 100) / peak) * 100;
+    const color = dd >= DD_RED ? 'red' : dd >= DD_YELLOW ? 'yellow' : 'green';
+    const status = { green: '正常', yellow: '注意', red: '停止新倉' }[color];
+    el.innerHTML = `<div class="dd-row">
+      ${lampHtml(color)}
+      <div class="dd-main"><span class="dd-status light-${color}">${status}</span><span class="dd-val">${dd > 0.005 ? '−' + dd.toFixed(2) : '0.00'}%</span></div>
+      <div class="dd-meta">
+        <span>高點 <b>${peakDate.slice(5).replace('-', '/')}</b></span>
+        <span>距紅線 <b>${Math.max(0, DD_RED - dd).toFixed(2)}%</b></span>
+        <span>最大回撤 <b>${maxDd > 0.005 ? '−' + maxDd.toFixed(2) : '0.00'}%</b></span>
+      </div>
+    </div>`;
   }
 
   // ---------- state ----------
@@ -450,8 +525,7 @@ const db = getFirestore(fbApp);
       const target = tabBtn.dataset.tab;
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.getElementById('panel-' + target).classList.add('active');
-      if (target === 'holdings') renderHoldings();
-      if (target === 'futures') renderFutures();
+      if (target === 'holdings') { renderMarketLevel(); renderHoldings(); }
       if (target === 'stats') { renderStats(); renderChainResults(); renderChainDetail(); }
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') import(GROUPS_JS).then(m => m.renderGroups(document.getElementById('groups-root')));
@@ -837,126 +911,6 @@ const db = getFirestore(fbApp);
     symbolInput.focus();
   });
 
-  // ================= FUTURES =================
-  // 期貨分頁＝簡易文字紀錄：每筆 { id, date, trend: '順'|'逆', pnl: 元 }。
-  // 損益獨立統計，不進股票的資金加權報酬與月度回顧。
-  // 舊版紀錄（大台／小台口數、進出場點數）沒有 pnl 欄位時，用 legacyFuturesPnl 換算。
-  // 2026-10-23 短暫有過線圖上傳（journals/{uid}/futuresCharts），已拿掉；刪除帶 images 的舊紀錄時順手清掉圖。
-  const FUTURES_POINT_VALUE = { '大台': 200, '小台': 50, '微台': 10 };
-  function legacyFuturesPnl(f) {
-    const points = (f.exit - f.entry) * (f.side === '空' ? -1 : 1);
-    return points * (FUTURES_POINT_VALUE[f.product] || 0) * f.lots - (f.fee || 0);
-  }
-  function futurePnlOf(f) {
-    if (f.pnl != null && f.pnl !== '') return +f.pnl;
-    if (f.entry != null && f.exit != null) return legacyFuturesPnl(f);
-    return null;
-  }
-
-  const fmtYuan = (n) => (n > 0 ? '+' : '') + Math.round(n).toLocaleString('zh-TW');
-  const pnlClassOf = (n) => n > 0 ? 'pnl-pos' : n < 0 ? 'pnl-neg' : 'pnl-zero';
-
-  function futuresStats(list) {
-    const pnls = list.map(futurePnlOf).filter(n => n != null);
-    const n = pnls.length;
-    const wins = pnls.filter(v => v > 0), losses = pnls.filter(v => v < 0);
-    const winSum = wins.reduce((a, v) => a + v, 0), lossSum = -losses.reduce((a, v) => a + v, 0);
-    const total = pnls.reduce((a, v) => a + v, 0);
-    return {
-      n, wins: wins.length, losses: losses.length, total,
-      winRate: n ? wins.length / n * 100 : null,
-      pf: lossSum > 0 ? winSum / lossSum : (winSum > 0 ? Infinity : null),
-      expectancy: n ? total / n : null,
-      avgWin: wins.length ? winSum / wins.length : null,
-      avgLoss: losses.length ? -lossSum / losses.length : null,
-    };
-  }
-  const fmtPf = (pf) => pf == null ? '–' : pf === Infinity ? '∞' : pf.toFixed(2);
-
-  function renderFutures() {
-    if (!Array.isArray(state.futures)) state.futures = [];
-    const tbody = document.getElementById('futures-tbody');
-    const empty = document.getElementById('futures-empty');
-    const items = [...state.futures].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-
-    tbody.innerHTML = items.map(f => {
-      const pnl = futurePnlOf(f);
-      const trend = f.trend === '順' ? '<span class="badge action-in">順勢</span>' : f.trend === '逆' ? '<span class="badge action-out">逆勢</span>' : '–';
-      return `
-        <tr>
-          <td>${escapeHtml(f.date)}</td>
-          <td>${trend}</td>
-          <td class="num ${pnl == null ? '' : pnlClassOf(pnl)}">${pnl == null ? '–' : fmtYuan(pnl)}</td>
-          <td><button class="icon-btn btn-del-future" data-id="${f.id}" title="刪除">✕</button></td>
-        </tr>`;
-    }).join('');
-    empty.style.display = items.length ? 'none' : '';
-
-    tbody.querySelectorAll('.btn-del-future').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const f = state.futures.find(x => x.id === btn.dataset.id);
-        if (!confirm('刪除這筆紀錄？')) return;
-        state.futures = state.futures.filter(x => x.id !== btn.dataset.id);
-        await save();
-        if (currentUser) for (const cid of (f?.images || [])) {
-          try { await deleteDoc(doc(db, 'journals', currentUser.uid, 'futuresCharts', cid)); } catch (e) { console.error('delete chart failed', e); }
-        }
-        renderFutures();
-      });
-    });
-
-    const all = futuresStats(items);
-    document.getElementById('futures-summary').innerHTML = all.n ? `
-      <div class="stat-tile">
-        <span class="stat-label">勝率</span>
-        <span class="stat-value">${all.winRate.toFixed(1)}%</span>
-        <span class="stat-sub">${all.wins} 勝 / ${all.losses} 敗（共 ${all.n} 筆）</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-label">Profit Factor</span>
-        <span class="stat-value">${fmtPf(all.pf)}</span>
-        <span class="stat-sub">總獲利 ÷ 總虧損</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-label">期望值 (元/筆)</span>
-        <span class="stat-value ${pnlClassOf(all.expectancy)}">${fmtYuan(all.expectancy)}</span>
-        <span class="stat-sub">平均獲利 ${all.avgWin == null ? '–' : fmtYuan(all.avgWin)} / 平均虧損 ${all.avgLoss == null ? '–' : fmtYuan(all.avgLoss)}</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-label">總損益 (元)</span>
-        <span class="stat-value ${pnlClassOf(all.total)}">${fmtYuan(all.total)}</span>
-      </div>
-    ` : '';
-
-    const rows = [['全部', items], ['順勢', items.filter(f => f.trend === '順')], ['逆勢', items.filter(f => f.trend === '逆')]];
-    document.getElementById('futures-split-card').hidden = !all.n;
-    document.getElementById('futures-split-tbody').innerHTML = rows.map(([name, list]) => {
-      const st = futuresStats(list);
-      return `<tr>
-        <td>${name}</td>
-        <td class="num">${st.n}</td>
-        <td class="num">${st.winRate == null ? '–' : st.winRate.toFixed(1) + '%'}</td>
-        <td class="num">${fmtPf(st.pf)}</td>
-        <td class="num ${st.expectancy == null ? '' : pnlClassOf(st.expectancy)}">${st.expectancy == null ? '–' : fmtYuan(st.expectancy)}</td>
-        <td class="num ${st.n ? pnlClassOf(st.total) : ''}">${st.n ? fmtYuan(st.total) : '–'}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  document.getElementById('ft-date').value = new Date().toLocaleDateString('sv-SE');
-
-  document.getElementById('futures-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const date = document.getElementById('ft-date').value;
-    const pnl = parseFloat(document.getElementById('ft-pnl').value);
-    if (!date || isNaN(pnl)) return;
-    if (!Array.isArray(state.futures)) state.futures = [];
-    state.futures.push({ id: uid(), date, trend: document.getElementById('ft-trend').value, pnl });
-    await save();
-    document.getElementById('ft-pnl').value = '';
-    renderFutures();
-  });
-
   // ---- 推播通知（Firebase Cloud Messaging）----
   // 整個網站是純前端 + GitHub Pages，沒有自己的伺服器；用 FCM 讓瀏覽器就算沒開著頁面
   // 也能收到「隔天 8:30」的提醒，實際送出的排程在 scripts/send_watchlist_reminders.py，
@@ -1329,12 +1283,11 @@ const db = getFirestore(fbApp);
     }
 
     renderMonthlyStatsTable(allRealized);
-    renderEquityCurve(
-      s.weighted
-        .filter(t => t.date >= EQUITY_CURVE_START)
-        .map(t => ({ ...t, contrib: profitPct(t.profitWan, t.date, () => EQUITY_CURVE_CAPITAL) })),
-      { startDate: EQUITY_CURVE_START, autoY: true }
-    );
+    const equityItems = s.weighted
+      .filter(t => t.date >= EQUITY_CURVE_START)
+      .map(t => ({ ...t, contrib: profitPct(t.profitWan, t.date, () => EQUITY_CURVE_CAPITAL) }));
+    renderEquityCurve(equityItems, { startDate: EQUITY_CURVE_START, autoY: true });
+    renderDrawdownLight(equityItems);
     renderMonthlyChart(s.weighted);
     renderStrategyChart(s.realized);
     renderSectorChart(s.realized);

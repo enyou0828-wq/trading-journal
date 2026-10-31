@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=20261031112817">
+<link rel="stylesheet" href="style.css?v=20261031154247">
 </head>
 <body>
 
@@ -41,7 +41,6 @@
       <button class="tab" data-tab="chain" role="tab" aria-selected="false">族群</button>
       <button class="tab" data-tab="signals" role="tab" aria-selected="false">訊號</button>
       <button class="tab" data-tab="watchlist" role="tab" aria-selected="false">觀察清單</button>
-      <button class="tab" data-tab="futures" role="tab" aria-selected="false">期貨</button>
     </nav>
     <div class="topbar-actions">
       <span class="sync-status" id="sync-status">已同步</span>
@@ -109,6 +108,8 @@
         <h1>庫存股</h1>
       </div>
 
+      <div id="market-level"></div>
+
       <div class="chart-card">
         <form id="holding-form" class="form-row">
           <label>股票代號 <input type="text" id="hd-symbol" placeholder="2330" list="symbol-datalist" required></label>
@@ -137,64 +138,6 @@
             <tbody id="holdings-tbody"></tbody>
           </table>
           <p class="empty-state" id="holdings-empty">還沒有任何庫存紀錄，上面加入第一筆吧。</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== FUTURES TAB ===== -->
-    <section class="panel" id="panel-futures">
-      <div class="panel-head">
-        <h1>期貨</h1>
-      </div>
-
-      <div class="chart-card">
-        <form id="futures-form" class="form-row">
-          <label>日期 <input type="date" id="ft-date" required></label>
-          <label>順／逆
-            <select id="ft-trend">
-              <option value="順">順勢</option>
-              <option value="逆">逆勢</option>
-            </select>
-          </label>
-          <label>損益 (元) <input type="number" id="ft-pnl" placeholder="3000 或 -1500" step="1" required></label>
-          <button type="submit" class="btn primary" id="ft-submit" style="align-self:flex-end;">＋ 新增</button>
-        </form>
-      </div>
-
-      <div class="stat-grid" id="futures-summary"></div>
-
-      <div class="chart-card" id="futures-split-card" hidden>
-        <div class="table-wrap">
-          <table class="trade-table ft-split">
-            <thead>
-              <tr>
-                <th></th>
-                <th class="num">筆數</th>
-                <th class="num">勝率</th>
-                <th class="num">Profit Factor</th>
-                <th class="num">期望值 (元/筆)</th>
-                <th class="num">總損益 (元)</th>
-              </tr>
-            </thead>
-            <tbody id="futures-split-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="table-wrap">
-          <table class="trade-table">
-            <thead>
-              <tr>
-                <th>日期</th>
-                <th>順／逆</th>
-                <th class="num">損益 (元)</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="futures-tbody"></tbody>
-          </table>
-          <p class="empty-state" id="futures-empty">還沒有任何期貨紀錄。</p>
         </div>
       </div>
     </section>
@@ -277,6 +220,7 @@
           <h2>報酬累計曲線（9/1 起）</h2>
         </div>
         <div id="equity-chart" class="chart-body"></div>
+        <div id="dd-light"></div>
       </div>
 
       <div class="chart-card">
@@ -596,6 +540,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=20261031112817"></script>
+<script type="module" src="app.js?v=20261031154247"></script>
 </body>
 </html>
