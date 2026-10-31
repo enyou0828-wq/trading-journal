@@ -6,6 +6,9 @@ import { firebaseConfig } from "./firebase-config.js";
 import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
 import { VAPID_KEY } from "./push-config.js";
 
+// 族群分頁模組；版本號由 pre-commit hook 在 groups.js 改動時自動更新
+const GROUPS_JS = './groups.js?v=20261031110056';
+
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
@@ -453,6 +456,7 @@ const db = getFirestore(fbApp);
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') { renderChainResults(); renderChainDetail(); }
       if (target === 'signals') renderSignals();
+      if (target === 'groups') import(GROUPS_JS).then(m => m.renderGroups(document.getElementById('groups-root')));
       if (target === 'watchlist') renderWatchlist();
     });
   });
