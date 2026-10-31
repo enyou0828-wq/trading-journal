@@ -7,7 +7,7 @@ import { SUPPLY_CHAIN_NODES, COMPANY_LINKS } from "./supplyChainData.js";
 import { VAPID_KEY } from "./push-config.js";
 
 // 族群分頁模組；版本號由 pre-commit hook 在 groups.js 改動時自動更新
-const GROUPS_JS = './groups.js?v=20261031110056';
+const GROUPS_JS = './groups.js?v=20261031203258';
 
 // 手機與「加到主畫面」的 App 用同網域登入（轉接檔在 enyou0828-wq.github.io/__/auth/），
 // 電腦維持原本的 firebaseapp.com 彈窗登入。

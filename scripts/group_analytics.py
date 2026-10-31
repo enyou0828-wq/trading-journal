@@ -10,8 +10,9 @@
   heatmap ：每檔今日／5日／20日漲跌、近 5 日平均成交值
   rrg     ：相對輪動圖。RS = 族群指數 ÷ 大盤指數
             RS-Ratio = 100 × EMA5(RS ÷ SMA20(RS))；RS-Momentum = 100 × RS-Ratio ÷ 5 天前的 RS-Ratio
-  baton   ：供應鏈「下一棒」。flows.csv 裡 A→B，A 的 5 日超額報酬 ≥ HOT_PCT 且 B ≤ LAG_PCT 時觸發，
-            回測 B 之後 FWD_DAYS 天的超額報酬（命中＝超額 > 0），並和 B 任意一天的基準比較
+  baton   ：供應鏈「上下游」。flows.csv 每條 上游→下游 連線兩個方向都檢查：領漲端 5 日超額報酬 ≥ HOT_PCT
+            且另一端 ≤ LAG_PCT 時觸發（dir=down 上游帶下游、dir=up 下游帶上游），
+            回測落後端之後 FWD_DAYS 天的超額報酬（命中＝超額 > 0），並和落後端任意一天的基準比較
   tennis  ：網球 vs 雞蛋。近 20 日最高收盤 → 之後最低收盤 = 這次拉回；收復比例 =（現價 − 低點）÷（高點 − 低點）
 
 只用標準函式庫，GitHub Actions 不用另外安裝套件。
@@ -39,8 +40,8 @@ RRG_EMA = 5
 RRG_MOM = 5
 RRG_TAIL = 10
 
-HOT_PCT = 5.0      # 上游 5 日超額報酬門檻（%）
-LAG_PCT = 1.0      # 下游 5 日超額報酬上限（%）
+HOT_PCT = 5.0      # 領漲端 5 日超額報酬門檻（%）
+LAG_PCT = 1.0      # 落後端 5 日超額報酬上限（%）
 FWD_DAYS = 10      # 觸發後觀察天數
 COOLDOWN = 10      # 同一條路徑兩次觸發至少相隔幾天
 RECENT_DAYS = 3    # 最近幾天內觸發算「目前觸發」
@@ -241,7 +242,10 @@ def build_baton(edges, group_idx, mkt_idx, dates):
         return ((group_idx[g][i + FWD_DAYS] / group_idx[g][i]) - (mkt_idx[i + FWD_DAYS] / mkt_idx[i])) * 100
 
     paths, all_events, base_all = [], [], []
-    for (a, b), item in edges.items():
+    by_dir = {"down": ([], []), "up": ([], [])}
+    pairs = [(u, d, item, "down") for (u, d), item in edges.items()] + \
+            [(d, u, item, "up") for (u, d), item in edges.items()]
+    for a, b, item, direction in pairs:  # a＝領漲端，b＝落後端
         if a not in ex5 or b not in ex5:
             continue
         base = [fwd_excess(b, i) for i in range(5, n)]
@@ -261,7 +265,7 @@ def build_baton(edges, group_idx, mkt_idx, dates):
         if cur:
             since = r2(((group_idx[b][-1] / group_idx[b][cur["i"]]) - (mkt_idx[-1] / mkt_idx[cur["i"]])) * 100)
         paths.append({
-            "from": a, "to": b, "item": item,
+            "from": a, "to": b, "item": item, "dir": direction,
             "a5": r2(ex5[a][-1]), "b5": r2(ex5[b][-1]),
             "n": len(done), "hit": r2(sum(v > 0 for v in done) / len(done) * 100, 1) if done else None,
             "avg": r2(sum(done) / len(done)) if done else None,
@@ -272,14 +276,18 @@ def build_baton(edges, group_idx, mkt_idx, dates):
         })
         all_events += done
         base_all += base
-    summary = {
-        "events": len(all_events),
-        "hit": r2(sum(v > 0 for v in all_events) / len(all_events) * 100, 1) if all_events else None,
-        "avg": r2(sum(all_events) / len(all_events)) if all_events else None,
-        "baseHit": r2(sum(v > 0 for v in base_all) / len(base_all) * 100, 1) if base_all else None,
-        "baseAvg": r2(sum(base_all) / len(base_all)) if base_all else None,
-        "hotPct": HOT_PCT, "lagPct": LAG_PCT, "fwdDays": FWD_DAYS,
-    }
+        by_dir[direction][0].extend(done)
+        by_dir[direction][1].extend(base)
+    def stat(ev, base):
+        return {
+            "events": len(ev),
+            "hit": r2(sum(v > 0 for v in ev) / len(ev) * 100, 1) if ev else None,
+            "avg": r2(sum(ev) / len(ev)) if ev else None,
+            "baseHit": r2(sum(v > 0 for v in base) / len(base) * 100, 1) if base else None,
+            "baseAvg": r2(sum(base) / len(base)) if base else None,
+        }
+    summary = {**stat(all_events, base_all), "hotPct": HOT_PCT, "lagPct": LAG_PCT, "fwdDays": FWD_DAYS,
+               "byDir": {k: stat(*v) for k, v in by_dir.items()}}
     return {"summary": summary, "paths": paths}
 
 

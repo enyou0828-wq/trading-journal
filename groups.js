@@ -1,4 +1,4 @@
-// 族群分頁：熱力圖、相對輪動圖、下一棒、網球 vs 雞蛋。
+// 族群分頁：熱力圖、相對輪動圖、上下游、網球 vs 雞蛋。
 // 資料由 scripts/group_analytics.py 每日收盤後產出 signals/groups.json。
 import { treemap, hierarchy, treemapSquarify } from "https://cdn.jsdelivr.net/npm/d3-hierarchy@3.1.2/+esm";
 
@@ -29,7 +29,7 @@ export async function renderGroups(root) {
   root.innerHTML = `
     <p class="gx-meta">資料日期 ${esc(data.asOf)}　全市場等權 今日 <span class="${cls(data.market.c1)}">${pct(data.market.c1)}</span>　5日 <span class="${cls(data.market.c5)}">${pct(data.market.c5)}</span>　20日 <span class="${cls(data.market.c20)}">${pct(data.market.c20)}</span></p>
     <div class="gx-seg" role="tablist">
-      ${[['heat', '熱力圖'], ['rrg', '輪動'], ['baton', '下一棒'], ['tennis', '網球 vs 雞蛋']]
+      ${[['heat', '熱力圖'], ['rrg', '輪動'], ['baton', '上下游'], ['tennis', '網球 vs 雞蛋']]
         .map(([k, t]) => `<button class="gx-seg-btn${view === k ? ' active' : ''}" data-view="${k}">${t}</button>`).join('')}
     </div>
     <div id="gx-body"></div>`;
@@ -203,7 +203,7 @@ function renderRrg(body) {
   }).join('');
 }
 
-// ---------------------------------------------------------------- 下一棒
+// ---------------------------------------------------------------- 上下游
 function renderBaton(body) {
   const { summary: s, paths } = data.baton;
   const edge = p => p.hit != null && p.baseHit != null ? p.hit - p.baseHit : -999;
@@ -212,23 +212,28 @@ function renderBaton(body) {
     .sort((a, b) => b.a5 - a.a5);
   const ranked = paths.filter(p => p.n >= 3).sort((a, b) => edge(b) - edge(a));
 
+  const DIR = { down: '上游帶下游', up: '下游帶上游' };
+  const dirTag = p => `<span class="gx-tag">${DIR[p.dir]}</span>`;
+  const dirShort = p => `<span class="gx-tag">${p.dir === 'up' ? '下→上' : '上→下'}</span>`;
   const card = (p, tag) => `<div class="gx-baton">
-      <div class="gx-baton-path"><b>${esc(p.from)}</b><span class="gx-arrow">→</span><b>${esc(p.to)}</b><span class="gx-item">${esc(p.item)}</span>${tag}</div>
+      <div class="gx-baton-path"><b>${esc(p.from)}</b><span class="gx-arrow">→</span><b>${esc(p.to)}</b><span class="gx-item">${esc(p.item)}</span>${dirTag(p)}${tag}</div>
       <div class="gx-baton-stats">
-        <span>上游 5日超額 <b class="${cls(p.a5)}">${pct(p.a5)}</b></span>
-        <span>下游 5日超額 <b class="${cls(p.b5)}">${pct(p.b5)}</b></span>
+        <span>${esc(p.from)} 5日超額 <b class="${cls(p.a5)}">${pct(p.a5)}</b></span>
+        <span>${esc(p.to)} 5日超額 <b class="${cls(p.b5)}">${pct(p.b5)}</b></span>
         ${p.since != null ? `<span>觸發後 <b class="${cls(p.since)}">${pct(p.since)}</b></span>` : ''}
         <span>歷史 ${p.n} 次・命中 ${p.hit == null ? '–' : p.hit + '%'}（基準 ${p.baseHit ?? '–'}%）</span>
       </div></div>`;
 
   body.innerHTML = `
     <div class="chart-card">
-      <div class="gx-summary">
-        <div><span>觸發次數</span><b>${s.events}</b></div>
-        <div><span>命中率</span><b>${s.hit ?? '–'}%</b><em>基準 ${s.baseHit ?? '–'}%</em></div>
-        <div><span>後 ${s.fwdDays} 日平均超額</span><b class="${cls(s.avg)}">${pct(s.avg)}</b><em>基準 ${pct(s.baseAvg)}</em></div>
+      <div class="gx-dirgrid">
+        <span></span><span>次數</span><span>命中／基準</span><span>${s.fwdDays}日超額／基準</span>
+        ${[['全部', s], ['上→下', s.byDir?.down], ['下→上', s.byDir?.up]].filter(([, x]) => x).map(([k, x]) => `
+          <b>${k}</b><b>${x.events}</b>
+          <b><i class="${x.hit > x.baseHit ? 'pnl-pos' : 'pnl-neg'}">${x.hit ?? '–'}%</i>／${x.baseHit ?? '–'}%</b>
+          <b><i class="${cls(x.avg)}">${pct(x.avg)}</i>／${pct(x.baseAvg)}</b>`).join('')}
       </div>
-      <p class="gx-rule">上游 5 日超額 ≥ ${s.hotPct}%・下游 ≤ ${s.lagPct}%</p>
+      <p class="gx-rule">領漲端 5 日超額 ≥ ${s.hotPct}%・落後端 ≤ ${s.lagPct}%</p>
     </div>
     <div class="chart-card">
       <div class="chart-head"><h2>目前觸發</h2><span class="gx-count">${active.length}</span></div>
@@ -239,11 +244,11 @@ function renderBaton(body) {
       ${near.length ? near.map(p => card(p, '')).join('') : '<p class="gx-none">–</p>'}
     </div>
     <div class="chart-card">
-      <div class="chart-head"><h2>傳導路徑歷史</h2></div>
+      <div class="chart-head"><h2>路徑歷史</h2></div>
       <div class="table-wrap"><table class="trade-table gx-table">
         <thead><tr><th>路徑</th><th class="num">次數</th><th class="num">命中</th><th class="num">基準</th><th class="num">平均超額</th><th class="num">基準超額</th></tr></thead>
         <tbody>${ranked.map(p => `<tr>
-          <td>${esc(p.from)} → ${esc(p.to)}</td>
+          <td>${esc(p.from)} → ${esc(p.to)} ${dirShort(p)}</td>
           <td class="num">${p.n}</td>
           <td class="num ${p.hit > p.baseHit ? 'pnl-pos' : 'pnl-neg'}">${p.hit}%</td>
           <td class="num">${p.baseHit}%</td>

@@ -685,6 +685,11 @@ body { overflow-x: clip; }
 .gx-summary b { font-size: 22px; font-variant-numeric: tabular-nums; }
 .gx-summary em { font-style: normal; font-size: 12px; color: var(--text-secondary); }
 .gx-rule { font-size: 12px; color: var(--text-muted); margin: 10px 0 0; }
+.gx-dirgrid { display: grid; grid-template-columns: auto auto 1fr 1fr; gap: 8px 10px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.gx-dirgrid span { font-size: 12px; color: var(--text-muted); text-align: right; }
+.gx-dirgrid b { font-size: 13.5px; font-weight: 600; text-align: right; white-space: nowrap; }
+.gx-dirgrid b:nth-child(4n+1) { text-align: left; }
+.gx-dirgrid i { font-style: normal; }
 .gx-baton { padding: 10px 0; border-bottom: 1px solid var(--gridline); }
 .gx-baton:last-child { border-bottom: 0; }
 .gx-baton-path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; }
