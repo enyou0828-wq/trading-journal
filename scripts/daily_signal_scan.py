@@ -185,54 +185,91 @@ def to_float(value) -> float:
         return float("nan")
 
 
-def fetch_twse_rows() -> list[dict]:
+# 當天資料來源：證交所／櫃買中心網站的「每日收盤行情」查詢（指定日期，收盤後約 14:30–15:00 就有）。
+# OpenAPI（TWSE_URL／TPEX_URL）的上市資料常常要到隔天上午才更新，只當備援：當天查不到時
+# 用它補上最近一個交易日，也順便補回前一天萬一漏掉的資料。
+TWSE_DAY_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date={date}&type=ALLBUT0999&response=json"
+TPEX_DAY_URL = "https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes?date={date}&type=EW&response=json"  # 成交股數含零股，與 OpenAPI 一致
+
+
+def _row(iso, code, name, market, close, volume, o, h, l):
+    if not PLAIN_STOCK_CODE.match(code) or close != close or volume != volume:
+        return None
+    return {"date": iso, "code": code, "name": name, "market": market, "close": close, "volume": volume,
+            "open": o, "high": h, "low": l}
+
+
+def fetch_twse_day(iso: str) -> list[dict]:
+    data = fetch_json(TWSE_DAY_URL.format(date=iso.replace("-", "")), referer="https://www.twse.com.tw/")
+    if not isinstance(data, dict) or data.get("stat") != "OK" or data.get("date") != iso.replace("-", ""):
+        return []
+    table = next((t for t in data.get("tables", []) if t.get("fields") and "證券代號" in t["fields"]), None)
+    if not table:
+        return []
+    f = [x.strip() for x in table["fields"]]
+    ic, iv, io, ih, il, ip = (f.index(k) for k in ("證券名稱", "成交股數", "開盤價", "最高價", "最低價", "收盤價"))
+    rows = [_row(iso, r[0].strip(), r[ic].strip(), "TWSE", to_float(r[ip]), to_float(r[iv]),
+                 to_float(r[io]), to_float(r[ih]), to_float(r[il])) for r in table.get("data", [])]
+    return [r for r in rows if r]
+
+
+def fetch_tpex_day(iso: str) -> list[dict]:
+    data = fetch_json(TPEX_DAY_URL.format(date=iso.replace("-", "%2F")), referer="https://www.tpex.org.tw/")
+    if not isinstance(data, dict) or str(data.get("date")) != iso.replace("-", ""):
+        return []
+    tables = data.get("tables") or []
+    if not tables or not tables[0].get("data"):
+        return []
+    f = [x.strip() for x in tables[0].get("fields", [])]
+    ic, ip, io, ih, il, iv = (f.index(k) for k in ("名稱", "收盤", "開盤", "最高", "最低", "成交股數"))
+    rows = [_row(iso, r[0].strip(), r[ic].strip(), "TPEx", to_float(r[ip]), to_float(r[iv]),
+                 to_float(r[io]), to_float(r[ih]), to_float(r[il])) for r in tables[0]["data"]]
+    return [r for r in rows if r]
+
+
+def fetch_twse_openapi() -> list[dict]:
     data = fetch_json(TWSE_URL, referer="https://www.twse.com.tw/")
-    rows = []
-    for r in data:
-        code = r.get("Code", "").strip()
-        if not PLAIN_STOCK_CODE.match(code):
-            continue
-        close = to_float(r.get("ClosingPrice"))
-        volume = to_float(r.get("TradeVolume"))
-        if close != close or volume != volume:  # NaN check
-            continue
-        rows.append({
-            "date": roc_date_to_iso(r["Date"]),
-            "code": code,
-            "name": r.get("Name", "").strip(),
-            "market": "TWSE",
-            "close": close,
-            "volume": volume,
-            "open": to_float(r.get("OpeningPrice")),
-            "high": to_float(r.get("HighestPrice")),
-            "low": to_float(r.get("LowestPrice")),
-        })
+    rows = [_row(roc_date_to_iso(r["Date"]), r.get("Code", "").strip(), r.get("Name", "").strip(), "TWSE",
+                 to_float(r.get("ClosingPrice")), to_float(r.get("TradeVolume")), to_float(r.get("OpeningPrice")),
+                 to_float(r.get("HighestPrice")), to_float(r.get("LowestPrice"))) for r in data]
+    return [r for r in rows if r]
+
+
+def fetch_tpex_openapi() -> list[dict]:
+    data = fetch_json(TPEX_URL, referer="https://www.tpex.org.tw/")
+    rows = [_row(roc_date_to_iso(r["Date"]), r.get("SecuritiesCompanyCode", "").strip(),
+                 r.get("CompanyName", "").strip(), "TPEx", to_float(r.get("Close")), to_float(r.get("TradingShares")),
+                 to_float(r.get("Open")), to_float(r.get("High")), to_float(r.get("Low"))) for r in data]
+    return [r for r in rows if r]
+
+
+def _fetch_market(day_fn, openapi_fn, label: str) -> list[dict]:
+    """先查今天（台北時間）的當日行情；再用 OpenAPI 補最近一個交易日。兩邊重疊時以當日行情為準。"""
+    today = datetime.now(TAIPEI_TZ).strftime("%Y-%m-%d")
+    day_rows = []
+    try:
+        day_rows = day_fn(today)
+    except (urllib.error.URLError, RuntimeError, json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"{label} 當日行情查詢失敗，改用 OpenAPI：{e}", file=sys.stderr)
+    try:
+        api_rows = openapi_fn()
+    except (urllib.error.URLError, RuntimeError, json.JSONDecodeError) as e:
+        if not day_rows:
+            raise
+        print(f"{label} OpenAPI 失敗，只用當日行情：{e}", file=sys.stderr)
+        api_rows = []
+    seen = {(r["code"], r["date"]) for r in day_rows}
+    rows = day_rows + [r for r in api_rows if (r["code"], r["date"]) not in seen]
+    print(f"{label}：當日行情 {len(day_rows)} 檔（{today}），OpenAPI {len(api_rows)} 檔")
     return rows
+
+
+def fetch_twse_rows() -> list[dict]:
+    return _fetch_market(fetch_twse_day, fetch_twse_openapi, "TWSE")
 
 
 def fetch_tpex_rows() -> list[dict]:
-    data = fetch_json(TPEX_URL, referer="https://www.tpex.org.tw/")
-    rows = []
-    for r in data:
-        code = r.get("SecuritiesCompanyCode", "").strip()
-        if not PLAIN_STOCK_CODE.match(code):
-            continue
-        close = to_float(r.get("Close"))
-        volume = to_float(r.get("TradingShares"))
-        if close != close or volume != volume:
-            continue
-        rows.append({
-            "date": roc_date_to_iso(r["Date"]),
-            "code": code,
-            "name": r.get("CompanyName", "").strip(),
-            "market": "TPEx",
-            "close": close,
-            "volume": volume,
-            "open": to_float(r.get("Open")),
-            "high": to_float(r.get("High")),
-            "low": to_float(r.get("Low")),
-        })
-    return rows
+    return _fetch_market(fetch_tpex_day, fetch_tpex_openapi, "TPEx")
 
 
 OHLC_FIELDS = ("open", "high", "low")

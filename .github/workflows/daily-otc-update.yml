@@ -2,17 +2,23 @@ name: Daily Index Update
 
 on:
   schedule:
-    # 主要排程：平日台北時間 15:30（UTC 07:30）。證交所／櫃買市場都是 13:30 收盤，這個時間點
-    # 收盤資料通常已經確定發布完成。
-    - cron: "30 7 * * 1-5"
-    # 備援排程：隔天台北時間早上 8:00（UTC 00:00，週二～週六觸發，對應補上週一～週五）。
-    # 萬一前一次因為 GitHub 排程延遲或資料還沒發布而抓舊了/抓空了，這次也能補上
-    # 正確的數字（update_otc_index.py / update_twi_index.py 都是 idempotent，同一天資料已存在就跳過）。
-    - cron: "0 0 * * 2-6"
+    # 13:30 收盤後指數很快就有。避開整點，分段多跑幾次；今天已更新過就略過。
+    # 台北時間 14:07、14:44、15:52、17:29、19:58（平日）
+    - cron: "7 6 * * 1-5"
+    - cron: "44 6 * * 1-5"
+    - cron: "52 7 * * 1-5"
+    - cron: "29 9 * * 1-5"
+    - cron: "58 11 * * 1-5"
+    # 備援：隔天台北時間 08:21（週二～週六）
+    - cron: "21 0 * * 2-6"
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: daily-index-update
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -20,20 +26,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip if today is already done
+        id: gate
+        run: |
+          TODAY=$(TZ=Asia/Taipei date +%F)
+          if [ "${{ github.event_name }}" = "schedule" ] \
+            && grep -q "\"$TODAY\"" data/twi_index.json \
+            && grep -q "\"$TODAY\"" data/otc_index.json; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TODAY 指數已經更新過，略過"
+          fi
+
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.skip != 'true'
         with:
           python-version: "3.12"
 
       - name: Update OTC index
+        if: steps.gate.outputs.skip != 'true'
         run: python3 scripts/update_otc_index.py
 
       - name: Update TWI index
+        if: steps.gate.outputs.skip != 'true'
         run: python3 scripts/update_twi_index.py
 
       - name: Commit result
+        if: steps.gate.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/otc_index.json data/twi_index.json
-          git diff --staged --quiet || git commit -m "Update index data: $(date -u +'%Y-%m-%d')"
+          git diff --staged --quiet && exit 0
+          git commit -m "Update index data: $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
+          git pull --rebase
           git push

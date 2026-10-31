@@ -5,7 +5,7 @@
 （app.js 的 ensureTwiData() 在頁面載入時 fetch 這份 JSON）。
 
 這支腳本本身是 idempotent：同一天的資料已經存在且數值相同就不會造成變更，
-.github/workflows/daily-twi-update.yml 裡的 commit 步驟會因為沒有 diff 而跳過。
+.github/workflows/daily-otc-update.yml 裡的 commit 步驟會因為沒有 diff 而跳過。
 
 只抓「今天」這一筆（不像 backfill_twi_index.py 可以指定起始日期回補整段歷史）——
 跟 update_otc_index.py 同一套設計：每天排程呼叫一次，逐日累積。
