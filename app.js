@@ -2770,6 +2770,7 @@ const db = getFirestore(fbApp);
   document.getElementById('btn-google-signin').addEventListener('click', async () => {
     loginStatus.textContent = '登入中…';
     if (preferRedirect) {
+      markLoginPending();
       try { await signInWithRedirect(auth, new GoogleAuthProvider()); }
       catch (e) { console.error('signIn (redirect) failed', e); loginStatus.textContent = '登入失敗：' + (e.code || e.message); }
       return;
@@ -2784,6 +2785,7 @@ const db = getFirestore(fbApp);
       }
       loginStatus.textContent = '彈窗登入失敗，改用整頁導向登入…';
       try {
+        markLoginPending();
         await signInWithRedirect(auth, new GoogleAuthProvider());
       } catch (e2) {
         console.error('signIn (redirect) failed', e2);
@@ -2794,7 +2796,24 @@ const db = getFirestore(fbApp);
 
   // 處理 signInWithRedirect 導回後的結果：成功的話 onAuthStateChanged 會自動接手，
   // 這裡主要是要在導向登入本身失敗時把錯誤訊息顯示出來（否則會無聲失敗，卡在登入畫面）。
-  getRedirectResult(auth).catch(e => {
+  // 導向登入回來後如果沒接到結果，在登入頁顯示原因，方便判斷是哪個環節斷掉
+  function markLoginPending() { try { localStorage.setItem('tj-login-pending', String(Date.now())); } catch (e) { /* 無法存取就略過 */ } }
+  function takeLoginPending() {
+    try {
+      const v = +localStorage.getItem('tj-login-pending');
+      localStorage.removeItem('tj-login-pending');
+      return v && Date.now() - v < 10 * 60 * 1000;
+    } catch (e) { return false; }
+  }
+  const loginWasPending = takeLoginPending();
+  getRedirectResult(auth).then(res => {
+    if (!loginWasPending || res?.user) return;
+    setTimeout(() => {
+      if (auth.currentUser) return;
+      const mode = IS_MOBILE_OR_STANDALONE && navigator.standalone ? '主畫面 App' : '瀏覽器';
+      loginStatus.textContent = `登入沒有完成：Google 驗證後沒有收到登入結果（${mode}，R0）`;
+    }, 1500);
+  }).catch(e => {
     console.error('getRedirectResult failed', e);
     loginStatus.textContent = '登入失敗：' + (e.code || e.message);
   });
