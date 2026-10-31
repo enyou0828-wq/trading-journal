@@ -178,7 +178,7 @@ companies.forEach(c=>{
 function parseAlsoGroups(note){
   const m = /亦屬[：:]\s*([^。]*)/.exec(note||'');
   if(!m) return [];
-  const seg = m[1].split(/[。]/)[0]; // 只取到第一個句號前
+  const seg = m[1].split(/[。]/)[0].replace(/（[^）]*）|\([^)]*\)/g, ''); // 只取到第一個句號前，去掉括號說明
   return seg.split(/[；;、,]/)
     .map(s=>s.trim().split('/')[0].trim()) // 去掉 "族群/子族群" 附註的後半段
     .filter(name => name && groupSet.has(name) && name !== undefined);
