@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 import { getMessaging, isSupported as isMessagingSupported, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging.js";
 import { firebaseConfig } from "./firebase-config.js";
@@ -2770,9 +2770,7 @@ const db = getFirestore(fbApp);
   document.getElementById('btn-google-signin').addEventListener('click', async () => {
     loginStatus.textContent = '登入中…';
     if (preferRedirect) {
-      markLoginPending();
-      try { await signInWithRedirect(auth, new GoogleAuthProvider()); }
-      catch (e) { console.error('signIn (redirect) failed', e); loginStatus.textContent = '登入失敗：' + (e.code || e.message); }
+      startGoogleIdTokenLogin();
       return;
     }
     try {
@@ -2796,6 +2794,46 @@ const db = getFirestore(fbApp);
 
   // 處理 signInWithRedirect 導回後的結果：成功的話 onAuthStateChanged 會自動接手，
   // 這裡主要是要在導向登入本身失敗時把錯誤訊息顯示出來（否則會無聲失敗，卡在登入畫面）。
+  // 手機：自己帶去 Google 拿 id_token（回呼到同網域的 /__/auth/handler，轉接頁把結果存進
+  // localStorage 再導回 App），再用 signInWithCredential 登入 Firebase。不經過 Firebase 的
+  // 導向轉接，iPhone Safari 才收得到結果。uid 跟電腦用彈窗登入的是同一個。
+  const GOOGLE_CLIENT_ID = '683783822181-tlnnh3s2fmnlms5i0pddhm0tniebf51j.apps.googleusercontent.com';
+  const randomStr = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+  function startGoogleIdTokenLogin() {
+    const state = 'tj_' + randomStr(), nonce = randomStr();
+    try { localStorage.setItem('tj-oauth-state', state); } catch (e) { /* 無法存取就略過，回來時不比對 */ }
+    const q = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: 'https://enyou0828-wq.github.io/__/auth/handler',
+      response_type: 'id_token', scope: 'openid email profile',
+      nonce, state, prompt: 'select_account',
+    });
+    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + q;
+  }
+  async function finishGoogleIdTokenLogin() {
+    let raw = null, expected = null;
+    try {
+      raw = localStorage.getItem('tj-google-oauth');
+      expected = localStorage.getItem('tj-oauth-state');
+      localStorage.removeItem('tj-google-oauth');
+      localStorage.removeItem('tj-oauth-state');
+    } catch (e) { return; }
+    if (!raw) return;
+    const r = new URLSearchParams(raw);
+    if (r.get('error')) { loginStatus.textContent = '登入失敗：' + r.get('error'); return; }
+    if (expected && r.get('state') !== expected) { loginStatus.textContent = '登入失敗：state 不符，請再試一次'; return; }
+    const idToken = r.get('id_token');
+    if (!idToken) { loginStatus.textContent = '登入失敗：沒有收到 Google 憑證'; return; }
+    loginStatus.textContent = '登入中…';
+    try {
+      await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+    } catch (e) {
+      console.error('signInWithCredential failed', e);
+      loginStatus.textContent = '登入失敗：' + (e.code || e.message);
+    }
+  }
+  finishGoogleIdTokenLogin();
+
   // 導向登入回來後如果沒接到結果，在登入頁顯示原因，方便判斷是哪個環節斷掉
   function markLoginPending() { try { localStorage.setItem('tj-login-pending', String(Date.now())); } catch (e) { /* 無法存取就略過 */ } }
   function takeLoginPending() {
