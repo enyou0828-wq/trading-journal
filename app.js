@@ -9,7 +9,15 @@ import { VAPID_KEY } from "./push-config.js";
 // 族群分頁模組；版本號由 pre-commit hook 在 groups.js 改動時自動更新
 const GROUPS_JS = './groups.js?v=20261031110056';
 
-const fbApp = initializeApp(firebaseConfig);
+// 手機與「加到主畫面」的 App 用同網域登入（轉接檔在 enyou0828-wq.github.io/__/auth/），
+// 電腦維持原本的 firebaseapp.com 彈窗登入。
+const IS_MOBILE_OR_STANDALONE = window.matchMedia('(display-mode: standalone)').matches
+  || navigator.standalone === true
+  || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const fbApp = initializeApp({
+  ...firebaseConfig,
+  authDomain: IS_MOBILE_OR_STANDALONE ? 'enyou0828-wq.github.io' : 'trading-journal-65a29.firebaseapp.com',
+});
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
 
@@ -2758,9 +2766,7 @@ const db = getFirestore(fbApp);
   // 儲存空間更容易在這類設定下成功。
   // 登入轉接檔跟 App 同網域（authDomain＝enyou0828-wq.github.io），不受第三方儲存空間封鎖影響。
   // 手機與「加到主畫面」的 App 彈窗常常回不來，直接用整頁導向；電腦用彈窗、失敗再導向。
-  const preferRedirect = window.matchMedia('(display-mode: standalone)').matches
-    || navigator.standalone === true
-    || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const preferRedirect = IS_MOBILE_OR_STANDALONE;
   document.getElementById('btn-google-signin').addEventListener('click', async () => {
     loginStatus.textContent = '登入中…';
     if (preferRedirect) {
