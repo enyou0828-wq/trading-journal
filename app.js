@@ -559,6 +559,7 @@ const db = getFirestore(fbApp);
       if (target === 'review') renderMonthlyReview();
       if (target === 'chain') import(GROUPS_JS).then(m => m.renderGroups(document.getElementById('groups-root')));
       if (target === 'signals') { renderBattleCard(); renderSignals(); renderParallel(); }
+      if (target === 'report') renderDailyReport();
       if (target === 'watchlist') renderWatchlist();
     });
   });
@@ -666,6 +667,60 @@ const db = getFirestore(fbApp);
       setsEl.innerHTML = `<p class="empty-state">讀取訊號失敗：${escapeHtml(e.message)}</p>`;
       signalsLoaded = false; // 失敗的話下次切回這個 tab 要重試
     }
+  }
+
+  // ================= 盤後報告 =================
+  // 資料由 scripts/daily_report.py 在每日訊號掃描後產生（signals/daily_report.json）
+  async function renderDailyReport() {
+    const root = document.getElementById('daily-report-root');
+    let r;
+    try {
+      r = await fetchJsonCached('signals/daily_report.json');
+    } catch (e) {
+      root.innerHTML = `<p class="empty-state">讀取盤後報告失敗：${escapeHtml(e.message)}</p>`;
+      return;
+    }
+    const pctCell = (v) => {
+      const cls = v == null ? 'pnl-zero' : v > 0 ? 'pnl-pos' : v < 0 ? 'pnl-neg' : 'pnl-zero';
+      return `<td class="num ${cls}">${v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(2) + '%'}</td>`;
+    };
+    const card = (title, body) => `<div class="chart-card"><div class="chart-head"><h2>${title}</h2></div>${body}</div>`;
+    const table = (head, rows) => `<div class="table-wrap"><table class="trade-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+
+    const maPos = (s) => [5, 10, 20].map(n => {
+      const m = s['ma' + n];
+      return m == null ? '' : `<span class="${s.close >= m ? 'pnl-pos' : 'pnl-neg'}">${s.close >= m ? '站上' : '跌破'}${n}日</span>`;
+    }).join(' ');
+    const idxRows = [['加權', r.index.twi], ['櫃買', r.index.otc]].map(([n, s]) =>
+      `<tr><td>${n}</td><td class="num">${s.close.toLocaleString('zh-TW', { maximumFractionDigits: 2 })}</td>${pctCell(s.chg)}<td>${maPos(s)}</td></tr>`).join('');
+    const b = r.breadth;
+    const market = table('<th>指數</th><th class="num">收盤</th><th class="num">漲跌</th><th>均線</th>', idxRows) +
+      `<p style="margin:12px 0 0">水位（依加權）：<strong>${escapeHtml(r.exposure.level)}</strong>　${escapeHtml(r.exposure.reason)}<br>` +
+      `漲 ${b.up}／跌 ${b.down}／平 ${b.flat}　漲停 ${b.limit_up} 檔　創 20 日新高 ${b.new_high20} 檔</p>`;
+
+    const groupTable = (list, a, b2, la, lb) => table(`<th>族群</th><th class="num">${la}</th><th class="num">${lb}</th>`,
+      list.map(g => `<tr><td>${escapeHtml(g.group)}</td>${pctCell(g[a])}${pctCell(g[b2])}</tr>`).join(''));
+
+    const sets = r.signal_sets.map(s => card(`${escapeHtml(s.name)}　${s.count} 檔`,
+      s.signals.length ? table('<th>股票</th><th class="num">收盤價</th><th class="num">當日漲幅</th><th>族群</th>',
+        s.signals.map(x => `<tr><td><strong>${escapeHtml(x.code)}</strong> ${escapeHtml(x.name)}</td><td class="num">${x.close}</td>${pctCell(x.daily_change_pct)}<td>${signalGroupHtml(x)}</td></tr>`).join(''))
+        : '<p class="empty-state">今天沒有符合條件的訊號。</p>')).join('');
+
+    const tennis = r.tennis.length ? card('網球：拉回後已站回 5 日線', table('<th>股票</th><th>族群</th><th class="num">拉回</th><th class="num">收復</th><th class="num">距高點</th>',
+      r.tennis.map(t => `<tr><td><strong>${escapeHtml(t.code)}</strong> ${escapeHtml(t.name)}</td><td>${escapeHtml(t.group)}</td><td class="num">${t.pull.toFixed(1)}%</td><td class="num">${t.rec.toFixed(0)}%</td><td class="num">${t.fromHigh.toFixed(1)}%</td></tr>`).join(''))) : '';
+
+    const rotation = r.group_rotation.length ? card('族群同步噴出', table('<th>族群</th><th class="num">觸發</th><th>個股</th>',
+      r.group_rotation.map(g => `<tr><td>${escapeHtml(g.group)}</td><td class="num">${g.triggered_count}/${g.total_in_group}</td><td>${g.stocks.map(s => `${escapeHtml(s.name)} <span class="pnl-pos">+${s.daily_change_pct}%</span>`).join('　')}</td></tr>`).join(''))) : '';
+
+    root.innerHTML =
+      `<p style="margin:-8px 0 16px"><strong>${escapeHtml(r.as_of)}</strong>${r.warnings.map(w => `<br>⚠ ${escapeHtml(w)}`).join('')}</p>` +
+      card('大盤', market) +
+      `<div class="signal-sets-grid">` +
+      card('族群：今天最強', groupTable(r.groups_top, 'c1', 'c5', '今日', '5日')) +
+      card('族群：今天最弱', groupTable(r.groups_bottom, 'c1', 'c5', '今日', '5日')) +
+      card('族群：5 日最強', groupTable(r.groups_top5d, 'c5', 'c20', '5日', '20日')) +
+      rotation + `</div>` +
+      `<div class="signal-sets-grid">${sets}</div>` + tennis;
   }
 
   // ================= 盤前作戰卡 =================

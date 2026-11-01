@@ -55,6 +55,15 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         run: python3 scripts/parallel_universe.py
 
+      - name: Build daily report and email it
+        if: steps.gate.outputs.skip != 'true'
+        # 沒設定這兩個 Secrets 時只產生報告、不寄信；同一資料日期只寄一次
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
+        run: python3 scripts/daily_report.py --email
+
       - name: Commit results
         if: steps.gate.outputs.skip != 'true'
         run: |
@@ -64,7 +73,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/price_history.csv signals/latest.json signals/groups.json signals/parallel.json signals/recent_ohlc.json
+          git add data/price_history.csv signals/latest.json signals/groups.json signals/parallel.json signals/recent_ohlc.json signals/daily_report.json
           git diff --staged --quiet && exit 0
           git commit -m "Daily signal scan: $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
           git pull --rebase

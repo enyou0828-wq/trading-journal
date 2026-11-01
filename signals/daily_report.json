@@ -1,0 +1,652 @@
+{
+ "as_of": "2026-10-30",
+ "warnings": [],
+ "index": {
+  "twi": {
+   "date": "2026-10-30",
+   "close": 45211.83,
+   "chg": -2.49,
+   "ma5": 46150.68000000001,
+   "ma10": 46483.731,
+   "ma20": 47643.0085,
+   "new_high": false
+  },
+  "otc": {
+   "date": "2026-10-30",
+   "close": 370.26,
+   "chg": -4.42,
+   "ma5": 382.62600000000003,
+   "ma10": 388.764,
+   "ma20": 406.66549999999995,
+   "new_high": false
+  }
+ },
+ "exposure": {
+  "level": "30%",
+  "reason": "收在月線（20 日線）下"
+ },
+ "breadth": {
+  "up": 218,
+  "down": 1640,
+  "flat": 101,
+  "limit_up": 18,
+  "new_high20": 50
+ },
+ "groups_top": [
+  {
+   "group": "資訊服務",
+   "industry": "網通／系統",
+   "c1": 4.25,
+   "c5": 10.14,
+   "c20": 15.85
+  },
+  {
+   "group": "工業電腦",
+   "industry": "網通／系統",
+   "c1": -0.53,
+   "c5": -1.71,
+   "c20": -6.48
+  },
+  {
+   "group": "電力設備",
+   "industry": "電力設備",
+   "c1": -1.65,
+   "c5": -5.8,
+   "c20": -8.15
+  },
+  {
+   "group": "石化上游",
+   "industry": "石化上游",
+   "c1": -2.41,
+   "c5": -6.92,
+   "c20": 0.95
+  },
+  {
+   "group": "系統／伺服器",
+   "industry": "網通／系統",
+   "c1": -2.62,
+   "c5": -4.47,
+   "c20": -4.26
+  }
+ ],
+ "groups_bottom": [
+  {
+   "group": "被動元件",
+   "industry": "被動元件",
+   "c1": -7.77,
+   "c5": -12.55,
+   "c20": -1.74
+  },
+  {
+   "group": "銅箔基板",
+   "industry": "PCB／載板／材料",
+   "c1": -7.13,
+   "c5": -12.44,
+   "c20": 12.15
+  },
+  {
+   "group": "工業熱交換設備",
+   "industry": "散熱",
+   "c1": -7.12,
+   "c5": -13.55,
+   "c20": -9.46
+  },
+  {
+   "group": "自動化／機械",
+   "industry": "自動化／機械",
+   "c1": -6.74,
+   "c5": -6.48,
+   "c20": -16.39
+  },
+  {
+   "group": "光學／觸控",
+   "industry": "光學／觸控",
+   "c1": -6.55,
+   "c5": -12.54,
+   "c20": 0.34
+  }
+ ],
+ "groups_top5d": [
+  {
+   "group": "資訊服務",
+   "industry": "網通／系統",
+   "c1": 4.25,
+   "c5": 10.14,
+   "c20": 15.85
+  },
+  {
+   "group": "記憶體",
+   "industry": "半導體",
+   "c1": -4.46,
+   "c5": 2.73,
+   "c20": -7.77
+  },
+  {
+   "group": "工業電腦",
+   "industry": "網通／系統",
+   "c1": -0.53,
+   "c5": -1.71,
+   "c20": -6.48
+  },
+  {
+   "group": "IC設計",
+   "industry": "半導體",
+   "c1": -3.43,
+   "c5": -2.35,
+   "c20": -2.55
+  },
+  {
+   "group": "IP／ASIC",
+   "industry": "半導體",
+   "c1": -4.41,
+   "c5": -3.82,
+   "c20": -10.34
+  }
+ ],
+ "group_rotation": [],
+ "signal_sets": [
+  {
+   "key": "fast",
+   "name": "進場 A（盤整突破）",
+   "label": "創20日新高＋量增2倍＋當日漲幅5%以上",
+   "count": 15,
+   "signals": [
+    {
+     "code": "8099",
+     "name": "大世科",
+     "close": 111.5,
+     "daily_change_pct": 8.78,
+     "volume_multiple": 13.02,
+     "volume": 8258368,
+     "industry": "資訊服務業",
+     "sub_group": null
+    },
+    {
+     "code": "7704",
+     "name": "明遠精密",
+     "close": 87.3,
+     "daily_change_pct": 9.95,
+     "volume_multiple": 7.7,
+     "volume": 2614245,
+     "industry": "半導體業",
+     "sub_group": null
+    },
+    {
+     "code": "6697",
+     "name": "東捷資訊",
+     "close": 54.3,
+     "daily_change_pct": 9.92,
+     "volume_multiple": 6.94,
+     "volume": 2375532,
+     "industry": "資訊服務業",
+     "sub_group": "資訊服務"
+    },
+    {
+     "code": "8291",
+     "name": "尚茂",
+     "close": 33.9,
+     "daily_change_pct": 9.89,
+     "volume_multiple": 5.66,
+     "volume": 171864,
+     "industry": "電子零組件業",
+     "sub_group": null
+    },
+    {
+     "code": "8272",
+     "name": "全景軟體",
+     "close": 78.1,
+     "daily_change_pct": 10.0,
+     "volume_multiple": 4.92,
+     "volume": 148761,
+     "industry": "資訊服務業",
+     "sub_group": null
+    },
+    {
+     "code": "3325",
+     "name": "旭品",
+     "close": 13.6,
+     "daily_change_pct": 9.68,
+     "volume_multiple": 4.75,
+     "volume": 1024553,
+     "industry": "電腦及週邊設備業",
+     "sub_group": null
+    },
+    {
+     "code": "6590",
+     "name": "普鴻",
+     "close": 76.7,
+     "daily_change_pct": 7.42,
+     "volume_multiple": 3.52,
+     "volume": 316308,
+     "industry": "資訊服務業",
+     "sub_group": null
+    },
+    {
+     "code": "3609",
+     "name": "三一東林",
+     "close": 27.7,
+     "daily_change_pct": 8.84,
+     "volume_multiple": 3.01,
+     "volume": 284664,
+     "industry": "電子零組件業",
+     "sub_group": null
+    },
+    {
+     "code": "6140",
+     "name": "訊達",
+     "close": 22.7,
+     "daily_change_pct": 9.93,
+     "volume_multiple": 2.96,
+     "volume": 1440674,
+     "industry": "資訊服務業",
+     "sub_group": null
+    },
+    {
+     "code": "4568",
+     "name": "科際精密",
+     "close": 51.8,
+     "daily_change_pct": 9.86,
+     "volume_multiple": 11.9,
+     "volume": 353507,
+     "industry": "電機機械",
+     "sub_group": null
+    },
+    {
+     "code": "9950",
+     "name": "萬國通",
+     "close": 11.7,
+     "daily_change_pct": 9.86,
+     "volume_multiple": 9.2,
+     "volume": 809169,
+     "industry": "塑膠工業",
+     "sub_group": null
+    },
+    {
+     "code": "4737",
+     "name": "華廣",
+     "close": 65.6,
+     "daily_change_pct": 8.79,
+     "volume_multiple": 8.97,
+     "volume": 456734,
+     "industry": "生技醫療業",
+     "sub_group": null
+    },
+    {
+     "code": "1201",
+     "name": "味全",
+     "close": 13.55,
+     "daily_change_pct": 9.72,
+     "volume_multiple": 6.86,
+     "volume": 5813367,
+     "industry": "食品工業",
+     "sub_group": null
+    },
+    {
+     "code": "1786",
+     "name": "科妍",
+     "close": 47.55,
+     "daily_change_pct": 9.94,
+     "volume_multiple": 3.06,
+     "volume": 466863,
+     "industry": "生技醫療業",
+     "sub_group": null
+    },
+    {
+     "code": "5013",
+     "name": "強新",
+     "close": 55.1,
+     "daily_change_pct": 9.98,
+     "volume_multiple": 2.52,
+     "volume": 3232564,
+     "industry": "鋼鐵工業",
+     "sub_group": null
+    }
+   ]
+  },
+  {
+   "key": "streak",
+   "name": "進場 B（動能延續）",
+   "label": "近3日收盤站上5日扣抵值＋近3日平均率3%以上",
+   "count": 26,
+   "signals": [
+    {
+     "code": "8272",
+     "name": "全景軟體",
+     "close": 78.1,
+     "daily_change_pct": 10.0,
+     "volume_multiple": null,
+     "volume": 148761,
+     "industry": "資訊服務業",
+     "sub_group": null
+    },
+    {
+     "code": "7704",
+     "name": "明遠精密",
+     "close": 87.3,
+     "daily_change_pct": 9.95,
+     "volume_multiple": null,
+     "volume": 2614245,
+     "industry": "半導體業",
+     "sub_group": null
+    },
+    {
+     "code": "2466",
+     "name": "冠西電",
+     "close": 354.0,
+     "daily_change_pct": 9.94,
+     "volume_multiple": null,
+     "volume": 1152357,
+     "industry": "光電業",
+     "sub_group": "電源／電池／連接"
+    },
+    {
+     "code": "8291",
+     "name": "尚茂",
+     "close": 33.9,
+     "daily_change_pct": 9.89,
+     "volume_multiple": null,
+     "volume": 171864,
+     "industry": "電子零組件業",
+     "sub_group": null
+    },
+    {
+     "code": "3325",
+     "name": "旭品",
+     "close": 13.6,
+     "daily_change_pct": 9.68,
+     "volume_multiple": null,
+     "volume": 1024553,
+     "industry": "電腦及週邊設備業",
+     "sub_group": null
+    },
+    {
+     "code": "3609",
+     "name": "三一東林",
+     "close": 27.7,
+     "daily_change_pct": 8.84,
+     "volume_multiple": null,
+     "volume": 284664,
+     "industry": "電子零組件業",
+     "sub_group": null
+    },
+    {
+     "code": "8099",
+     "name": "大世科",
+     "close": 111.5,
+     "daily_change_pct": 8.78,
+     "volume_multiple": null,
+     "volume": 8258368,
+     "industry": "資訊服務業",
+     "sub_group": null
+    },
+    {
+     "code": "6233",
+     "name": "旺玖",
+     "close": 32.0,
+     "daily_change_pct": 3.56,
+     "volume_multiple": null,
+     "volume": 20784394,
+     "industry": "半導體業",
+     "sub_group": null
+    },
+    {
+     "code": "2352",
+     "name": "佳世達",
+     "close": 33.8,
+     "daily_change_pct": 3.05,
+     "volume_multiple": null,
+     "volume": 79259674,
+     "industry": "電腦及週邊設備業",
+     "sub_group": null
+    },
+    {
+     "code": "2444",
+     "name": "兆勁",
+     "close": 15.85,
+     "daily_change_pct": 1.6,
+     "volume_multiple": null,
+     "volume": 1547647,
+     "industry": "通信網路業",
+     "sub_group": null
+    },
+    {
+     "code": "6225",
+     "name": "天瀚",
+     "close": 85.4,
+     "daily_change_pct": 0.0,
+     "volume_multiple": null,
+     "volume": 83036,
+     "industry": "光電業",
+     "sub_group": null
+    },
+    {
+     "code": "3006",
+     "name": "晶豪科",
+     "close": 277.0,
+     "daily_change_pct": -1.95,
+     "volume_multiple": null,
+     "volume": 17660843,
+     "industry": "半導體業",
+     "sub_group": "記憶體"
+    },
+    {
+     "code": "3691",
+     "name": "碩禾",
+     "close": 141.0,
+     "daily_change_pct": -2.08,
+     "volume_multiple": null,
+     "volume": 11522754,
+     "industry": "光電業",
+     "sub_group": null
+    },
+    {
+     "code": "4577",
+     "name": "達航科技",
+     "close": 127.5,
+     "daily_change_pct": -2.3,
+     "volume_multiple": null,
+     "volume": 1208850,
+     "industry": "其他電子業",
+     "sub_group": "PCB 設備·耗材"
+    },
+    {
+     "code": "3105",
+     "name": "穩懋",
+     "close": 578.0,
+     "daily_change_pct": -2.69,
+     "volume_multiple": null,
+     "volume": 39198464,
+     "industry": "半導體業",
+     "sub_group": "光通訊"
+    },
+    {
+     "code": "8240",
+     "name": "華宏",
+     "close": 58.3,
+     "daily_change_pct": -3.64,
+     "volume_multiple": null,
+     "volume": 14365735,
+     "industry": "光電業",
+     "sub_group": "顯示面板"
+    },
+    {
+     "code": "2491",
+     "name": "吉祥全",
+     "close": 40.5,
+     "daily_change_pct": -6.14,
+     "volume_multiple": null,
+     "volume": 2737602,
+     "industry": "光電業",
+     "sub_group": "LED"
+    },
+    {
+     "code": "3321",
+     "name": "同泰",
+     "close": 20.1,
+     "daily_change_pct": -6.29,
+     "volume_multiple": null,
+     "volume": 1417120,
+     "industry": "電子零組件業",
+     "sub_group": null
+    },
+    {
+     "code": "3035",
+     "name": "智原",
+     "close": 213.5,
+     "daily_change_pct": -7.78,
+     "volume_multiple": null,
+     "volume": 28891694,
+     "industry": "半導體業",
+     "sub_group": "IP／ASIC"
+    },
+    {
+     "code": "5013",
+     "name": "強新",
+     "close": 55.1,
+     "daily_change_pct": 9.98,
+     "volume_multiple": null,
+     "volume": 3232564,
+     "industry": "鋼鐵工業",
+     "sub_group": null
+    },
+    {
+     "code": "4568",
+     "name": "科際精密",
+     "close": 51.8,
+     "daily_change_pct": 9.86,
+     "volume_multiple": null,
+     "volume": 353507,
+     "industry": "電機機械",
+     "sub_group": null
+    },
+    {
+     "code": "1201",
+     "name": "味全",
+     "close": 13.55,
+     "daily_change_pct": 9.72,
+     "volume_multiple": null,
+     "volume": 5813367,
+     "industry": "食品工業",
+     "sub_group": null
+    },
+    {
+     "code": "4526",
+     "name": "東台",
+     "close": 56.0,
+     "daily_change_pct": 6.06,
+     "volume_multiple": null,
+     "volume": 14661995,
+     "industry": "電機機械",
+     "sub_group": null
+    },
+    {
+     "code": "6925",
+     "name": "意藍",
+     "close": 126.0,
+     "daily_change_pct": -0.79,
+     "volume_multiple": null,
+     "volume": 970075,
+     "industry": "數位雲端",
+     "sub_group": null
+    },
+    {
+     "code": "2221",
+     "name": "大甲",
+     "close": 148.5,
+     "daily_change_pct": -6.9,
+     "volume_multiple": null,
+     "volume": 23764477,
+     "industry": "其他業",
+     "sub_group": null
+    },
+    {
+     "code": "4706",
+     "name": "大恭",
+     "close": 49.3,
+     "daily_change_pct": -9.38,
+     "volume_multiple": null,
+     "volume": 949050,
+     "industry": "化學工業",
+     "sub_group": null
+    }
+   ]
+  },
+  {
+   "key": "vcp",
+   "name": "VCP 量縮突破",
+   "label": "量縮整理突破(VCP)",
+   "count": 0,
+   "signals": []
+  }
+ ],
+ "tennis": [
+  {
+   "code": "3006",
+   "name": "晶豪科",
+   "group": "記憶體",
+   "pull": -19.93,
+   "rec": 84.2,
+   "fromHigh": -3.15
+  },
+  {
+   "code": "8240",
+   "name": "華宏",
+   "group": "顯示面板",
+   "pull": -17.49,
+   "rec": 78.3,
+   "fromHigh": -3.8
+  },
+  {
+   "code": "3105",
+   "name": "穩懋",
+   "group": "光通訊",
+   "pull": -22.76,
+   "rec": 73.6,
+   "fromHigh": -6.02
+  },
+  {
+   "code": "6719",
+   "name": "力智",
+   "group": "IC設計",
+   "pull": -9.9,
+   "rec": 57.9,
+   "fromHigh": -4.17
+  },
+  {
+   "code": "6234",
+   "name": "高僑",
+   "group": "PCB 設備·耗材",
+   "pull": -9.42,
+   "rec": 57.9,
+   "fromHigh": -3.97
+  },
+  {
+   "code": "2408",
+   "name": "南亞科",
+   "group": "記憶體",
+   "pull": -22.18,
+   "rec": 34.3,
+   "fromHigh": -14.57
+  },
+  {
+   "code": "3260",
+   "name": "威剛",
+   "group": "記憶體",
+   "pull": -14.14,
+   "rec": 34.3,
+   "fromHigh": -9.29
+  },
+  {
+   "code": "3653",
+   "name": "健策",
+   "group": "散熱",
+   "pull": -18.67,
+   "rec": 33.8,
+   "fromHigh": -12.35
+  }
+ ],
+ "text": "台股盤後報告｜2026-10-30\n\n【大盤】\n・加權 45,211.83（-2.49%）：跌破 5 日線、跌破 10 日線、跌破 20 日線\n・櫃買 370.26（-4.42%）：跌破 5 日線、跌破 10 日線、跌破 20 日線\n・依水位規則（看加權）：30%　← 收在月線（20 日線）下\n・漲 218 / 跌 1640 / 平 101，漲停 18 檔，創 20 日新高 50 檔\n\n【族群：今天最強】\n・資訊服務（網通／系統）今日 +4.25%，5 日 +10.14%\n・工業電腦（網通／系統）今日 -0.53%，5 日 -1.71%\n・電力設備（電力設備）今日 -1.65%，5 日 -5.80%\n・石化上游（石化上游）今日 -2.41%，5 日 -6.92%\n・系統／伺服器（網通／系統）今日 -2.62%，5 日 -4.47%\n【族群：今天最弱】\n・被動元件（被動元件）今日 -7.77%，5 日 -12.55%\n・銅箔基板（PCB／載板／材料）今日 -7.13%，5 日 -12.44%\n・工業熱交換設備（散熱）今日 -7.12%，5 日 -13.55%\n・自動化／機械（自動化／機械）今日 -6.74%，5 日 -6.48%\n・光學／觸控（光學／觸控）今日 -6.55%，5 日 -12.54%\n【族群：5 日最強】\n・資訊服務（網通／系統）5 日 +10.14%，20 日 +15.85%\n・記憶體（半導體）5 日 +2.73%，20 日 -7.77%\n・工業電腦（網通／系統）5 日 -1.71%，20 日 -6.48%\n・IC設計（半導體）5 日 -2.35%，20 日 -2.55%\n・IP／ASIC（半導體）5 日 -3.82%，20 日 -10.34%\n\n【進場 A（盤整突破）】15 檔　條件：創20日新高＋量增2倍＋當日漲幅5%以上\n・8099 大世科　111.5（+8.78%，量 13.0 倍）　資訊服務業\n・7704 明遠精密　87.3（+9.95%，量 7.7 倍）　半導體業\n・6697 東捷資訊　54.3（+9.92%，量 6.9 倍）　資訊服務業 · 資訊服務\n・8291 尚茂　33.9（+9.89%，量 5.7 倍）　電子零組件業\n・8272 全景軟體　78.1（+10.00%，量 4.9 倍）　資訊服務業\n・3325 旭品　13.6（+9.68%，量 4.8 倍）　電腦及週邊設備業\n・6590 普鴻　76.7（+7.42%，量 3.5 倍）　資訊服務業\n・3609 三一東林　27.7（+8.84%，量 3.0 倍）　電子零組件業\n・6140 訊達　22.7（+9.93%，量 3.0 倍）　資訊服務業\n・4568 科際精密　51.8（+9.86%，量 11.9 倍）　電機機械\n・9950 萬國通　11.7（+9.86%，量 9.2 倍）　塑膠工業\n・4737 華廣　65.6（+8.79%，量 9.0 倍）　生技醫療業\n・1201 味全　13.55（+9.72%，量 6.9 倍）　食品工業\n・1786 科妍　47.55（+9.94%，量 3.1 倍）　生技醫療業\n・5013 強新　55.1（+9.98%，量 2.5 倍）　鋼鐵工業\n\n【進場 B（動能延續）】26 檔　條件：近3日收盤站上5日扣抵值＋近3日平均率3%以上\n・8272 全景軟體　78.1（+10.00%）　資訊服務業\n・7704 明遠精密　87.3（+9.95%）　半導體業\n・2466 冠西電　354.0（+9.94%）　光電業 · 電源／電池／連接\n・8291 尚茂　33.9（+9.89%）　電子零組件業\n・3325 旭品　13.6（+9.68%）　電腦及週邊設備業\n・3609 三一東林　27.7（+8.84%）　電子零組件業\n・8099 大世科　111.5（+8.78%）　資訊服務業\n・6233 旺玖　32.0（+3.56%）　半導體業\n・2352 佳世達　33.8（+3.05%）　電腦及週邊設備業\n・2444 兆勁　15.85（+1.60%）　通信網路業\n・6225 天瀚　85.4（+0.00%）　光電業\n・3006 晶豪科　277.0（-1.95%）　半導體業 · 記憶體\n・3691 碩禾　141.0（-2.08%）　光電業\n・4577 達航科技　127.5（-2.30%）　其他電子業 · PCB 設備·耗材\n・3105 穩懋　578.0（-2.69%）　半導體業 · 光通訊\n・……另有 11 檔，見 App 訊號分頁\n\n【VCP 量縮突破】0 檔　條件：量縮整理突破(VCP)\n\n【網球：拉回後已站回 5 日線】\n・3006 晶豪科（記憶體）拉回 -19.9%，已收復 84% 跌幅，距高點 -3.1%\n・8240 華宏（顯示面板）拉回 -17.5%，已收復 78% 跌幅，距高點 -3.8%\n・3105 穩懋（光通訊）拉回 -22.8%，已收復 74% 跌幅，距高點 -6.0%\n・6719 力智（IC設計）拉回 -9.9%，已收復 58% 跌幅，距高點 -4.2%\n・6234 高僑（PCB 設備·耗材）拉回 -9.4%，已收復 58% 跌幅，距高點 -4.0%\n・2408 南亞科（記憶體）拉回 -22.2%，已收復 34% 跌幅，距高點 -14.6%\n・3260 威剛（記憶體）拉回 -14.1%，已收復 34% 跌幅，距高點 -9.3%\n・3653 健策（散熱）拉回 -18.7%，已收復 34% 跌幅，距高點 -12.3%\n\n資料來源：證交所、櫃買中心收盤資料（trading-journal 每日排程）。只整理數字，不構成投資建議。",
+ "subject": "台股盤後報告 2026-10-30｜水位 30%",
+ "generated_at": "2026-11-01T04:50:34+00:00",
+ "emailed_as_of": null
+}
