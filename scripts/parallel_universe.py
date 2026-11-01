@@ -30,6 +30,7 @@ OUT_RECENT = ROOT / "signals" / "recent_ohlc.json"
 START = "2026-09-01"
 UNIT = 0.15
 COST = 0.0045
+MIN_VOLUME = 1_000_000  # 訊號日成交量低於 1000 張不進場（同 daily_signal_scan）
 LEVEL_SLOTS = {"30%": 2, "50%": 3, "70%": 4, "100%": 6, "槓桿": 6}
 NAN = float("nan")
 
@@ -86,7 +87,7 @@ def ok(*xs):
 def signals_on(t, data):
     out = []
     for c, (O, H, L, C, V) in data.items():
-        if t < 21 or not ok(C[t], C[t - 1], V[t]):
+        if t < 21 or not ok(C[t], C[t - 1], V[t]) or V[t] < MIN_VOLUME:
             continue
         prior_c, prior_v = C[t - 20:t], V[t - 20:t]
         if ok(*prior_c, *prior_v):

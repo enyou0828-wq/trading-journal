@@ -3,7 +3,7 @@
   "twse_date": "2026-10-30",
   "tpex_date": "2026-10-30",
   "markets_in_sync": true,
-  "generated_at": "2026-10-31T12:25:02.722281+00:00",
+  "generated_at": "2026-11-01T08:51:04.792129+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,7 +14,7 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 15,
+      "signal_count": 7,
       "signals": [
         {
           "code": "8099",
@@ -47,26 +47,6 @@
           "sub_group": "資訊服務"
         },
         {
-          "code": "8291",
-          "name": "尚茂",
-          "close": 33.9,
-          "daily_change_pct": 9.89,
-          "volume_multiple": 5.66,
-          "volume": 171864,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
-          "code": "8272",
-          "name": "全景軟體",
-          "close": 78.1,
-          "daily_change_pct": 10.0,
-          "volume_multiple": 4.92,
-          "volume": 148761,
-          "industry": "資訊服務業",
-          "sub_group": null
-        },
-        {
           "code": "3325",
           "name": "旭品",
           "close": 13.6,
@@ -74,26 +54,6 @@
           "volume_multiple": 4.75,
           "volume": 1024553,
           "industry": "電腦及週邊設備業",
-          "sub_group": null
-        },
-        {
-          "code": "6590",
-          "name": "普鴻",
-          "close": 76.7,
-          "daily_change_pct": 7.42,
-          "volume_multiple": 3.52,
-          "volume": 316308,
-          "industry": "資訊服務業",
-          "sub_group": null
-        },
-        {
-          "code": "3609",
-          "name": "三一東林",
-          "close": 27.7,
-          "daily_change_pct": 8.84,
-          "volume_multiple": 3.01,
-          "volume": 284664,
-          "industry": "電子零組件業",
           "sub_group": null
         },
         {
@@ -107,36 +67,6 @@
           "sub_group": null
         },
         {
-          "code": "4568",
-          "name": "科際精密",
-          "close": 51.8,
-          "daily_change_pct": 9.86,
-          "volume_multiple": 11.9,
-          "volume": 353507,
-          "industry": "電機機械",
-          "sub_group": null
-        },
-        {
-          "code": "9950",
-          "name": "萬國通",
-          "close": 11.7,
-          "daily_change_pct": 9.86,
-          "volume_multiple": 9.2,
-          "volume": 809169,
-          "industry": "塑膠工業",
-          "sub_group": null
-        },
-        {
-          "code": "4737",
-          "name": "華廣",
-          "close": 65.6,
-          "daily_change_pct": 8.79,
-          "volume_multiple": 8.97,
-          "volume": 456734,
-          "industry": "生技醫療業",
-          "sub_group": null
-        },
-        {
           "code": "1201",
           "name": "味全",
           "close": 13.55,
@@ -144,16 +74,6 @@
           "volume_multiple": 6.86,
           "volume": 5813367,
           "industry": "食品工業",
-          "sub_group": null
-        },
-        {
-          "code": "1786",
-          "name": "科妍",
-          "close": 47.55,
-          "daily_change_pct": 9.94,
-          "volume_multiple": 3.06,
-          "volume": 466863,
-          "industry": "生技醫療業",
           "sub_group": null
         },
         {
@@ -178,18 +98,8 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 26,
+      "signal_count": 19,
       "signals": [
-        {
-          "code": "8272",
-          "name": "全景軟體",
-          "close": 78.1,
-          "daily_change_pct": 10.0,
-          "volume_multiple": null,
-          "volume": 148761,
-          "industry": "資訊服務業",
-          "sub_group": null
-        },
         {
           "code": "7704",
           "name": "明遠精密",
@@ -211,16 +121,6 @@
           "sub_group": "電源／電池／連接"
         },
         {
-          "code": "8291",
-          "name": "尚茂",
-          "close": 33.9,
-          "daily_change_pct": 9.89,
-          "volume_multiple": null,
-          "volume": 171864,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
           "code": "3325",
           "name": "旭品",
           "close": 13.6,
@@ -228,16 +128,6 @@
           "volume_multiple": null,
           "volume": 1024553,
           "industry": "電腦及週邊設備業",
-          "sub_group": null
-        },
-        {
-          "code": "3609",
-          "name": "三一東林",
-          "close": 27.7,
-          "daily_change_pct": 8.84,
-          "volume_multiple": null,
-          "volume": 284664,
-          "industry": "電子零組件業",
           "sub_group": null
         },
         {
@@ -278,16 +168,6 @@
           "volume_multiple": null,
           "volume": 1547647,
           "industry": "通信網路業",
-          "sub_group": null
-        },
-        {
-          "code": "6225",
-          "name": "天瀚",
-          "close": 85.4,
-          "daily_change_pct": 0.0,
-          "volume_multiple": null,
-          "volume": 83036,
-          "industry": "光電業",
           "sub_group": null
         },
         {
@@ -381,16 +261,6 @@
           "sub_group": null
         },
         {
-          "code": "4568",
-          "name": "科際精密",
-          "close": 51.8,
-          "daily_change_pct": 9.86,
-          "volume_multiple": null,
-          "volume": 353507,
-          "industry": "電機機械",
-          "sub_group": null
-        },
-        {
           "code": "1201",
           "name": "味全",
           "close": 13.55,
@@ -411,16 +281,6 @@
           "sub_group": null
         },
         {
-          "code": "6925",
-          "name": "意藍",
-          "close": 126.0,
-          "daily_change_pct": -0.79,
-          "volume_multiple": null,
-          "volume": 970075,
-          "industry": "數位雲端",
-          "sub_group": null
-        },
-        {
           "code": "2221",
           "name": "大甲",
           "close": 148.5,
@@ -428,16 +288,6 @@
           "volume_multiple": null,
           "volume": 23764477,
           "industry": "其他業",
-          "sub_group": null
-        },
-        {
-          "code": "4706",
-          "name": "大恭",
-          "close": 49.3,
-          "daily_change_pct": -9.38,
-          "volume_multiple": null,
-          "volume": 949050,
-          "industry": "化學工業",
           "sub_group": null
         }
       ]

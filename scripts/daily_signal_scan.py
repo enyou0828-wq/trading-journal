@@ -99,6 +99,7 @@ BROWSER_USER_AGENT = (
 )
 FETCH_RETRIES = 3
 FETCH_BACKOFF_SECONDS = 4  # 每次重試間隔翻倍：4s, 8s, 16s
+MIN_VOLUME_SHARES = 1_000_000  # 當日成交量低於 1000 張的訊號不列出
 MAX_STALE_DAYS = 6  # 抓到的最新交易日若比今天舊超過這麼多天，視為異常（見 main() 的防呆檢查）
 
 
@@ -947,6 +948,7 @@ def main() -> int:
         else:
             raise ValueError(f"未知的 signal set type：{set_type}")
 
+        signals = [x for x in signals if (x.get("volume") or 0) >= MIN_VOLUME_SHARES]
         sets_output.append({
             "key": spec["key"],
             "label": spec["label"],
