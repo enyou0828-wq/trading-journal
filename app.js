@@ -1402,17 +1402,19 @@ const db = getFirestore(fbApp);
     maybeAutofillEntryPrice();
   });
 
-  // 減碼／賣出時，自動帶入該股票最近一筆買進／加碼的價格，只需要再輸入股數
+  // 減碼／賣出時，進場價自動帶入該股票最近一筆買進／加碼的進場價
   function lastEntryPrice(symbol) {
     for (const t of sortedTrades()) {
-      if (t.symbol === symbol && ENTRY_ACTIONS.has(t.action) && t.price != null) return t.price;
+      if (t.symbol !== symbol || !ENTRY_ACTIONS.has(t.action)) continue;
+      const p = t.entryPrice != null ? t.entryPrice : t.price;
+      if (p != null) return p;
     }
     return null;
   }
   function maybeAutofillEntryPrice() {
     const action = document.getElementById('f-action').value;
     if (action !== '減碼' && action !== '賣出') return;
-    const priceEl = document.getElementById('f-calc-price');
+    const priceEl = document.getElementById('f-entry-price');
     if (priceEl.value) return; // 使用者已手動填過，不覆蓋
     const symbol = document.getElementById('f-symbol').value.trim();
     if (!symbol) return;
@@ -1420,21 +1422,6 @@ const db = getFirestore(fbApp);
     if (price != null) priceEl.value = price;
   }
   document.getElementById('f-action').addEventListener('change', maybeAutofillEntryPrice);
-
-  // 交易價格 × 股數 ÷ 總資本，自動算出資金佔比（會儲存價格，供之後減碼/賣出時自動帶入）
-  // 總資本會依這筆交易的日期自動切換：8/1 起用 70 萬，之前用 100 萬
-  function recalcPositionPct() {
-    const price = parseFloat(document.getElementById('f-calc-price').value);
-    const shares = parseFloat(document.getElementById('f-calc-shares').value);
-    if (!price || !shares) return;
-    const date = document.getElementById('f-date').value;
-    const totalCapital = date >= CAPITAL_AUG_CUTOFF ? 700000 : 1000000;
-    const pct = (price * shares / totalCapital) * 100;
-    document.getElementById('f-position-pct').value = pct.toFixed(1);
-  }
-  document.getElementById('f-calc-price').addEventListener('input', recalcPositionPct);
-  document.getElementById('f-calc-shares').addEventListener('input', recalcPositionPct);
-  document.getElementById('f-date').addEventListener('change', recalcPositionPct);
 
   // R% = (進場價 − 原始停損價) ÷ 進場價，依策略規則第三點自動算，使用者仍可手動覆蓋
   function recalcRPct() {
@@ -1483,8 +1470,6 @@ const db = getFirestore(fbApp);
     document.getElementById('f-symbol').value = t ? t.symbol : '';
     document.getElementById('f-name').value = t ? (t.name || '') : '';
     document.getElementById('f-sector').value = t ? (t.sector || '') : '';
-    document.getElementById('f-calc-price').value = t && t.price != null ? t.price : '';
-    document.getElementById('f-calc-shares').value = '';
     document.getElementById('f-units').value = t && t.units != null ? t.units : '';
     document.getElementById('f-action').value = t ? t.action : '買進';
     const strategySel = document.getElementById('f-strategy');
@@ -1495,7 +1480,6 @@ const db = getFirestore(fbApp);
       strategySel.appendChild(opt);
     }
     strategySel.value = t ? t.strategy : '';
-    document.getElementById('f-position-pct').value = t && t.positionPct != null ? t.positionPct : '';
     document.getElementById('f-return-pct').value = t && t.returnPct != null ? t.returnPct : '';
     document.getElementById('f-profit-wan').value = t && t.profitWan != null ? t.profitWan : '';
     document.getElementById('f-lot-number').value = t && t.lotNumber != null ? t.lotNumber : '';
@@ -1504,11 +1488,8 @@ const db = getFirestore(fbApp);
     document.getElementById('f-stop-price').value = t && t.stopPrice != null ? t.stopPrice : '';
     document.getElementById('f-r-pct').value = t && t.rPct != null ? t.rPct : '';
     document.getElementById('f-position-r-pct').value = t && t.positionRPct != null ? t.positionRPct : '';
-    document.getElementById('f-max-gain-pct').value = t && t.maxGainPct != null ? t.maxGainPct : '';
     document.getElementById('f-exit-reason').value = t ? (t.exitReason || '') : '';
     document.getElementById('f-profit-r').value = t && t.profitR != null ? t.profitR : '';
-    document.getElementById('f-rebound-3r').value = t ? (t.reboundTo3R || '') : '';
-    document.getElementById('f-market-level').value = t ? (t.marketLevelAtEntry || '') : '';
     document.getElementById('f-rating').value = t ? (t.rating || '') : '';
     document.getElementById('f-reason').value = t ? (t.reason || '') : '';
     document.getElementById('f-review').value = t ? (t.review || '') : '';
@@ -1519,10 +1500,9 @@ const db = getFirestore(fbApp);
   tradeForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const id = document.getElementById('trade-id').value || uid();
-    const posVal = document.getElementById('f-position-pct').value;
+    const prev = state.trades.find(x => x.id === id) || {}; // 表單已拿掉的欄位，沿用舊紀錄的值
     const retVal = document.getElementById('f-return-pct').value;
     const profitWanVal = document.getElementById('f-profit-wan').value;
-    const priceVal = document.getElementById('f-calc-price').value;
     const unitsVal = document.getElementById('f-units').value;
     const lotNumberVal = document.getElementById('f-lot-number').value;
     const entryPriceVal = document.getElementById('f-entry-price').value;
@@ -1530,7 +1510,6 @@ const db = getFirestore(fbApp);
     const dayLowVal = document.getElementById('f-day-low').value;
     const rPctVal = document.getElementById('f-r-pct').value;
     const positionRPctVal = document.getElementById('f-position-r-pct').value;
-    const maxGainPctVal = document.getElementById('f-max-gain-pct').value;
     const profitRVal = document.getElementById('f-profit-r').value;
     const rec = {
       id,
@@ -1541,9 +1520,9 @@ const db = getFirestore(fbApp);
       sector: document.getElementById('f-sector').value.trim(),
       action: document.getElementById('f-action').value,
       strategy: document.getElementById('f-strategy').value,
-      price: priceVal === '' ? null : parseFloat(priceVal),
+      price: prev.price ?? null,
       units: unitsVal === '' ? null : parseFloat(unitsVal),
-      positionPct: posVal === '' ? null : parseFloat(posVal),
+      positionPct: prev.positionPct ?? null,
       returnPct: retVal === '' ? null : parseFloat(retVal),
       profitWan: profitWanVal === '' ? null : parseFloat(profitWanVal),
       lotNumber: lotNumberVal === '' ? null : parseInt(lotNumberVal, 10),
@@ -1552,11 +1531,11 @@ const db = getFirestore(fbApp);
       stopPrice: stopPriceVal === '' ? null : parseFloat(stopPriceVal),
       rPct: rPctVal === '' ? null : parseFloat(rPctVal),
       positionRPct: positionRPctVal === '' ? null : parseFloat(positionRPctVal),
-      maxGainPct: maxGainPctVal === '' ? null : parseFloat(maxGainPctVal),
+      maxGainPct: prev.maxGainPct ?? null,
       exitReason: document.getElementById('f-exit-reason').value,
       profitR: profitRVal === '' ? null : parseFloat(profitRVal),
-      reboundTo3R: document.getElementById('f-rebound-3r').value,
-      marketLevelAtEntry: document.getElementById('f-market-level').value.trim(),
+      reboundTo3R: prev.reboundTo3R ?? '',
+      marketLevelAtEntry: prev.marketLevelAtEntry ?? '',
       rating: document.getElementById('f-rating').value,
       reason: document.getElementById('f-reason').value.trim(),
       review: document.getElementById('f-review').value.trim(),
