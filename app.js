@@ -1045,7 +1045,8 @@ const db = getFirestore(fbApp);
         state.holdings.push(h);
       }
       if (!h.name && t.name) h.name = t.name;
-      h.lots.push({ id: uid(), units: tradeUnits(t), entryPrice: t.price != null ? t.price : null });
+      const cost = t.price != null ? t.price : t.entryPrice != null ? t.entryPrice : null;
+      h.lots.push({ id: uid(), units: tradeUnits(t), entryPrice: cost });
     } else if (t.action === '減碼' && h) {
       reduceLots(h.lots, tradeUnits(t));
       if (!h.lots.length) state.holdings = state.holdings.filter(x => x !== h); // 扣到 0 份＝出清
@@ -1442,8 +1443,38 @@ const db = getFirestore(fbApp);
     if (!entry || isNaN(stop)) return;
     document.getElementById('f-r-pct').value = (((entry - stop) / entry) * 100).toFixed(2);
   }
-  document.getElementById('f-entry-price').addEventListener('input', recalcRPct);
-  document.getElementById('f-stop-price').addEventListener('input', recalcRPct);
+  // 部位 = 1% ÷ R%，單份上限 15%
+  function recalcPositionR() {
+    const r = parseFloat(document.getElementById('f-r-pct').value);
+    if (!(r > 0)) return;
+    document.getElementById('f-position-r-pct').value = Math.min(100 / r, 15).toFixed(1);
+  }
+
+  // 初始停損＝進場日低點，但距成本最多 X%（依策略，10/25 版兩策略都是 5%）；取到台股升降單位（往上取，停損較緊）
+  const STOP_MAX_PCT = { '盤整突破': 5, '動能延續': 5 };
+  function tickSize(p) {
+    return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
+  }
+  function recalcStop() {
+    const entry = parseFloat(document.getElementById('f-entry-price').value);
+    const low = parseFloat(document.getElementById('f-day-low').value);
+    if (!(entry > 0) || !(low > 0)) return;
+    const maxPct = STOP_MAX_PCT[document.getElementById('f-strategy').value] ?? 5;
+    const floor = entry * (1 - maxPct / 100);
+    let stop = low;
+    if (floor > low) {
+      const tick = tickSize(floor);
+      stop = +(Math.ceil(floor / tick - 1e-9) * tick).toFixed(2);
+    }
+    document.getElementById('f-stop-price').value = stop;
+    recalcRPct();
+    recalcPositionR();
+  }
+  document.getElementById('f-entry-price').addEventListener('input', () => { recalcStop(); recalcRPct(); recalcPositionR(); });
+  document.getElementById('f-day-low').addEventListener('input', recalcStop);
+  document.getElementById('f-strategy').addEventListener('change', recalcStop);
+  document.getElementById('f-stop-price').addEventListener('input', () => { recalcRPct(); recalcPositionR(); });
+  document.getElementById('f-r-pct').addEventListener('input', recalcPositionR);
 
   function openTradeModal(t) {
     document.getElementById('trade-modal-title').textContent = t ? '編輯交易' : '新增交易';
@@ -1470,6 +1501,7 @@ const db = getFirestore(fbApp);
     document.getElementById('f-profit-wan').value = t && t.profitWan != null ? t.profitWan : '';
     document.getElementById('f-lot-number').value = t && t.lotNumber != null ? t.lotNumber : '';
     document.getElementById('f-entry-price').value = t && t.entryPrice != null ? t.entryPrice : '';
+    document.getElementById('f-day-low').value = t && t.dayLow != null ? t.dayLow : '';
     document.getElementById('f-stop-price').value = t && t.stopPrice != null ? t.stopPrice : '';
     document.getElementById('f-r-pct').value = t && t.rPct != null ? t.rPct : '';
     document.getElementById('f-position-r-pct').value = t && t.positionRPct != null ? t.positionRPct : '';
@@ -1496,6 +1528,7 @@ const db = getFirestore(fbApp);
     const lotNumberVal = document.getElementById('f-lot-number').value;
     const entryPriceVal = document.getElementById('f-entry-price').value;
     const stopPriceVal = document.getElementById('f-stop-price').value;
+    const dayLowVal = document.getElementById('f-day-low').value;
     const rPctVal = document.getElementById('f-r-pct').value;
     const positionRPctVal = document.getElementById('f-position-r-pct').value;
     const maxGainPctVal = document.getElementById('f-max-gain-pct').value;
@@ -1516,6 +1549,7 @@ const db = getFirestore(fbApp);
       profitWan: profitWanVal === '' ? null : parseFloat(profitWanVal),
       lotNumber: lotNumberVal === '' ? null : parseInt(lotNumberVal, 10),
       entryPrice: entryPriceVal === '' ? null : parseFloat(entryPriceVal),
+      dayLow: dayLowVal === '' ? null : parseFloat(dayLowVal),
       stopPrice: stopPriceVal === '' ? null : parseFloat(stopPriceVal),
       rPct: rPctVal === '' ? null : parseFloat(rPctVal),
       positionRPct: positionRPctVal === '' ? null : parseFloat(positionRPctVal),
