@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="style.css?v=20261102154337">
+<link rel="stylesheet" href="style.css?v=20261102155831">
 </head>
 <body>
 
@@ -116,7 +116,8 @@
           <label>股票代號 <input type="text" id="hd-symbol" placeholder="2330" list="symbol-datalist" required></label>
           <label>股票名稱 <input type="text" id="hd-name" placeholder="台積電"></label>
           <label>份數 <input type="number" id="hd-units" placeholder="1" step="0.1" min="0" required></label>
-          <label>進場價格 <input type="number" id="hd-entry-price" placeholder="600" step="0.01" min="0" required></label>
+          <label>進場價 <input type="number" id="hd-entry-price" placeholder="600" step="0.01" min="0" required></label>
+          <label>停損價 <input type="number" id="hd-stop-price" placeholder="570" step="0.01" min="0"></label>
           <button type="submit" class="btn primary" style="align-self:flex-end;">＋ 新增庫存</button>
         </form>
       </div>
@@ -130,8 +131,8 @@
               <tr>
                 <th>股票</th>
                 <th class="num">總份數</th>
-                <th class="num">均價</th>
-                <th class="num">現價</th>
+                <th class="num">進場價</th>
+                <th class="num">停損價</th>
                 <th class="num">未實現損益率</th>
                 <th></th>
               </tr>
@@ -535,6 +536,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=20261102154337"></script>
+<script type="module" src="app.js?v=20261102155831"></script>
 </body>
 </html>

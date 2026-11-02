@@ -501,6 +501,11 @@ const db = getFirestore(fbApp);
         state.holdingsFromTradesV1 = true;
         await save();
       }
+      if (!state.holdingPricesV1) {
+        fillHoldingPricesFromTrades();
+        state.holdingPricesV1 = true;
+        await save();
+      }
 
       if (ensureMonthlyReviews()) await save();
     } catch (e) {
@@ -1001,7 +1006,7 @@ const db = getFirestore(fbApp);
     return state.holdings.find(h => h.symbol === symbol);
   }
 
-  async function addHoldingLot(symbol, name, units, entryPrice) {
+  async function addHoldingLot(symbol, name, units, entryPrice, stopPrice = null) {
     symbol = symbol.trim();
     let holding = findHolding(symbol);
     if (!holding) {
@@ -1010,7 +1015,7 @@ const db = getFirestore(fbApp);
     } else if (name && name.trim() && !holding.name) {
       holding.name = name.trim();
     }
-    holding.lots.push({ id: uid(), units, entryPrice });
+    holding.lots.push({ id: uid(), units, entryPrice, stopPrice });
     await save();
     renderHoldings();
   }
@@ -1045,11 +1050,22 @@ const db = getFirestore(fbApp);
         state.holdings.push(h);
       }
       if (!h.name && t.name) h.name = t.name;
-      const cost = t.price != null ? t.price : t.entryPrice != null ? t.entryPrice : null;
-      h.lots.push({ id: uid(), units: tradeUnits(t), entryPrice: cost });
+      const cost = t.entryPrice != null ? t.entryPrice : t.price != null ? t.price : null;
+      h.lots.push({ id: uid(), tradeId: t.id, units: tradeUnits(t), entryPrice: cost, stopPrice: t.stopPrice ?? null });
     } else if (t.action === '減碼' && h) {
       reduceLots(h.lots, tradeUnits(t));
       if (!h.lots.length) state.holdings = state.holdings.filter(x => x !== h); // 扣到 0 份＝出清
+    }
+  }
+
+  // 編輯買進／加碼紀錄時，同步更新對應那一份的進場價／停損價
+  function syncLotFromTrade(t) {
+    for (const h of state.holdings) {
+      const l = h.lots.find(x => x.tradeId === t.id);
+      if (!l) continue;
+      const cost = t.entryPrice ?? t.price ?? null;
+      if (cost != null) l.entryPrice = cost;
+      l.stopPrice = t.stopPrice ?? null;
     }
   }
 
@@ -1060,9 +1076,44 @@ const db = getFirestore(fbApp);
     for (const t of chrono) if (!manual.has(t.symbol)) applyTradeToHoldings(t);
   }
 
+  // 一次性：已在庫存裡、但缺進場價／停損價的份，依序用該檔最後一次賣出後的買進／加碼紀錄補上
+  function fillHoldingPricesFromTrades() {
+    let changed = false;
+    const chrono = [...state.trades].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    for (const h of state.holdings) {
+      const ts = chrono.filter(t => t.symbol === h.symbol);
+      let start = 0;
+      ts.forEach((t, i) => { if (t.action === '賣出' || t.action === '加碼轉賣出') start = i + 1; });
+      const entries = ts.slice(start).filter(t => ENTRY_ACTIONS.has(t.action));
+      h.lots.forEach((l, i) => {
+        const t = entries[i];
+        if (!t) return;
+        const cost = t.entryPrice ?? t.price ?? null;
+        if (!l.tradeId) { l.tradeId = t.id; changed = true; }
+        if (l.entryPrice == null && cost != null) { l.entryPrice = cost; changed = true; }
+        if (l.stopPrice == null && t.stopPrice != null) { l.stopPrice = t.stopPrice; changed = true; }
+      });
+    }
+    return changed;
+  }
+
   function sortedHoldings() {
     return [...state.holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
+
+  // 庫存現價＝最新收盤（signals/recent_ohlc.json），不用手動輸入
+  let latestCloses = {};
+  async function loadLatestCloses() {
+    try {
+      const rec = await fetchJsonCached('signals/recent_ohlc.json');
+      latestCloses = {};
+      for (const [code, st] of Object.entries(rec.stocks || {})) {
+        const c = (st.c || []).filter(v => v != null);
+        if (c.length) latestCloses[code] = c[c.length - 1];
+      }
+    } catch { latestCloses = {}; }
+  }
+  const withClose = (h) => ({ ...h, currentPrice: latestCloses[h.symbol] ?? null });
 
   // 損益逐份計算：每一份買進的價格不同，不能用加權均價去算整體報酬率
   // （均價法會讓不同份數/價格的組合在數學上失真）；改成每一份各自算報酬率跟損益(萬)，
@@ -1085,28 +1136,37 @@ const db = getFirestore(fbApp);
     return { totalUnits, avgEntryPrice, investedWan, currentPrice, pnlPct, pnlWan, lotPnls };
   }
 
+  const priceText = (v) => (v != null ? v : '—');
+
+  // 同一檔有多份時才展開每份（各自的進場價／停損價／損益）
   function holdingLotRowsHtml(h, lotPnls) {
+    if (lotPnls.length < 2) return '';
     return lotPnls.map(l => {
       const lotPnlClass = l.pnlPct == null ? 'pnl-zero' : l.pnlPct > 0 ? 'pnl-pos' : l.pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
       return `
-      <tr class="holding-lot-row">
-        <td colspan="4" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice != null ? l.entryPrice : '—'}</td>
-        <td class="num ${lotPnlClass}" style="font-size:12px;">${fmtPct(l.pnlPct, 2)}</td>
-        <td><button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這筆買進紀錄">✕</button></td>
+      <tr class="holding-lot-row" style="color:var(--text-muted);font-size:12px;">
+        <td style="padding-left:24px;">↳</td>
+        <td class="num">${l.units}</td>
+        <td class="num">${priceText(l.entryPrice)}</td>
+        <td class="num">${priceText(l.stopPrice)}</td>
+        <td class="num ${lotPnlClass}">${fmtPct(l.pnlPct, 2)}</td>
+        <td><button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這一份">✕</button></td>
       </tr>
     `;
     }).join('');
   }
 
+  // 整檔列的進場價／停損價取第一份（1R 以第一份為準）
   function holdingRowHtml(h) {
-    const { totalUnits, avgEntryPrice, currentPrice, pnlPct, lotPnls } = holdingTotals(h);
+    const { totalUnits, pnlPct, lotPnls } = holdingTotals(h);
+    const first = h.lots[0] || {};
     const pnlClass = pnlPct == null ? 'pnl-zero' : pnlPct > 0 ? 'pnl-pos' : pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
     return `
       <tr>
         <td><strong>${escapeHtml(h.symbol)}</strong> ${h.name ? `<span style="color:var(--text-muted)">${escapeHtml(h.name)}</span>` : ''}</td>
         <td class="num">${totalUnits || '—'}</td>
-        <td class="num">${avgEntryPrice > 0 ? avgEntryPrice.toFixed(2) : '—'}</td>
-        <td class="num"><input type="number" class="holding-current-price-input" data-holding="${h.id}" value="${currentPrice != null ? currentPrice : ''}" placeholder="輸入現價" step="0.01" min="0" style="width:90px;"></td>
+        <td class="num">${priceText(first.entryPrice)}</td>
+        <td class="num">${priceText(first.stopPrice)}</td>
         <td class="num ${pnlClass}">${fmtPct(pnlPct, 2)}</td>
         <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除整檔">✕</button></td>
       </tr>
@@ -1117,7 +1177,8 @@ const db = getFirestore(fbApp);
   async function renderHoldings() {
     const tbody = document.getElementById('holdings-tbody');
     const empty = document.getElementById('holdings-empty');
-    const items = sortedHoldings();
+    await loadLatestCloses();
+    const items = sortedHoldings().map(withClose);
 
     tbody.innerHTML = items.map(holdingRowHtml).join('');
     empty.style.display = items.length ? 'none' : '';
@@ -1136,17 +1197,6 @@ const db = getFirestore(fbApp);
         if (!holding) return;
         holding.lots = holding.lots.filter(l => l.id !== btn.dataset.lot);
         if (!holding.lots.length) state.holdings = state.holdings.filter(h => h.id !== holding.id);
-        await save();
-        renderHoldings();
-      });
-    });
-
-    tbody.querySelectorAll('.holding-current-price-input').forEach(input => {
-      input.addEventListener('change', async () => {
-        const v = parseFloat(input.value);
-        const holding = state.holdings.find(h => h.id === input.dataset.holding);
-        if (!holding) return;
-        holding.currentPrice = isNaN(v) ? null : v;
         await save();
         renderHoldings();
       });
@@ -1190,8 +1240,9 @@ const db = getFirestore(fbApp);
     const symbol = symbolInput.value.trim();
     const units = parseFloat(document.getElementById('hd-units').value);
     const entryPrice = parseFloat(document.getElementById('hd-entry-price').value);
+    const stopPrice = parseFloat(document.getElementById('hd-stop-price').value);
     if (!symbol || !(units > 0) || !(entryPrice > 0)) return;
-    await addHoldingLot(symbol, document.getElementById('hd-name').value, units, entryPrice);
+    await addHoldingLot(symbol, document.getElementById('hd-name').value, units, entryPrice, stopPrice > 0 ? stopPrice : null);
     e.target.reset();
     symbolInput.focus();
   });
@@ -1541,7 +1592,7 @@ const db = getFirestore(fbApp);
       review: document.getElementById('f-review').value.trim(),
     };
     const idx = state.trades.findIndex(x => x.id === id);
-    if (idx >= 0) state.trades[idx] = rec; else { state.trades.push(rec); applyTradeToHoldings(rec); }
+    if (idx >= 0) { state.trades[idx] = rec; syncLotFromTrade(rec); } else { state.trades.push(rec); applyTradeToHoldings(rec); }
     save();
     closeModals();
     renderTrades();

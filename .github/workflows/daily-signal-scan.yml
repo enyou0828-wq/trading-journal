@@ -1,16 +1,13 @@
-name: Daily Signal Scan
+name: Daily Update
 
 on:
   schedule:
-    # GitHub 排程在整點最塞，常延遲好幾小時，所以改用冷門分鐘、收盤後分段多跑幾次。
-    # 已經抓到今天兩個市場的資料，後面幾次會直接略過（見 gate 步驟），不會重複提交。
-    # 台北時間 14:53、15:41、16:37、18:23、20:47（平日）
-    - cron: "53 6 * * 1-5"
-    - cron: "41 7 * * 1-5"
-    - cron: "37 8 * * 1-5"
-    - cron: "23 10 * * 1-5"
-    - cron: "47 12 * * 1-5"
-    # 備援：隔天台北時間 08:13（週二～週六），補上前一晚萬一全部失敗的資料
+    # 全站資料（指數、訊號、族群、平行宇宙、盤後報告）同一次跑完、同一個 commit 更新。
+    # 預定台北時間 15:37；GitHub 排程常延遲，沒跑成就在 17:43、20:19 補跑，隔天 08:13 再備援。
+    # 已經有今天的個股與指數資料就直接略過，不會重複提交。
+    - cron: "37 7 * * 1-5"
+    - cron: "43 9 * * 1-5"
+    - cron: "19 12 * * 1-5"
     - cron: "13 0 * * 2-6"
   workflow_dispatch: {}
 
@@ -33,15 +30,27 @@ jobs:
           TODAY=$(TZ=Asia/Taipei date +%F)
           if [ "${{ github.event_name }}" = "schedule" ] \
             && grep -q "^$TODAY,.*,TWSE," data/price_history.csv \
-            && grep -q "^$TODAY,.*,TPEx," data/price_history.csv; then
+            && grep -q "^$TODAY,.*,TPEx," data/price_history.csv \
+            && grep -q "\"$TODAY\"" data/twi_index.json \
+            && grep -q "\"$TODAY\"" data/otc_index.json; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "$TODAY 兩個市場的資料都已經有了，略過"
+            echo "$TODAY 個股與指數資料都已經有了，略過"
           fi
 
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.skip != 'true'
         with:
           python-version: "3.12"
+
+      - name: Update OTC index
+        if: steps.gate.outputs.skip != 'true'
+        continue-on-error: true
+        run: python3 scripts/update_otc_index.py
+
+      - name: Update TWI index
+        if: steps.gate.outputs.skip != 'true'
+        continue-on-error: true
+        run: python3 scripts/update_twi_index.py
 
       - name: Run daily signal scan
         if: steps.gate.outputs.skip != 'true'
@@ -67,13 +76,13 @@ jobs:
       - name: Commit results
         if: steps.gate.outputs.skip != 'true'
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] && git diff --quiet -- data/price_history.csv; then
+          if [ "${{ github.event_name }}" = "schedule" ] && git diff --quiet -- data/price_history.csv data/twi_index.json data/otc_index.json; then
             echo "沒有新的收盤資料，不提交"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/price_history.csv signals/latest.json signals/groups.json signals/parallel.json signals/recent_ohlc.json signals/daily_report.json
+          git add data/price_history.csv data/twi_index.json data/otc_index.json signals/latest.json signals/groups.json signals/parallel.json signals/recent_ohlc.json signals/daily_report.json
           git diff --staged --quiet && exit 0
           git commit -m "Daily signal scan: $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M')"
           git pull --rebase
