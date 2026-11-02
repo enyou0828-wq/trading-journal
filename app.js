@@ -1010,8 +1010,51 @@ const db = getFirestore(fbApp);
     renderHoldings();
   }
 
+  // 由交易紀錄推算的庫存：某檔在最後一次「賣出」之後還有買進／加碼／減碼，就當作還持有。
+  // 每筆買進／加碼＝1 份（價格取該筆紀錄的 price，沒填就未知）；減碼先出成本最高的一份。
+  // 推錯的可以按 ✕ 排除（記住當時最後一筆紀錄的 id，之後這檔有新紀錄會再出現）。
+  // 手動新增過的代號以手動資料為準，不重複列。
+  function derivedHoldings() {
+    const dismissed = state.holdingDismissed || {};
+    const prices = state.derivedPrices || {};
+    const manual = new Set(state.holdings.map(h => h.symbol));
+    const bySym = new Map();
+    const chrono = [...state.trades].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    for (const t of chrono) {
+      if (!t.symbol || t.action === '當沖') continue;
+      if (!bySym.has(t.symbol)) bySym.set(t.symbol, []);
+      bySym.get(t.symbol).push(t);
+    }
+    const out = [];
+    for (const [symbol, ts] of bySym) {
+      if (manual.has(symbol)) continue;
+      let lastClose = -1;
+      // 按 ✕ 排除的那一筆視同出清，之後的新紀錄重新起算
+      ts.forEach((t, i) => { if (t.action === '賣出' || t.action === '加碼轉賣出' || t.id === dismissed[symbol]) lastClose = i; });
+      const seg = ts.slice(lastClose + 1);
+      if (!seg.length) continue;
+      const last = seg[seg.length - 1];
+      const lots = [];
+      for (const t of seg) {
+        if (ENTRY_ACTIONS.has(t.action)) {
+          lots.push({ id: t.id, units: 1, entryPrice: t.price != null ? t.price : null });
+        } else if (t.action === '減碼' && lots.length) {
+          let k = lots.length - 1; // 價格未知時出最後買的
+          lots.forEach((l, i) => { if (l.entryPrice != null && (lots[k].entryPrice == null || l.entryPrice > lots[k].entryPrice)) k = i; });
+          lots.splice(k, 1);
+        }
+      }
+      out.push({
+        id: 'derived-' + symbol, symbol, name: last.name || '', derived: true,
+        currentPrice: prices[symbol] != null ? prices[symbol] : null,
+        lots, lastTradeId: last.id, lastDate: last.date, lastAction: last.action,
+      });
+    }
+    return out;
+  }
+
   function sortedHoldings() {
-    return [...state.holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
+    return [...state.holdings, ...derivedHoldings()].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
   // 損益逐份計算：每一份買進的價格不同，不能用加權均價去算整體報酬率
@@ -1020,7 +1063,9 @@ const db = getFirestore(fbApp);
   function holdingTotals(h) {
     const totalUnits = h.lots.reduce((s, l) => s + l.units, 0);
     const investedWan = totalUnits * UNIT_AMOUNT_WAN;
-    const avgEntryPrice = totalUnits > 0 ? h.lots.reduce((s, l) => s + l.units * l.entryPrice, 0) / totalUnits : 0;
+    const priced = h.lots.filter(l => l.entryPrice > 0);
+    const pricedUnits = priced.reduce((s, l) => s + l.units, 0);
+    const avgEntryPrice = pricedUnits > 0 ? priced.reduce((s, l) => s + l.units * l.entryPrice, 0) / pricedUnits : 0;
     const currentPrice = h.currentPrice;
     const lotPnls = h.lots.map(l => {
       const investedWan = l.units * UNIT_AMOUNT_WAN;
@@ -1038,9 +1083,9 @@ const db = getFirestore(fbApp);
       const lotPnlClass = l.pnlPct == null ? 'pnl-zero' : l.pnlPct > 0 ? 'pnl-pos' : l.pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
       return `
       <tr class="holding-lot-row">
-        <td colspan="4" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice}</td>
+        <td colspan="4" style="color:var(--text-muted);font-size:12px;padding-left:24px;">↳ ${l.units} 份 @ ${l.entryPrice != null ? l.entryPrice : '—'}</td>
         <td class="num ${lotPnlClass}" style="font-size:12px;">${fmtPct(l.pnlPct, 2)}</td>
-        <td><button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這筆買進紀錄">✕</button></td>
+        <td>${h.derived ? '' : `<button class="icon-btn btn-del-lot" data-holding="${h.id}" data-lot="${l.id}" title="刪除這筆買進紀錄">✕</button>`}</td>
       </tr>
     `;
     }).join('');
@@ -1051,12 +1096,14 @@ const db = getFirestore(fbApp);
     const pnlClass = pnlPct == null ? 'pnl-zero' : pnlPct > 0 ? 'pnl-pos' : pnlPct < 0 ? 'pnl-neg' : 'pnl-zero';
     return `
       <tr>
-        <td><strong>${escapeHtml(h.symbol)}</strong> ${h.name ? `<span style="color:var(--text-muted)">${escapeHtml(h.name)}</span>` : ''}</td>
-        <td class="num">${totalUnits}</td>
-        <td class="num">${avgEntryPrice.toFixed(2)}</td>
+        <td><strong>${escapeHtml(h.symbol)}</strong> ${h.name ? `<span style="color:var(--text-muted)">${escapeHtml(h.name)}</span>` : ''}${h.derived ? `<div style="color:var(--text-muted);font-size:12px;">${escapeHtml(h.lastDate.slice(5).replace('-', '/'))} ${escapeHtml(h.lastAction)}</div>` : ''}</td>
+        <td class="num">${totalUnits || '—'}</td>
+        <td class="num">${avgEntryPrice > 0 ? avgEntryPrice.toFixed(2) : '—'}</td>
         <td class="num"><input type="number" class="holding-current-price-input" data-holding="${h.id}" value="${currentPrice != null ? currentPrice : ''}" placeholder="輸入現價" step="0.01" min="0" style="width:90px;"></td>
         <td class="num ${pnlClass}">${fmtPct(pnlPct, 2)}</td>
-        <td><button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除整檔">✕</button></td>
+        <td>${h.derived
+          ? `<button class="icon-btn btn-dismiss-holding" data-symbol="${escapeHtml(h.symbol)}" data-last="${escapeHtml(h.lastTradeId)}" title="已出清，從庫存移除">✕</button>`
+          : `<button class="icon-btn btn-del-holding" data-id="${h.id}" title="刪除整檔">✕</button>`}</td>
       </tr>
       ${holdingLotRowsHtml(h, lotPnls)}
     `;
@@ -1089,11 +1136,26 @@ const db = getFirestore(fbApp);
       });
     });
 
+    tbody.querySelectorAll('.btn-dismiss-holding').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        state.holdingDismissed = { ...(state.holdingDismissed || {}), [btn.dataset.symbol]: btn.dataset.last };
+        await save();
+        renderHoldings();
+      });
+    });
+
     tbody.querySelectorAll('.holding-current-price-input').forEach(input => {
       input.addEventListener('change', async () => {
+        const v = parseFloat(input.value);
+        const derived = items.find(h => h.derived && h.id === input.dataset.holding);
+        if (derived) {
+          state.derivedPrices = { ...(state.derivedPrices || {}), [derived.symbol]: isNaN(v) ? null : v };
+          await save();
+          renderHoldings();
+          return;
+        }
         const holding = state.holdings.find(h => h.id === input.dataset.holding);
         if (!holding) return;
-        const v = parseFloat(input.value);
         holding.currentPrice = isNaN(v) ? null : v;
         await save();
         renderHoldings();
