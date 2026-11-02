@@ -1450,22 +1450,21 @@ const db = getFirestore(fbApp);
     document.getElementById('f-position-r-pct').value = Math.min(100 / r, 15).toFixed(1);
   }
 
-  // 初始停損＝進場日低點，但距成本最多 X%（依策略，10/25 版兩策略都是 5%）；取到台股升降單位（往上取，停損較緊）
-  const STOP_MAX_PCT = { '盤整突破': 5, '動能延續': 5 };
+  // 初始停損：進場價 −X%（依策略，兩策略都是 5%）；當日低離進場價超過 X% 時改用當日低。
+  // 即兩者取較低者；−X% 的價格取到台股升降單位。
+  const STOP_PCT = { '盤整突破': 5, '動能延續': 5 };
   function tickSize(p) {
     return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
   }
   function recalcStop() {
     const entry = parseFloat(document.getElementById('f-entry-price').value);
+    if (!(entry > 0)) return;
     const low = parseFloat(document.getElementById('f-day-low').value);
-    if (!(entry > 0) || !(low > 0)) return;
-    const maxPct = STOP_MAX_PCT[document.getElementById('f-strategy').value] ?? 5;
-    const floor = entry * (1 - maxPct / 100);
-    let stop = low;
-    if (floor > low) {
-      const tick = tickSize(floor);
-      stop = +(Math.ceil(floor / tick - 1e-9) * tick).toFixed(2);
-    }
+    const pct = STOP_PCT[document.getElementById('f-strategy').value] ?? 5;
+    const raw = entry * (1 - pct / 100);
+    const tick = tickSize(raw);
+    let stop = +(Math.round(raw / tick) * tick).toFixed(2);
+    if (low > 0 && low < stop) stop = low;
     document.getElementById('f-stop-price').value = stop;
     recalcRPct();
     recalcPositionR();
