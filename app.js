@@ -1266,6 +1266,33 @@ const db = getFirestore(fbApp);
   // ---- 股票代號自動帶出名稱/族群（依最近一筆同代號的紀錄） ----
   // 交易紀錄跟觀察清單共用這一份對照表：交易紀錄優先（有族群資訊，資料也比較新），
   // 觀察清單只在交易紀錄裡沒有這個代號時拿來補名稱（觀察清單本身沒有族群欄位）。
+  // 自己的紀錄找不到時，再用股票資料庫補：companies.csv（自選股，有族群）→ industries.csv（全台股，只有名稱）。
+  const stockDb = new Map();     // 代號 → { name, sector }
+  const watchDbCodes = new Set(); // companies.csv 的代號，下拉選單只列這些，免得全台股塞滿
+  async function loadStockDb() {
+    const read = async (path) => {
+      try {
+        const res = await fetch(path);
+        if (!res.ok) return [];
+        return (await res.text()).replace(/^﻿/, '').split(/\r?\n/).slice(1).filter(Boolean).map(l => l.split(','));
+      } catch { return []; }
+    };
+    const [companies, industries] = await Promise.all([
+      read('supply-chain-map/data/companies.csv'), // 公司,代號,產業,族群,...
+      read('data/industries.csv'),                 // code,name,industry,market
+    ]);
+    for (const [name, code, , group] of companies) {
+      if (!code) continue;
+      stockDb.set(code, { name, sector: group || '' });
+      watchDbCodes.add(code);
+    }
+    for (const [code, name] of industries) {
+      if (code && !stockDb.has(code)) stockDb.set(code, { name: name || '', sector: '' });
+    }
+    updateSymbolDatalist();
+  }
+  loadStockDb();
+
   function symbolLookup() {
     const map = new Map();
     for (const t of sortedTrades()) { // 由新到舊，先出現的（較新）優先，不覆蓋
@@ -1277,6 +1304,13 @@ const db = getFirestore(fbApp);
     for (const h of state.holdings) {
       if (h.symbol && !map.has(h.symbol)) map.set(h.symbol, { name: h.name || '', sector: '' });
     }
+    for (const [code, info] of map) { // 自己的紀錄缺名稱或族群時，用資料庫補
+      const db = stockDb.get(code);
+      if (db) map.set(code, { name: info.name || db.name, sector: info.sector || db.sector });
+    }
+    for (const [code, info] of stockDb) {
+      if (!map.has(code)) map.set(code, info);
+    }
     return map;
   }
 
@@ -1284,8 +1318,14 @@ const db = getFirestore(fbApp);
     const datalist = document.getElementById('symbol-datalist');
     const map = symbolLookup();
     datalist.innerHTML = [...map.entries()]
+      .filter(([symbol]) => !stockDb.has(symbol) || watchDbCodes.has(symbol) || hasOwnRecord(symbol))
       .map(([symbol, info]) => `<option value="${escapeHtml(symbol)}">${escapeHtml(info.name)}</option>`)
       .join('');
+  }
+  function hasOwnRecord(symbol) {
+    return (state.trades || []).some(t => t.symbol === symbol)
+      || (state.watchlist || []).some(w => w.code === symbol)
+      || (state.holdings || []).some(h => h.symbol === symbol);
   }
 
   function escapeHtml(s) {
@@ -2392,6 +2432,14 @@ const db = getFirestore(fbApp);
     document.getElementById('re-strategy-label').firstChild.textContent = entered ? '策略 ' : '未進場原因 ';
   }
   document.getElementById('re-entered').addEventListener('change', updateReviewEntryStrategyLabel);
+
+  // 打代號自動帶出公司名稱（同一套 symbolLookup()）
+  document.getElementById('re-symbol').addEventListener('input', (e) => {
+    const info = symbolLookup().get(e.target.value.trim());
+    if (!info || !info.name) return;
+    const nameEl = document.getElementById('re-name');
+    if (!nameEl.value) nameEl.value = info.name;
+  });
 
   function openReviewEntryModal(review, entry) {
     reviewEntryContextMonth = review.month;
