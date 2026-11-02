@@ -1101,19 +1101,36 @@ const db = getFirestore(fbApp);
     return [...state.holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
 
-  // 庫存現價＝最新收盤（signals/recent_ohlc.json），不用手動輸入
+  // 最近 7 個交易日的高低收（signals/recent_ohlc.json）：庫存現價＝最新收盤、當日低自動帶入
   let latestCloses = {};
-  async function loadLatestCloses() {
+  let dayLows = {}; // 代號 → { 日期: 低點 }
+  async function loadOhlc() {
     try {
       const rec = await fetchJsonCached('signals/recent_ohlc.json');
-      latestCloses = {};
+      latestCloses = {}; dayLows = {};
       for (const [code, st] of Object.entries(rec.stocks || {})) {
         const c = (st.c || []).filter(v => v != null);
         if (c.length) latestCloses[code] = c[c.length - 1];
+        dayLows[code] = {};
+        (rec.dates || []).forEach((d, i) => { if (st.l?.[i] != null) dayLows[code][d] = st.l[i]; });
       }
-    } catch { latestCloses = {}; }
+    } catch { latestCloses = {}; dayLows = {}; }
   }
-  const withClose = (h) => ({ ...h, currentPrice: latestCloses[h.symbol] ?? null });
+  const dataDayLow = (symbol, date) => dayLows[symbol]?.[date] ?? null;
+
+  // 每份的停損：來自交易紀錄的一律依規則自動算（當日低優先用輸入的，否則查資料；查不到先用 −5%），
+  // 手動新增、沒有對應交易的份才用自己填的停損價
+  function lotStop(symbol, l) {
+    const t = l.tradeId ? state.trades.find(x => x.id === l.tradeId) : null;
+    if (!t) return l.stopPrice ?? computeStop(l.entryPrice, null, null);
+    const low = t.dayLow ?? dataDayLow(symbol, t.date);
+    return computeStop(l.entryPrice, low, t.strategy);
+  }
+  const withClose = (h) => ({
+    ...h,
+    currentPrice: latestCloses[h.symbol] ?? null,
+    lots: h.lots.map(l => ({ ...l, stopPrice: lotStop(h.symbol, l) })),
+  });
 
   // 損益逐份計算：每一份買進的價格不同，不能用加權均價去算整體報酬率
   // （均價法會讓不同份數/價格的組合在數學上失真）；改成每一份各自算報酬率跟損益(萬)，
@@ -1177,7 +1194,7 @@ const db = getFirestore(fbApp);
   async function renderHoldings() {
     const tbody = document.getElementById('holdings-tbody');
     const empty = document.getElementById('holdings-empty');
-    await loadLatestCloses();
+    await loadOhlc();
     const items = sortedHoldings().map(withClose);
 
     tbody.innerHTML = items.map(holdingRowHtml).join('');
@@ -1451,6 +1468,7 @@ const db = getFirestore(fbApp);
     if (!nameEl.value) nameEl.value = info.name;
     if (!sectorEl.value) sectorEl.value = info.sector;
     maybeAutofillEntryPrice();
+    autofillDayLow();
   });
 
   // 減碼／賣出時，進場價自動帶入該股票最近一筆買進／加碼的進場價
@@ -1494,21 +1512,38 @@ const db = getFirestore(fbApp);
   function tickSize(p) {
     return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
   }
-  function recalcStop() {
-    const entry = parseFloat(document.getElementById('f-entry-price').value);
-    if (!(entry > 0)) return;
-    const low = parseFloat(document.getElementById('f-day-low').value);
-    const pct = STOP_PCT[document.getElementById('f-strategy').value] ?? 5;
+  function computeStop(entry, low, strategy) {
+    if (!(entry > 0)) return null;
+    const pct = STOP_PCT[strategy] ?? 5;
     const raw = entry * (1 - pct / 100);
     const tick = tickSize(raw);
     let stop = +(Math.round(raw / tick) * tick).toFixed(2);
     if (low > 0 && low < stop) stop = low;
+    return stop;
+  }
+  function recalcStop() {
+    const entry = parseFloat(document.getElementById('f-entry-price').value);
+    const low = parseFloat(document.getElementById('f-day-low').value);
+    const stop = computeStop(entry, low, document.getElementById('f-strategy').value);
+    if (stop == null) return;
     document.getElementById('f-stop-price').value = stop;
     recalcRPct();
     recalcPositionR();
   }
+  // 當日低：依代號＋日期從每日資料自動帶入（自己改過就不覆蓋）
+  async function autofillDayLow() {
+    const el = document.getElementById('f-day-low');
+    if (el.value && el.dataset.auto !== '1') return;
+    await loadOhlc();
+    const low = dataDayLow(document.getElementById('f-symbol').value.trim(), document.getElementById('f-date').value);
+    el.value = low != null ? low : '';
+    el.dataset.auto = '1';
+    recalcStop();
+  }
   document.getElementById('f-entry-price').addEventListener('input', () => { recalcStop(); recalcRPct(); recalcPositionR(); });
-  document.getElementById('f-day-low').addEventListener('input', recalcStop);
+  document.getElementById('f-day-low').addEventListener('input', (e) => { e.target.dataset.auto = ''; recalcStop(); });
+  document.getElementById('f-symbol').addEventListener('change', autofillDayLow);
+  document.getElementById('f-date').addEventListener('change', autofillDayLow);
   document.getElementById('f-strategy').addEventListener('change', recalcStop);
   document.getElementById('f-stop-price').addEventListener('input', () => { recalcRPct(); recalcPositionR(); });
   document.getElementById('f-r-pct').addEventListener('input', recalcPositionR);
@@ -1536,6 +1571,7 @@ const db = getFirestore(fbApp);
     document.getElementById('f-lot-number').value = t && t.lotNumber != null ? t.lotNumber : '';
     document.getElementById('f-entry-price').value = t && t.entryPrice != null ? t.entryPrice : '';
     document.getElementById('f-day-low').value = t && t.dayLow != null ? t.dayLow : '';
+    document.getElementById('f-day-low').dataset.auto = t && t.dayLow != null ? '' : '1';
     document.getElementById('f-stop-price').value = t && t.stopPrice != null ? t.stopPrice : '';
     document.getElementById('f-r-pct').value = t && t.rPct != null ? t.rPct : '';
     document.getElementById('f-position-r-pct').value = t && t.positionRPct != null ? t.positionRPct : '';
