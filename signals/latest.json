@@ -1,9 +1,9 @@
 {
   "scan_date": "2026-11-02",
-  "twse_date": "2026-10-30",
+  "twse_date": "2026-11-02",
   "tpex_date": "2026-11-02",
-  "markets_in_sync": false,
-  "generated_at": "2026-11-02T19:45:28.905821+00:00",
+  "markets_in_sync": true,
+  "generated_at": "2026-11-02T21:42:54.795869+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,7 +14,7 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 8,
+      "signal_count": 15,
       "signals": [
         {
           "code": "6697",
@@ -47,6 +47,16 @@
           "sub_group": null
         },
         {
+          "code": "2491",
+          "name": "吉祥全",
+          "close": 44.55,
+          "daily_change_pct": 10.0,
+          "volume_multiple": 3.17,
+          "volume": 2966121,
+          "industry": "光電業",
+          "sub_group": "LED"
+        },
+        {
           "code": "6233",
           "name": "旺玖",
           "close": 35.2,
@@ -67,13 +77,43 @@
           "sub_group": "PCB 設備·耗材"
         },
         {
-          "code": "1201",
-          "name": "味全",
-          "close": 13.55,
-          "daily_change_pct": 9.72,
-          "volume_multiple": 6.86,
-          "volume": 5813367,
-          "industry": "食品工業",
+          "code": "2468",
+          "name": "華經",
+          "close": 58.5,
+          "daily_change_pct": 9.96,
+          "volume_multiple": 2.0,
+          "volume": 22442564,
+          "industry": "資訊服務業",
+          "sub_group": "資訊服務"
+        },
+        {
+          "code": "1786",
+          "name": "科妍",
+          "close": 50.1,
+          "daily_change_pct": 5.36,
+          "volume_multiple": 21.31,
+          "volume": 3645865,
+          "industry": "生技醫療業",
+          "sub_group": null
+        },
+        {
+          "code": "4562",
+          "name": "穎漢",
+          "close": 33.3,
+          "daily_change_pct": 9.9,
+          "volume_multiple": 6.17,
+          "volume": 1270799,
+          "industry": "電機機械",
+          "sub_group": null
+        },
+        {
+          "code": "3004",
+          "name": "豐達科",
+          "close": 127.5,
+          "daily_change_pct": 7.59,
+          "volume_multiple": 6.06,
+          "volume": 1431683,
+          "industry": "鋼鐵工業",
           "sub_group": null
         },
         {
@@ -84,6 +124,36 @@
           "volume_multiple": 3.75,
           "volume": 5196166,
           "industry": "鋼鐵工業",
+          "sub_group": null
+        },
+        {
+          "code": "6689",
+          "name": "伊雲谷",
+          "close": 77.3,
+          "daily_change_pct": 9.96,
+          "volume_multiple": 3.31,
+          "volume": 2763386,
+          "industry": "數位雲端",
+          "sub_group": "資訊服務"
+        },
+        {
+          "code": "1907",
+          "name": "永豐餘",
+          "close": 29.6,
+          "daily_change_pct": 5.34,
+          "volume_multiple": 2.67,
+          "volume": 8516752,
+          "industry": "造紙工業",
+          "sub_group": null
+        },
+        {
+          "code": "1528",
+          "name": "恩德",
+          "close": 26.9,
+          "daily_change_pct": 7.82,
+          "volume_multiple": 2.48,
+          "volume": 20372958,
+          "industry": "電機機械",
           "sub_group": null
         },
         {
@@ -108,8 +178,18 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 17,
+      "signal_count": 12,
       "signals": [
+        {
+          "code": "2491",
+          "name": "吉祥全",
+          "close": 44.55,
+          "daily_change_pct": 10.0,
+          "volume_multiple": null,
+          "volume": 2966121,
+          "industry": "光電業",
+          "sub_group": "LED"
+        },
         {
           "code": "6233",
           "name": "旺玖",
@@ -119,16 +199,6 @@
           "volume": 5740004,
           "industry": "半導體業",
           "sub_group": null
-        },
-        {
-          "code": "2466",
-          "name": "冠西電",
-          "close": 354.0,
-          "daily_change_pct": 9.94,
-          "volume_multiple": null,
-          "volume": 1152357,
-          "industry": "光電業",
-          "sub_group": "電源／電池／連接"
         },
         {
           "code": "6697",
@@ -171,16 +241,6 @@
           "sub_group": null
         },
         {
-          "code": "2352",
-          "name": "佳世達",
-          "close": 33.8,
-          "daily_change_pct": 3.05,
-          "volume_multiple": null,
-          "volume": 79259674,
-          "industry": "電腦及週邊設備業",
-          "sub_group": null
-        },
-        {
           "code": "3691",
           "name": "碩禾",
           "close": 145.0,
@@ -188,16 +248,6 @@
           "volume_multiple": null,
           "volume": 1498096,
           "industry": "光電業",
-          "sub_group": null
-        },
-        {
-          "code": "2444",
-          "name": "兆勁",
-          "close": 15.85,
-          "daily_change_pct": 1.6,
-          "volume_multiple": null,
-          "volume": 1547647,
-          "industry": "通信網路業",
           "sub_group": null
         },
         {
@@ -211,46 +261,6 @@
           "sub_group": null
         },
         {
-          "code": "3006",
-          "name": "晶豪科",
-          "close": 277.0,
-          "daily_change_pct": -1.95,
-          "volume_multiple": null,
-          "volume": 17660843,
-          "industry": "半導體業",
-          "sub_group": "記憶體"
-        },
-        {
-          "code": "2491",
-          "name": "吉祥全",
-          "close": 40.5,
-          "daily_change_pct": -6.14,
-          "volume_multiple": null,
-          "volume": 2737602,
-          "industry": "光電業",
-          "sub_group": "LED"
-        },
-        {
-          "code": "3321",
-          "name": "同泰",
-          "close": 20.1,
-          "daily_change_pct": -6.29,
-          "volume_multiple": null,
-          "volume": 1417120,
-          "industry": "電子零組件業",
-          "sub_group": null
-        },
-        {
-          "code": "3035",
-          "name": "智原",
-          "close": 213.5,
-          "daily_change_pct": -7.78,
-          "volume_multiple": null,
-          "volume": 28891694,
-          "industry": "半導體業",
-          "sub_group": "IP／ASIC"
-        },
-        {
           "code": "5013",
           "name": "強新",
           "close": 60.6,
@@ -261,22 +271,32 @@
           "sub_group": null
         },
         {
+          "code": "1786",
+          "name": "科妍",
+          "close": 50.1,
+          "daily_change_pct": 5.36,
+          "volume_multiple": null,
+          "volume": 3645865,
+          "industry": "生技醫療業",
+          "sub_group": null
+        },
+        {
           "code": "1201",
           "name": "味全",
-          "close": 13.55,
-          "daily_change_pct": 9.72,
+          "close": 13.65,
+          "daily_change_pct": 0.74,
           "volume_multiple": null,
-          "volume": 5813367,
+          "volume": 17524618,
           "industry": "食品工業",
           "sub_group": null
         },
         {
           "code": "4526",
           "name": "東台",
-          "close": 56.0,
-          "daily_change_pct": 6.06,
+          "close": 55.5,
+          "daily_change_pct": -0.89,
           "volume_multiple": null,
-          "volume": 14661995,
+          "volume": 13841711,
           "industry": "電機機械",
           "sub_group": null
         }
@@ -307,6 +327,39 @@
       "min_fraction": 0.3333333333333333,
       "min_stocks": 2
     },
-    "groups": []
+    "groups": [
+      {
+        "group": "資訊服務",
+        "total_in_group": 11,
+        "triggered_count": 5,
+        "stocks": [
+          {
+            "code": "8272",
+            "name": "全景軟體",
+            "daily_change_pct": 9.99
+          },
+          {
+            "code": "2468",
+            "name": "華經",
+            "daily_change_pct": 9.96
+          },
+          {
+            "code": "6689",
+            "name": "伊雲谷",
+            "daily_change_pct": 9.96
+          },
+          {
+            "code": "6697",
+            "name": "東捷資訊",
+            "daily_change_pct": 9.94
+          },
+          {
+            "code": "6148",
+            "name": "驊宏資",
+            "daily_change_pct": 6.36
+          }
+        ]
+      }
+    ]
   }
 }
