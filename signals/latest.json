@@ -1,9 +1,9 @@
 {
-  "scan_date": "2026-11-03",
-  "twse_date": "2026-11-03",
+  "scan_date": "2026-11-04",
+  "twse_date": "2026-11-04",
   "tpex_date": "2026-11-03",
-  "markets_in_sync": true,
-  "generated_at": "2026-11-03T15:27:26.432707+00:00",
+  "markets_in_sync": false,
+  "generated_at": "2026-11-04T06:18:14.601336+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,7 +14,7 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 5,
+      "signal_count": 8,
       "signals": [
         {
           "code": "8272",
@@ -27,6 +27,16 @@
           "sub_group": "資訊服務"
         },
         {
+          "code": "2471",
+          "name": "資通",
+          "close": 52.5,
+          "daily_change_pct": 5.32,
+          "volume_multiple": 10.06,
+          "volume": 1599000,
+          "industry": "資訊服務業",
+          "sub_group": null
+        },
+        {
           "code": "5202",
           "name": "力新",
           "close": 16.3,
@@ -34,6 +44,16 @@
           "volume_multiple": 4.81,
           "volume": 8827447,
           "industry": "資訊服務業",
+          "sub_group": null
+        },
+        {
+          "code": "3321",
+          "name": "同泰",
+          "close": 22.2,
+          "daily_change_pct": 9.9,
+          "volume_multiple": 2.93,
+          "volume": 1608000,
+          "industry": "電子零組件業",
           "sub_group": null
         },
         {
@@ -47,6 +67,16 @@
           "sub_group": null
         },
         {
+          "code": "4562",
+          "name": "穎漢",
+          "close": 33.8,
+          "daily_change_pct": 9.92,
+          "volume_multiple": 6.91,
+          "volume": 2538000,
+          "industry": "電機機械",
+          "sub_group": null
+        },
+        {
           "code": "5013",
           "name": "強新",
           "close": 66.6,
@@ -57,14 +87,14 @@
           "sub_group": null
         },
         {
-          "code": "1802",
-          "name": "台玻",
-          "close": 67.7,
-          "daily_change_pct": 6.28,
-          "volume_multiple": 2.72,
-          "volume": 301314439,
-          "industry": "玻璃陶瓷",
-          "sub_group": "板材上游"
+          "code": "1528",
+          "name": "恩德",
+          "close": 27.65,
+          "daily_change_pct": 9.94,
+          "volume_multiple": 3.5,
+          "volume": 32628000,
+          "industry": "電機機械",
+          "sub_group": null
         }
       ]
     },
@@ -78,8 +108,28 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 6,
+      "signal_count": 10,
       "signals": [
+        {
+          "code": "2468",
+          "name": "華經",
+          "close": 60.8,
+          "daily_change_pct": 9.95,
+          "volume_multiple": null,
+          "volume": 23820000,
+          "industry": "資訊服務業",
+          "sub_group": "資訊服務"
+        },
+        {
+          "code": "3321",
+          "name": "同泰",
+          "close": 22.2,
+          "daily_change_pct": 9.9,
+          "volume_multiple": null,
+          "volume": 1608000,
+          "industry": "電子零組件業",
+          "sub_group": null
+        },
         {
           "code": "8272",
           "name": "全景軟體",
@@ -101,6 +151,16 @@
           "sub_group": null
         },
         {
+          "code": "2465",
+          "name": "麗臺",
+          "close": 125.0,
+          "daily_change_pct": 9.65,
+          "volume_multiple": null,
+          "volume": 10713000,
+          "industry": "電腦及週邊設備業",
+          "sub_group": null
+        },
+        {
           "code": "6697",
           "name": "東捷資訊",
           "close": 57.6,
@@ -109,6 +169,16 @@
           "volume": 10848312,
           "industry": "資訊服務業",
           "sub_group": "資訊服務"
+        },
+        {
+          "code": "4562",
+          "name": "穎漢",
+          "close": 33.8,
+          "daily_change_pct": 9.92,
+          "volume_multiple": null,
+          "volume": 2538000,
+          "industry": "電機機械",
+          "sub_group": null
         },
         {
           "code": "5013",
@@ -123,21 +193,21 @@
         {
           "code": "6467",
           "name": "泰合",
-          "close": 246.0,
-          "daily_change_pct": 9.82,
+          "close": 259.5,
+          "daily_change_pct": 5.49,
           "volume_multiple": null,
-          "volume": 1605462,
+          "volume": 1479000,
           "industry": null,
           "sub_group": null
         },
         {
-          "code": "1201",
-          "name": "味全",
-          "close": 13.6,
-          "daily_change_pct": -0.37,
+          "code": "1416",
+          "name": "廣豐",
+          "close": 14.15,
+          "daily_change_pct": 4.04,
           "volume_multiple": null,
-          "volume": 8513418,
-          "industry": "食品工業",
+          "volume": 2702000,
+          "industry": "其他業",
           "sub_group": null
         }
       ]
