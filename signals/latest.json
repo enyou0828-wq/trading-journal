@@ -1,9 +1,9 @@
 {
   "scan_date": "2026-11-06",
   "twse_date": "2026-11-06",
-  "tpex_date": "2026-11-05",
-  "markets_in_sync": false,
-  "generated_at": "2026-11-06T06:41:47.150636+00:00",
+  "tpex_date": "2026-11-06",
+  "markets_in_sync": true,
+  "generated_at": "2026-11-06T15:17:56.376899+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,8 +14,28 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 4,
+      "signal_count": 6,
       "signals": [
+        {
+          "code": "5438",
+          "name": "東友",
+          "close": 18.85,
+          "daily_change_pct": 9.91,
+          "volume_multiple": 42.28,
+          "volume": 2517055,
+          "industry": "電腦及週邊設備業",
+          "sub_group": null
+        },
+        {
+          "code": "5490",
+          "name": "同亨",
+          "close": 25.6,
+          "daily_change_pct": 9.87,
+          "volume_multiple": 9.72,
+          "volume": 2308772,
+          "industry": "電腦及週邊設備業",
+          "sub_group": null
+        },
         {
           "code": "6112",
           "name": "邁達特",
@@ -27,13 +47,13 @@
           "sub_group": null
         },
         {
-          "code": "6708",
-          "name": "天擎",
-          "close": 75.7,
-          "daily_change_pct": 9.24,
-          "volume_multiple": 2.72,
-          "volume": 1850080,
-          "industry": "半導體業",
+          "code": "5202",
+          "name": "力新",
+          "close": 18.3,
+          "daily_change_pct": 9.91,
+          "volume_multiple": 2.5,
+          "volume": 8493642,
+          "industry": "資訊服務業",
           "sub_group": null
         },
         {
@@ -68,36 +88,26 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 4,
+      "signal_count": 3,
       "signals": [
         {
-          "code": "6708",
-          "name": "天擎",
-          "close": 75.7,
-          "daily_change_pct": 9.24,
+          "code": "5202",
+          "name": "力新",
+          "close": 18.3,
+          "daily_change_pct": 9.91,
           "volume_multiple": null,
-          "volume": 1850080,
-          "industry": "半導體業",
+          "volume": 8493642,
+          "industry": "資訊服務業",
           "sub_group": null
         },
         {
           "code": "3287",
           "name": "廣寰科",
-          "close": 66.7,
-          "daily_change_pct": -6.71,
+          "close": 73.3,
+          "daily_change_pct": 9.9,
           "volume_multiple": null,
-          "volume": 7394216,
+          "volume": 3725164,
           "industry": "電腦及週邊設備業",
-          "sub_group": null
-        },
-        {
-          "code": "5202",
-          "name": "力新",
-          "close": 16.65,
-          "daily_change_pct": -6.98,
-          "volume_multiple": null,
-          "volume": 18375264,
-          "industry": "資訊服務業",
           "sub_group": null
         },
         {
