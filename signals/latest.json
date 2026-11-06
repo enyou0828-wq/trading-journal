@@ -1,9 +1,9 @@
 {
-  "scan_date": "2026-11-05",
-  "twse_date": "2026-11-05",
+  "scan_date": "2026-11-06",
+  "twse_date": "2026-11-06",
   "tpex_date": "2026-11-05",
-  "markets_in_sync": true,
-  "generated_at": "2026-11-05T15:44:48.627032+00:00",
+  "markets_in_sync": false,
+  "generated_at": "2026-11-06T06:41:47.150636+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,8 +14,18 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 5,
+      "signal_count": 4,
       "signals": [
+        {
+          "code": "6112",
+          "name": "邁達特",
+          "close": 51.4,
+          "daily_change_pct": 7.76,
+          "volume_multiple": 4.42,
+          "volume": 13028449,
+          "industry": "資訊服務業",
+          "sub_group": null
+        },
         {
           "code": "6708",
           "name": "天擎",
@@ -29,41 +39,21 @@
         {
           "code": "1416",
           "name": "廣豐",
-          "close": 14.9,
-          "daily_change_pct": 5.3,
-          "volume_multiple": 11.43,
-          "volume": 13354981,
+          "close": 16.35,
+          "daily_change_pct": 9.73,
+          "volume_multiple": 10.67,
+          "volume": 19360132,
           "industry": "其他業",
           "sub_group": null
         },
         {
-          "code": "2610",
-          "name": "華航",
-          "close": 21.65,
-          "daily_change_pct": 5.61,
-          "volume_multiple": 5.19,
-          "volume": 90199427,
-          "industry": "航運業",
-          "sub_group": null
-        },
-        {
-          "code": "1476",
-          "name": "儒鴻",
-          "close": 339.5,
-          "daily_change_pct": 8.64,
-          "volume_multiple": 3.56,
-          "volume": 5990632,
-          "industry": "紡織纖維",
-          "sub_group": null
-        },
-        {
-          "code": "1477",
-          "name": "聚陽",
-          "close": 214.5,
-          "daily_change_pct": 5.41,
-          "volume_multiple": 3.51,
-          "volume": 4577916,
-          "industry": "紡織纖維",
+          "code": "6446",
+          "name": "藥華藥",
+          "close": 1270.0,
+          "daily_change_pct": 7.17,
+          "volume_multiple": 3.49,
+          "volume": 7197762,
+          "industry": "生技醫療業",
           "sub_group": null
         }
       ]
@@ -78,7 +68,7 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 5,
+      "signal_count": 4,
       "signals": [
         {
           "code": "6708",
@@ -113,21 +103,11 @@
         {
           "code": "1416",
           "name": "廣豐",
-          "close": 14.9,
-          "daily_change_pct": 5.3,
+          "close": 16.35,
+          "daily_change_pct": 9.73,
           "volume_multiple": null,
-          "volume": 13354981,
+          "volume": 19360132,
           "industry": "其他業",
-          "sub_group": null
-        },
-        {
-          "code": "2033",
-          "name": "佳大",
-          "close": 74.7,
-          "daily_change_pct": -3.11,
-          "volume_multiple": null,
-          "volume": 12011004,
-          "industry": "鋼鐵工業",
           "sub_group": null
         }
       ]
