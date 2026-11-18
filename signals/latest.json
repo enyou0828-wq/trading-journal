@@ -1,9 +1,9 @@
 {
-  "scan_date": "2026-11-17",
-  "twse_date": "2026-11-17",
-  "tpex_date": "2026-11-17",
+  "scan_date": "2026-11-18",
+  "twse_date": "2026-11-18",
+  "tpex_date": "2026-11-18",
   "markets_in_sync": true,
-  "generated_at": "2026-11-17T07:54:31.876882+00:00",
+  "generated_at": "2026-11-18T07:27:00.691276+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,37 +14,17 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 3,
+      "signal_count": 1,
       "signals": [
         {
-          "code": "7717",
-          "name": "萊德光電-KY",
-          "close": 533.0,
-          "daily_change_pct": 9.9,
-          "volume_multiple": 5.07,
-          "volume": 2890543,
+          "code": "4977",
+          "name": "眾達-KY",
+          "close": 197.0,
+          "daily_change_pct": 9.75,
+          "volume_multiple": 3.14,
+          "volume": 31331647,
           "industry": "通信網路業",
           "sub_group": "光通訊"
-        },
-        {
-          "code": "8415",
-          "name": "大國鋼",
-          "close": 41.35,
-          "daily_change_pct": 9.97,
-          "volume_multiple": 13.38,
-          "volume": 9107160,
-          "industry": "鋼鐵工業",
-          "sub_group": null
-        },
-        {
-          "code": "9933",
-          "name": "中鼎",
-          "close": 56.6,
-          "daily_change_pct": 9.9,
-          "volume_multiple": 5.97,
-          "volume": 53644219,
-          "industry": "其他業",
-          "sub_group": null
         }
       ]
     },
@@ -58,96 +38,46 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 9,
+      "signal_count": 4,
       "signals": [
         {
-          "code": "7717",
-          "name": "萊德光電-KY",
-          "close": 533.0,
-          "daily_change_pct": 9.9,
+          "code": "5457",
+          "name": "宣德",
+          "close": 22.6,
+          "daily_change_pct": 9.98,
           "volume_multiple": null,
-          "volume": 2890543,
-          "industry": "通信網路業",
-          "sub_group": "光通訊"
+          "volume": 2249326,
+          "industry": "電子零組件業",
+          "sub_group": null
         },
         {
-          "code": "6416",
-          "name": "瑞祺電通",
-          "close": 112.5,
-          "daily_change_pct": 5.63,
+          "code": "2413",
+          "name": "環科",
+          "close": 53.3,
+          "daily_change_pct": 9.9,
           "volume_multiple": null,
-          "volume": 1370281,
-          "industry": "通信網路業",
+          "volume": 18302141,
+          "industry": "電子零組件業",
           "sub_group": null
         },
         {
           "code": "2323",
           "name": "中環",
-          "close": 11.9,
-          "daily_change_pct": 2.15,
+          "close": 12.05,
+          "daily_change_pct": 1.26,
           "volume_multiple": null,
-          "volume": 37940432,
-          "industry": "光電業",
-          "sub_group": null
-        },
-        {
-          "code": "6743",
-          "name": "安普新",
-          "close": 35.55,
-          "daily_change_pct": 1.86,
-          "volume_multiple": null,
-          "volume": 3891377,
-          "industry": "其他電子業",
-          "sub_group": null
-        },
-        {
-          "code": "3049",
-          "name": "精金",
-          "close": 12.75,
-          "daily_change_pct": 0.79,
-          "volume_multiple": null,
-          "volume": 15986929,
+          "volume": 28062054,
           "industry": "光電業",
           "sub_group": null
         },
         {
           "code": "9933",
           "name": "中鼎",
-          "close": 56.6,
-          "daily_change_pct": 9.9,
+          "close": 57.5,
+          "daily_change_pct": 1.59,
           "volume_multiple": null,
-          "volume": 53644219,
+          "volume": 71173275,
           "industry": "其他業",
-          "sub_group": null
-        },
-        {
-          "code": "6614",
-          "name": "資拓宏宇",
-          "close": 40.0,
-          "daily_change_pct": -1.23,
-          "volume_multiple": null,
-          "volume": 3970972,
-          "industry": "數位雲端",
-          "sub_group": null
-        },
-        {
-          "code": "7765",
-          "name": "中華資安",
-          "close": 287.0,
-          "daily_change_pct": -3.04,
-          "volume_multiple": null,
-          "volume": 3501251,
-          "industry": "數位雲端",
-          "sub_group": "資訊服務"
-        },
-        {
-          "code": "6949",
-          "name": "沛爾生醫*-創",
-          "close": 45.35,
-          "daily_change_pct": -8.38,
-          "volume_multiple": null,
-          "volume": 14995413,
-          "industry": null,
           "sub_group": null
         }
       ]
@@ -177,6 +107,24 @@
       "min_fraction": 0.3333333333333333,
       "min_stocks": 2
     },
-    "groups": []
+    "groups": [
+      {
+        "group": "網通設備",
+        "total_in_group": 4,
+        "triggered_count": 2,
+        "stocks": [
+          {
+            "code": "6285",
+            "name": "啟碁",
+            "daily_change_pct": 9.78
+          },
+          {
+            "code": "2345",
+            "name": "智邦",
+            "daily_change_pct": 6.77
+          }
+        ]
+      }
+    ]
   }
 }
