@@ -1,9 +1,9 @@
 {
-  "scan_date": "2026-11-19",
-  "twse_date": "2026-11-19",
-  "tpex_date": "2026-11-19",
+  "scan_date": "2026-11-20",
+  "twse_date": "2026-11-20",
+  "tpex_date": "2026-11-20",
   "markets_in_sync": true,
-  "generated_at": "2026-11-19T07:23:05.262368+00:00",
+  "generated_at": "2026-11-20T07:14:56.902594+00:00",
   "sets": [
     {
       "key": "fast",
@@ -14,16 +14,26 @@
         "min_daily_change_pct": 5.0
       },
       "warmup": true,
-      "signal_count": 1,
+      "signal_count": 2,
       "signals": [
         {
-          "code": "6782",
-          "name": "視陽",
-          "close": 290.5,
-          "daily_change_pct": 9.01,
-          "volume_multiple": 3.56,
-          "volume": 2160595,
-          "industry": "生技醫療業",
+          "code": "5457",
+          "name": "宣德",
+          "close": 23.75,
+          "daily_change_pct": 9.95,
+          "volume_multiple": 5.87,
+          "volume": 6204620,
+          "industry": "電子零組件業",
+          "sub_group": null
+        },
+        {
+          "code": "6614",
+          "name": "資拓宏宇",
+          "close": 40.7,
+          "daily_change_pct": 10.0,
+          "volume_multiple": 3.68,
+          "volume": 1796925,
+          "industry": "數位雲端",
           "sub_group": null
         }
       ]
@@ -38,26 +48,16 @@
         "min_avg_slope_pct": 3.0
       },
       "warmup": true,
-      "signal_count": 2,
+      "signal_count": 1,
       "signals": [
         {
-          "code": "8415",
-          "name": "大國鋼",
-          "close": 42.2,
-          "daily_change_pct": 1.44,
+          "code": "5457",
+          "name": "宣德",
+          "close": 23.75,
+          "daily_change_pct": 9.95,
           "volume_multiple": null,
-          "volume": 8694491,
-          "industry": "鋼鐵工業",
-          "sub_group": null
-        },
-        {
-          "code": "9933",
-          "name": "中鼎",
-          "close": 56.6,
-          "daily_change_pct": -1.57,
-          "volume_multiple": null,
-          "volume": 28385581,
-          "industry": "其他業",
+          "volume": 6204620,
+          "industry": "電子零組件業",
           "sub_group": null
         }
       ]
@@ -87,6 +87,34 @@
       "min_fraction": 0.3333333333333333,
       "min_stocks": 2
     },
-    "groups": []
+    "groups": [
+      {
+        "group": "資訊服務",
+        "total_in_group": 11,
+        "triggered_count": 4,
+        "stocks": [
+          {
+            "code": "7765",
+            "name": "中華資安",
+            "daily_change_pct": 9.89
+          },
+          {
+            "code": "2468",
+            "name": "華經",
+            "daily_change_pct": 9.86
+          },
+          {
+            "code": "6925",
+            "name": "意藍",
+            "daily_change_pct": 9.66
+          },
+          {
+            "code": "6148",
+            "name": "驊宏資",
+            "daily_change_pct": 6.6
+          }
+        ]
+      }
+    ]
   }
 }
